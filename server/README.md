@@ -42,6 +42,8 @@ Use the returned project ID for research, cart, scenario, risk and workspace req
 | RESEARCH_TIMEOUT_MS | 90000 | Combined research deadline |
 | LOG_LEVEL | info | silent, error, warn, info, debug |
 
+Synchronous GPT-6 planning and research requests use `reasoning.effort: low` to keep interactive requests within their deadlines; planner output is bounded to 10,000 tokens. Other model families retain their own reasoning defaults.
+
 No external credentials are needed for local project planning, cart CRUD, budget calculations, scenarios, risks, workspace edits and seller draft templates. Without search configuration the research response has `status: "unavailable"`, no offers and a reason. To explore the offline flow set `RESEARCH_MODE=demo`: offers are explicitly fictional, contain no real seller links and must never be represented as current market data. Local AI mode is an honest limited parser; it asks questions for missing fields and uses provisional planning allocations.
 
 ## State and orchestration

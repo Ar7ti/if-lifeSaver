@@ -8,6 +8,7 @@ import {
   type LifeProject, type Offer, type ResearchRequest, type ResearchResult,
 } from '../../shared/contracts/index.js';
 import { AppError } from './errors.js';
+import { interactiveModelOptions } from './model-options.js';
 
 export interface SearchProvider {
   readonly mode: 'live' | 'demo' | 'unavailable';
@@ -250,7 +251,7 @@ async function liveSearch(client: OpenAI, options: Options, request: ResearchReq
       priorities: project.preferences.priorities };
     // Some SDK releases omit max_tool_calls from create types; the Responses API accepts it.
     const searchParams: ResponseCreateParamsNonStreaming & { max_tool_calls: number } = {
-      model: options.model, store: false, tools: [{ type: 'web_search' }], tool_choice: 'required',
+      model: options.model, ...interactiveModelOptions(options.model), store: false, tools: [{ type: 'web_search' }], tool_choice: 'required',
       include: ['web_search_call.action.sources'], max_tool_calls: MAX_TOOL_CALLS,
       parallel_tool_calls: false, max_output_tokens: 6000,
       instructions: `${SAFETY_INSTRUCTIONS}\nSearch for actual offers matching the criteria. Use only the hosted web_search tool, at most ${MAX_TOOL_CALLS} calls.
@@ -268,7 +269,7 @@ Do not give estimated prices, currency conversions, instalment prices, or infer 
       'No usable public HTTPS cited offer summaries were returned. Source URLs alone do not establish products or prices.',
     ], now);
     const extracted = await client.responses.create({
-      model: options.model, store: false, tools: [], tool_choice: 'none', max_output_tokens: 6000,
+      model: options.model, ...interactiveModelOptions(options.model), store: false, tools: [], tool_choice: 'none', max_output_tokens: 6000,
       instructions: `${SAFETY_INSTRUCTIONS}\nExtract at most ${MAX_OFFERS} matching offers solely from the supplied generated cited search summaries, not raw page text.
 Every title must appear verbatim in its identityQuote, which must be a verbatim substring of a single passage at sourceUrl.
 Each fact quote must be verbatim from that SAME passage. Use null/unknown when absent. Never combine evidence across products or sources.

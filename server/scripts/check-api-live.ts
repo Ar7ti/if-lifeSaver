@@ -32,7 +32,7 @@ async function main() {
     assert.equal(project.aiMode,'openai');assert.equal(project.budget.totalMinor,200000);assert.equal(project.workspace.widgets.length,9);
     assert.equal(project.preferences.deliveryRequired,null);assert.equal(project.preferences.allowUsed,null);
     report.projectId=project.id;report.projectUrl=origin+`/api/projects/${project.id}`;
-    checks.push('GPT-6.1 Sol created a EUR 2000 moving project, nine widgets and unconfirmed preferences');
+    checks.push(`${config.model} created a EUR 2000 moving project, nine widgets and unconfirmed preferences`);
     const base=`/api/projects/${project.id}`;
     const research=ResearchResultSchema.parse(await request(`${base}/research`,{category:'beds',location:'Turku, Finland',maxPrice:250}));
     report.research={status:research.status,count:research.offers.length,warnings:research.warnings,offers:research.offers.map(o=>({title:o.title,priceMinor:o.priceMinor,priceStatus:o.priceStatus,sourceUrl:o.sourceUrl,delivery:o.delivery}))};

@@ -8,6 +8,7 @@ import {
   type CreateProjectRequest, type LifeProject,
 } from '../../shared/contracts/index.js';
 import { AppError } from './errors.js';
+import { interactiveModelOptions } from './model-options.js';
 
 export const ProjectBlueprintSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -282,7 +283,7 @@ export function createPlannerWithClient(options: PlannerOptions, parse: PlannerP
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const body = {model: options.model, input: [
+      const body = {model: options.model, ...interactiveModelOptions(options.model), max_output_tokens: 10000, input: [
         {role: 'system', content: system}, {role: 'user', content: JSON.stringify(data)},
       ], text: {format: zodTextFormat(schema, name)}, store: false};
       const timeout = new Promise<never>((_, reject) => {
