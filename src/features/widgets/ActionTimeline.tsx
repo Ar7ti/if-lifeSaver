@@ -5,11 +5,12 @@ import { formatDate, humanizeCategory, pluralize } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useTaskStatus } from './useTaskStatus';
 import { TaskCheckbox } from './TaskCheckbox';
+import { ProtectionTimeline } from './ProtectionTimeline';
 
 type Entry = { kind: 'task'; id: string; date: string | null } | { kind: 'milestone'; id: string; date: string; label: string };
 
 /** Tasks in date order around the move date. Undated tasks are listed honestly as not scheduled. */
-export function ActionTimeline() {
+function ProjectTaskTimeline() {
   const { project } = useWorkspace();
   const setStatus = useTaskStatus();
   const moveDate = project.scenarioType==='travel'?project.preferences.startDate:project.preferences.moveDate;
@@ -89,4 +90,16 @@ export function ActionTimeline() {
       )}
     </div>
   );
+}
+
+/** Moving protection and ordinary tasks share the existing customizable timeline widget. */
+export function ActionTimeline() {
+  const { project } = useWorkspace();
+  if (project.scenarioType !== 'moving') return <ProjectTaskTimeline />;
+  return <div className="space-y-6"><ProtectionTimeline />
+    <details className="rounded-[12px] border border-hairline p-4">
+      <summary className="cursor-pointer text-body-sm font-semibold">Your moving schedule</summary>
+      <div className="mt-4"><ProjectTaskTimeline /></div>
+    </details>
+  </div>;
 }

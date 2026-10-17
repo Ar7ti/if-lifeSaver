@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import {
   CartResponseSchema, CreateProjectResponseSchema, ErrorResponseSchema, HealthResponseSchema, ProjectResponseSchema,
   ResearchResultSchema, ScenariosResponseSchema, SellerMessageResponseSchema, WorkspaceResponseSchema, AssistantResponseSchema,
-  HomeInsuranceResponseSchema, ProtectionCapabilitiesSchema,
+  HomeInsuranceResponseSchema, ProtectionCapabilitiesSchema, ProtectionTimelineResponseSchema, ProtectionMilestoneResponseSchema,
 } from '@contracts';
 import { ApiError, type LifeSimApi } from './types';
 
@@ -60,6 +60,8 @@ export function createLiveApi(getToken: () => string): LifeSimApi {
 
   return {
     source: 'live',
+    protectionTimeline:id=>request(`${p(id)}/protection-timeline`,ProtectionTimelineResponseSchema),
+    patchProtectionMilestone:(id,milestoneId,body)=>request(`${p(id)}/protection-timeline/${milestoneId}`,ProtectionMilestoneResponseSchema,{method:'PATCH',body}),
     protectionCapabilities:()=>request('/protection/capabilities',ProtectionCapabilitiesSchema),
     updateProtection:async(id,body)=>(await request(`${p(id)}/protection`,ProjectResponseSchema,{method:'PATCH',body})).project,
     saveCarInsuranceDraft:async(id,body)=>(await request(`${p(id)}/protection/car/draft`,ProjectResponseSchema,{method:'PATCH',body})).project,

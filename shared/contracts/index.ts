@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { ProtectionTimelineStateSchema, ProtectionTimelineResponseSchema } from './protection-timeline.js';
+export * from './protection-timeline.js';
 import { HomeInsuranceStateSchema } from './home-insurance.js';
 export * from './home-insurance.js';
 export * from './car-insurance.js';
@@ -9,7 +11,7 @@ export * from './protection.js';
  * ResearchRequest.maxPrice is the sole major-unit input, e.g. 250 = €250.
  * All objects are declarative data; arbitrary code/HTML/config keys are rejected.
  */
-export const CONTRACT_VERSION = '1.4.0';
+export const CONTRACT_VERSION = '1.6.0';
 export const ScenarioTypeSchema = z.enum(['moving','travel','car_purchase','home_furnishing','student_life','other']);
 export type ScenarioType = z.infer<typeof ScenarioTypeSchema>;
 export const IdSchema = z.string().uuid();
@@ -88,7 +90,7 @@ export const ConversationSchema = z.object({id:IdSchema,activeRequest:z.string()
 export type ClarificationField = z.infer<typeof ClarificationFieldSchema>;
 export type Clarification = z.infer<typeof ClarificationSchema>;
 export type Conversation = z.infer<typeof ConversationSchema>;
-export const LifeProjectSchema = z.object({ id: IdSchema, revision: z.number().int().nonnegative(), title: z.string().min(1).max(120), scenarioType: ScenarioTypeSchema, location: z.string().max(200).nullable(), locale: z.enum(['en', 'fi']), originalMessage: TextSchema, status: z.enum(['planning', 'active', 'completed']), preferences: PreferencesSchema, assumptions: z.array(z.string()), confirmedFacts: z.array(z.string()), questions: z.array(z.string()), budget: BudgetSchema, cart: z.array(CartItemSchema).max(100), tasks: z.array(ProjectTaskSchema).max(200), workspace: WorkspaceSchema, researchResults: z.array(ResearchResultSchema).max(30), risks: z.array(RiskSchema), scenarios: z.array(SimulationScenarioSchema), actions: z.array(AgentActionSchema).max(200), protection:ProtectionStateSchema.optional(), homeInsurance: HomeInsuranceStateSchema.optional(), conversation: ConversationSchema.optional(), answeredQuestions: z.record(z.string().max(500),z.string().max(2000)).optional(), categoryReasons: z.array(z.object({id:CategoryIdSchema,reason:TextSchema}).strict()).optional(), recommendationDetails: z.array(z.object({title:TextSchema,explanation:TextSchema,priority:z.enum(['high','medium','low']),action:TextSchema,reason:TextSchema}).strict()).optional(), recommendations: z.array(z.string()), aiMode: z.enum(['openai', 'local']), createdAt: TimestampSchema, updatedAt: TimestampSchema }).strict();
+export const LifeProjectSchema = z.object({ id: IdSchema, revision: z.number().int().nonnegative(), title: z.string().min(1).max(120), scenarioType: ScenarioTypeSchema, location: z.string().max(200).nullable(), locale: z.enum(['en', 'fi']), originalMessage: TextSchema, status: z.enum(['planning', 'active', 'completed']), preferences: PreferencesSchema, assumptions: z.array(z.string()), confirmedFacts: z.array(z.string()), questions: z.array(z.string()), budget: BudgetSchema, cart: z.array(CartItemSchema).max(100), tasks: z.array(ProjectTaskSchema).max(200), workspace: WorkspaceSchema, researchResults: z.array(ResearchResultSchema).max(30), risks: z.array(RiskSchema), scenarios: z.array(SimulationScenarioSchema), actions: z.array(AgentActionSchema).max(200), protectionTimeline:ProtectionTimelineStateSchema.optional(), protection:ProtectionStateSchema.optional(), homeInsurance: HomeInsuranceStateSchema.optional(), conversation: ConversationSchema.optional(), answeredQuestions: z.record(z.string().max(500),z.string().max(2000)).optional(), categoryReasons: z.array(z.object({id:CategoryIdSchema,reason:TextSchema}).strict()).optional(), recommendationDetails: z.array(z.object({title:TextSchema,explanation:TextSchema,priority:z.enum(['high','medium','low']),action:TextSchema,reason:TextSchema}).strict()).optional(), recommendations: z.array(z.string()), aiMode: z.enum(['openai', 'local']), createdAt: TimestampSchema, updatedAt: TimestampSchema }).strict();
 export const CreateProjectRequestSchema = z.object({message:TextSchema, locale:z.enum(['en','fi']).default('en')}).strict();
 export const CreateProjectResponseSchema = z.object({project:LifeProjectSchema, workspace:WorkspaceSchema, questions:z.array(z.string())}).strict();
 export const ProjectPatchSchema = z.object({title:z.string().min(1).max(120).optional(), location:z.string().min(1).max(200).optional(), status:z.enum(['planning','active','completed']).optional(), preferences:PreferencesSchema.partial().strict().optional(), answers:z.array(z.object({question:z.string().min(1).max(500),answer:TextSchema}).strict()).max(10).optional(), budget:z.object({totalMinor:MinorSchema.optional(), ...AllocationInputSchema.shape}).partial().strict().optional(), tasks:z.array(z.object({id:IdSchema,status:z.enum(['todo','in_progress','done'])}).strict()).max(200).optional(), expectedRevision:z.number().int().nonnegative().optional()}).strict();
@@ -104,6 +106,7 @@ export const SellerMessageRequestSchema = z.object({offerId:IdSchema,language:z.
 export const SellerMessageResponseSchema = z.object({draft:z.string(),handoffUrl:PublicUrlSchema.nullable(),sent:z.literal(false),warnings:z.array(z.string())}).strict();
 export const ConfirmActionRequestSchema = z.object({approved:z.boolean(),expectedRevision:z.number().int().nonnegative().optional()}).strict();
 export const ErrorResponseSchema = z.object({error:z.object({code:z.string(),message:z.string(),details:z.record(z.string(),z.unknown()).optional()}).strict()}).strict();
+export const ProtectionMilestoneResponseSchema = z.object({project:LifeProjectSchema,timeline:ProtectionTimelineResponseSchema}).strict();
 export const ProjectResponseSchema = z.object({project:LifeProjectSchema}).strict();
 export const WorkspaceResponseSchema = z.object({workspace:WorkspaceSchema,revision:z.number().int().nonnegative()}).strict();
 export const ScenariosResponseSchema = z.object({scenarios:z.array(SimulationScenarioSchema)}).strict();

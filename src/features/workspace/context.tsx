@@ -7,6 +7,7 @@ export interface WorkspaceContextValue {
   writer: ReturnType<typeof useProjectWriter>;
   /** Opens the assistant, optionally with a message ready to send. */
   ask: (message?: string) => void;
+  editDetails: () => void;
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);

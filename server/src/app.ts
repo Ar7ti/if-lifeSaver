@@ -1,3 +1,5 @@
+import { movingProtectionTimeline } from './protection-timeline.js';
+import { ProtectionMilestoneIdSchema, ProtectionMilestonePatchSchema } from '../../shared/contracts/index.js';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -69,6 +71,8 @@ export async function buildApp(deps: AppDependencies={}) {
     return reply.code(201).send({project,workspace:project.workspace,questions:project.questions});
   });
   app.get('/api/projects/:projectId',async request=>({project:await service.get(ProjectParams.parse(request.params).projectId)}));
+  app.get('/api/projects/:projectId/protection-timeline',async request=>service.protectionTimeline(ProjectParams.parse(request.params).projectId));
+  app.patch('/api/projects/:projectId/protection-timeline/:milestoneId',async request=>{const {projectId,milestoneId}=ProjectParams.extend({milestoneId:ProtectionMilestoneIdSchema}).parse(request.params);const project=await service.protectionMilestone(projectId,milestoneId,ProtectionMilestonePatchSchema.parse(request.body));return {project,timeline:movingProtectionTimeline(project)};});
   app.get('/api/projects/:projectId/home-insurance',async request=>service.homeInsurance(ProjectParams.parse(request.params).projectId,ifInsurance));
   app.get('/api/protection/capabilities',async()=>carInsurance.capabilities());
   app.patch('/api/projects/:projectId/protection',async request=>({project:await service.protectionUpdate(ProjectParams.parse(request.params).projectId,ProtectionUpdateSchema.parse(request.body))}));

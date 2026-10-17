@@ -1,3 +1,5 @@
+import { movingProtectionTimeline, updateProtectionMilestone } from './protection-timeline.js';
+import type { ProtectionMilestoneId, ProtectionMilestonePatch } from '../../shared/contracts/index.js';
 import { randomUUID } from 'node:crypto';
 import { AgentCommandSchema, LifeProjectSchema, type LifeProject, type ProjectPatch, type WorkspacePatch, type AddCartItemRequest, type CartItemPatch, type AssistantRequest, type AssistantResponse, type ResearchRequest, type SellerMessageRequest, type SellerMessageResponse, type AgentAction, type AgentCommand, type Offer, type CreateProjectRequest } from '../../shared/contracts/index.js';
 import type { ProjectRepository } from './repository.js';
@@ -110,6 +112,8 @@ export class ProjectService {
     return this.repository.create(LifeProjectSchema.parse(project));
   }
   async get(id: string) { const project=await this.repository.get(id);reconcileProtection(project);return project; }
+  async protectionTimeline(id:string){return movingProtectionTimeline(await this.get(id));}
+  protectionMilestone(id:string,milestoneId:ProtectionMilestoneId,input:ProtectionMilestonePatch){return this.repository.update(id,p=>updateProtectionMilestone(p,milestoneId,input),input.expectedRevision);}
   protectionUpdate(id:string,input:ProtectionUpdate){return this.repository.update(id,p=>{updateProtection(p,input);this.derive(p);});}
   carDraft(id:string,draft:Partial<CarInsuranceDraft>){return this.repository.update(id,p=>{if(p.scenarioType!=='car_purchase')throw new AppError('PROTECTION_NOT_RELEVANT','Car pricing requires a car workspace',422);reconcileProtection(p);p.protection!.car.draft={...p.protection!.car.draft,...draft};this.derive(p);});}
   async carQuote(id:string,input:CarQuoteRequest,provider:CarInsuranceProvider){

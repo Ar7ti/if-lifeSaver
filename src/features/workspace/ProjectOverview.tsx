@@ -21,7 +21,7 @@ type Tri = 'yes' | 'no' | 'unsure';
 const toTri = (v: boolean | null): Tri => (v === null ? 'unsure' : v ? 'yes' : 'no');
 const fromTri = (v: Tri) => (v === 'unsure' ? null : v === 'yes');
 
-function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ProjectDetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { project, writer } = useWorkspace();
   const p = project.preferences;
   const moving = project.scenarioType === 'moving';
@@ -166,8 +166,7 @@ interface Attention {
 }
 
 export function ProjectOverview({ project }: { project: LifeProject }) {
-  const { ask } = useWorkspace();
-  const [editing, setEditing] = useState(false);
+  const { ask, editDetails } = useWorkspace();
   const b = project.budget;
   const done = project.tasks.filter(t => t.status === 'done').length;
   const pct = project.tasks.length ? Math.round((done / project.tasks.length) * 100) : 0;
@@ -196,7 +195,7 @@ export function ProjectOverview({ project }: { project: LifeProject }) {
           </span>
         </nav>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" icon={<PenLine />} onClick={() => setEditing(true)}>
+          <Button variant="ghost" size="sm" icon={<PenLine />} onClick={editDetails}>
             Edit details
           </Button>
           <Button variant="primary" size="sm" icon={<Sparkles />} onClick={() => ask()}>
@@ -220,7 +219,7 @@ export function ProjectOverview({ project }: { project: LifeProject }) {
                 <Emoji>📍</Emoji> {project.location}
               </Chip>
             )}
-            <Chip onClick={() => setEditing(true)} label={date ? `Date ${date}, edit` : 'Add project date'}>
+            <Chip onClick={editDetails} label={date ? `Date ${date}, edit` : 'Add project date'}>
               <Emoji>📅</Emoji> {date ?? 'Add date'}
             </Chip>
             {project.preferences.householdSize && (
@@ -315,7 +314,6 @@ export function ProjectOverview({ project }: { project: LifeProject }) {
         </div>
       </div>
 
-      {editing && <DetailsDialog open={editing} onClose={() => setEditing(false)} />}
     </motion.section>
   );
 }

@@ -10,7 +10,7 @@ import { useProjects } from '@/stores/projects';
 import { ErrorState, Skeleton } from '@/components/ui/States';
 import { AssistantPanel } from '@/features/assistant/AssistantPanel';
 import { WorkspaceContext, type WorkspaceContextValue } from './context';
-import { ProjectOverview } from './ProjectOverview';
+import { ProjectOverview, ProjectDetailsDialog } from './ProjectOverview';
 import { QuestionsBlock } from './QuestionsBlock';
 import { scrollToSection } from './scroll';
 import { WorkspaceGrid } from './WorkspaceGrid';
@@ -75,6 +75,9 @@ export function WorkspacePage() {
   const { assistantOpen, setAssistantOpen } = useUi();
   const isDesktop = useIsDesktop();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const editDetails = useCallback(() => setEditing(true), []);
+  useEffect(() => setEditing(false), [projectId]);
   const { setDraft, requestFocus } = useAssistant();
 
   const ask = useCallback(
@@ -100,7 +103,7 @@ export function WorkspacePage() {
     if (target) requestAnimationFrame(() => scrollToSection(target));
   }, [location.hash, hasData]);
 
-  const ctx = useMemo<WorkspaceContextValue | null>(() => (query.data ? { project: query.data, writer, ask } : null), [query.data, writer, ask]);
+  const ctx = useMemo<WorkspaceContextValue | null>(() => (query.data ? { project: query.data, writer, ask, editDetails } : null), [query.data, writer, ask, editDetails]);
 
   useEffect(() => {
     if (query.data) document.title = `${query.data.title} · Life Simulator`;
@@ -169,6 +172,7 @@ export function WorkspacePage() {
           <Sparkles className="size-4 text-marigold" aria-hidden /> <span className="max-sm:sr-only">Ask assistant</span>
         </motion.button>
       )}
+      {editing && <ProjectDetailsDialog open={editing} onClose={() => setEditing(false)} />}
       {!isDesktop && <AssistantSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />}
     </WorkspaceContext.Provider>
   );

@@ -172,6 +172,8 @@ function get(id: string) {
 const cartResponse = (p: LifeProject) => clone({ items: p.cart, budget: p.budget, revision: p.revision });
 
 export const mockApi: LifeSimApi = {
+  async protectionTimeline(){throw new ApiError('BACKEND_REQUIRED','Protection Timeline uses server-backed progress. Connect to the local backend; no AI or insurer credentials are needed.',503);},
+  async patchProtectionMilestone(){throw new ApiError('BACKEND_REQUIRED','Connect to the backend to save protection planning progress.',503);},
   async protectionCapabilities(){return {carLiveAvailable:false,carSourceMode:'unavailable',demoAvailable:true,carDocumentation:'https://developer.if-insurance.com/apis/mobility/car-insurance-apis-finland/documentation',travelQuotingAvailable:false};},
   async updateProtection(){throw new ApiError('BACKEND_REQUIRED','Use the local backend for the Smart Protection demo.',503);},
   async saveCarInsuranceDraft(){throw new ApiError('BACKEND_REQUIRED','Use the local backend for the Smart Protection demo.',503);},
