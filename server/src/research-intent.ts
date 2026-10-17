@@ -72,9 +72,12 @@ export function planResearch(request: ResearchRequest, project: LifeProject) {
   ].filter(Boolean).join(' ');
   const strategies = focus === 'accommodation' ? ['direct booking total stay price dates occupancy', 'compare hotels hostels apartments total fees cancellation', 'local accommodation availability for requested dates'] :
     focus === 'travel_transport' ? ['official operators route total fare dates travelers', 'alternative operators compare train bus flight ferry', 'direct ticket booking route dates baggage fees'] :
-    focus === 'car' ? ['dealer vehicles for sale purchase price specifications -toy -rental -lease', 'private used car listings sale mileage condition -toy -rental', 'national dealers delivery purchase price vehicle specifications'] :
+    focus === 'car' ? ['site:nettiauto.com individual car listing dealer vehicles for sale purchase price specifications -toy -rental -lease', 'site:nettiauto.com individual used car listing sale mileage condition -toy -rental', 'other Finnish dealers individual vehicles for sale purchase price specifications'] :
     focus === 'moving' ? ['local movers actual route date itemized total quote', 'alternative removal providers route inventory service scope', 'regional moving companies route availability total fees'] :
     ['local retailers actual product price specifications', p.allowUsed === false ? 'alternative new retailers compare specifications delivery' : 'second hand and refurbished alternatives condition pickup price', 'national retailers delivery coverage total delivery cost'];
+  if (request.kind === 'product' && (focus === 'bed' || focus === 'furniture' || furnitureRule(request.category))) {
+    strategies[0] = 'site:jysk.fi individual product page exact product model current price specifications ' + strategies[0];
+  }
   // Put the different strategies first so bounded queries remain diverse even with large inventories/preferences.
   // The full untruncated context is separately supplied as declarative plan data.
   const queries = strategies.map((strategy, i) => `${strategy} ${base.slice(0, 1200)}${i === 0 ? ` user goal: ${project.originalMessage.slice(0, 400)}` : ''}`.slice(0, 1800));

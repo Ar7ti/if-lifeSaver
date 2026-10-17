@@ -172,6 +172,10 @@ function get(id: string) {
 const cartResponse = (p: LifeProject) => clone({ items: p.cart, budget: p.budget, revision: p.revision });
 
 export const mockApi: LifeSimApi = {
+  async carInsuranceStatus(){return {available:false,environment:'unavailable',message:'If car insurance prices require a connected backend and approved partner access.'};},
+  async carInsurancePrice(){throw new ApiError('IF_CAR_UNAVAILABLE','If car insurance prices are unavailable in demo mode.',503);},
+  async travelInsuranceStatus(){return {available:false,environment:'unavailable',message:'If travel insurance quotes require a connected backend and approved partner access.'};},
+  async travelInsuranceQuote(){throw new ApiError('IF_TRAVEL_UNAVAILABLE','If travel insurance quotes are unavailable in demo mode.',503);},
   async homeInsurance(id){const p=get(id);return {status:{available:false,environment:'unavailable',message:'Live If quotes are unavailable in demo mode. Use a connected backend with approved If partner access.',documentationUrl:'https://developer.if-insurance.com/apis/property/householder-insurance-apis-finland/documentation'},state:p.homeInsurance??{details:{},quote:null,expense:null}};},
   async saveInsuranceDetails(id,details){const p=get(id);p.homeInsurance={details,quote:null,expense:null};derive(p);return clone(p);},
   async requestInsuranceQuote(){throw new ApiError('IF_ACCESS_UNAVAILABLE','Live If quotes are unavailable in demo mode.',503);},

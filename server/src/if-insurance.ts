@@ -90,4 +90,4 @@ export function insuranceExpense(quote:IfQuote,premiumIndex:number,planningMonth
   return {quoteId:quote.id,status:'proposed',premiumMinor:chosen.amountMinor,billingPeriod:chosen.billingPeriod,periodMonths:chosen.periodMonths,planningMonths,installments,plannedMinor,annualEquivalentMinor,createdAt:new Date().toISOString()};
 }
 
-export const containsFinnishIdentityNumber=(value:unknown):boolean=>typeof value==='string'?/\d{6}[+\-ABCDEFUVWXY]\d{3}[0-9A-Y]/i.test(value):Array.isArray(value)?value.some(containsFinnishIdentityNumber):Boolean(value&&typeof value==='object'&&Object.values(value).some(containsFinnishIdentityNumber));
+export const containsFinnishIdentityNumber=(value:unknown):boolean=>typeof value==='string'?/(?<![A-Za-z0-9-])\d{6}[+\-ABCDEFUVWXY]\d{3}[0-9A-Y](?![A-Za-z0-9-])/i.test(value):Array.isArray(value)?value.some(containsFinnishIdentityNumber):Boolean(value&&typeof value==='object'&&Object.values(value).some(containsFinnishIdentityNumber));

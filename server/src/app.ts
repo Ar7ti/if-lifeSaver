@@ -4,7 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { ZodError, z } from 'zod';
-import { CONTRACT_VERSION, IdSchema, CreateProjectRequestSchema, ProjectPatchSchema, AssistantRequestSchema, ResearchRequestSchema, AddCartItemRequestSchema, CartItemPatchSchema, WorkspacePatchSchema, SellerMessageRequestSchema, ConfirmActionRequestSchema, type LifeProject } from '../../shared/contracts/index.js';
+import { CONTRACT_VERSION, IdSchema, CreateProjectRequestSchema, ProjectPatchSchema, AssistantRequestSchema, ResearchRequestSchema, AddCartItemRequestSchema, CartItemPatchSchema, WorkspacePatchSchema, SellerMessageRequestSchema, ConfirmActionRequestSchema, CarPriceRequestSchema, TravelPriceRequestSchema, type LifeProject } from '../../shared/contracts/index.js';
 import { loadConfig, type Config } from './config.js';
 import { LocalProjectRepository, MemoryProjectRepository, type ProjectRepository } from './repository.js';
 import { createPlanner, type Planner } from './ai.js';
@@ -13,8 +13,10 @@ import { ProjectService } from './service.js';
 import { AppError } from './errors.js';
 import { HomeInsuranceDraftSchema, IfQuoteRequestSchema, AddIfExpenseRequestSchema } from '../../shared/contracts/index.js';
 import { createIfInsuranceProvider, containsFinnishIdentityNumber, type IfInsuranceProvider } from './if-insurance.js';
+import { createIfCarProvider, type IfCarProvider } from './if-car-insurance.js';
+import { createIfTravelProvider, type IfTravelProvider } from './if-travel-insurance.js';
 
-export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider; ifInsurance?:IfInsuranceProvider}
+export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider; ifInsurance?:IfInsuranceProvider; ifCar?:IfCarProvider; ifTravel?:IfTravelProvider}
 const ProjectParams = z.object({projectId:IdSchema}).strict();
 const ItemParams = ProjectParams.extend({itemId:IdSchema});
 const ActionParams = ProjectParams.extend({actionId:IdSchema});
@@ -27,6 +29,8 @@ export async function buildApp(deps: AppDependencies={}) {
   await repository.ready();
   const service=new ProjectService(repository,planner,search);
   const ifInsurance=deps.ifInsurance??createIfInsuranceProvider(config.ifInsurance);
+  const ifCar=deps.ifCar??createIfCarProvider(config.ifInsurance);
+  const ifTravel=deps.ifTravel??createIfTravelProvider(config.ifInsurance);
   // A quiet socket must outlive the maximum bounded provider call (120 seconds).
   // connectionTimeout applies while an async handler is waiting, too.
   const app=Fastify({bodyLimit:32*1024,requestTimeout:125000,connectionTimeout:130000,logger:config.logLevel==='silent'?false:{level:config.logLevel,redact:['req.headers.authorization','req.headers.cookie','req.body','res.body','res.headers["set-cookie"]']},trustProxy:false});
@@ -56,8 +60,11 @@ export async function buildApp(deps: AppDependencies={}) {
   app.setNotFoundHandler((_request,reply)=>reply.code(404).send({error:{code:'NOT_FOUND',message:'Endpoint not found'}}));
   app.addHook('preValidation',async request=>{
     // Identity numbers may only enter the isolated quote request, never chat or persisted project data.
-    const isQuote=request.method==='POST'&&/^\/api\/projects\/[^/]+\/home-insurance\/quote$/.test(request.url);
-    const body=isQuote&&request.body&&typeof request.body==='object'?Object.fromEntries(Object.entries(request.body).filter(([key])=>key!=='personalIdentityNumber')):request.body;
+    const isHomeQuote=request.method==='POST'&&/^\/api\/projects\/[^/]+\/home-insurance\/quote$/.test(request.url);
+    const isCarPrice=request.method==='POST'&&/^\/api\/projects\/[^/]+\/car-insurance\/price$/.test(request.url);
+    const isTravelQuote=request.method==='POST'&&/^\/api\/projects\/[^/]+\/travel-insurance\/quote$/.test(request.url);
+    const identityField=isCarPrice?'socialSecurityNumberFI':'personalIdentityNumber';
+    const body=(isHomeQuote||isCarPrice||isTravelQuote)&&request.body&&typeof request.body==='object'?Object.fromEntries(Object.entries(request.body).filter(([key])=>key!==identityField)):request.body;
     if(containsFinnishIdentityNumber(body))throw new AppError('SENSITIVE_INPUT','Enter identity numbers only in the dedicated If quote field. They cannot be saved in your project or sent to the assistant.',400);
   });
   app.get('/api/health',async()=>({status:'ok' as const,ready:true,contractVersion:CONTRACT_VERSION,configuration:{ai:config.aiMode,research:search.mode,storage:repository.mode,authentication:Boolean(config.apiToken)}}));
@@ -67,6 +74,28 @@ export async function buildApp(deps: AppDependencies={}) {
   });
   app.get('/api/projects/:projectId',async request=>({project:await service.get(ProjectParams.parse(request.params).projectId)}));
   app.get('/api/projects/:projectId/home-insurance',async request=>service.homeInsurance(ProjectParams.parse(request.params).projectId,ifInsurance));
+  app.get('/api/projects/:projectId/car-insurance',async request=>{
+    const project=await service.get(ProjectParams.parse(request.params).projectId);
+    if(project.scenarioType!=='car_purchase')throw new AppError('IF_SCENARIO_UNSUPPORTED','Car insurance prices are available in car purchase projects only',422);
+    return ifCar.status();
+  });
+  app.get('/api/projects/:projectId/travel-insurance',async request=>{
+    const project=await service.get(ProjectParams.parse(request.params).projectId);
+    if(project.scenarioType!=='travel')throw new AppError('IF_SCENARIO_UNSUPPORTED','Travel insurance quotes are available in travel projects only',422);
+    return ifTravel.status();
+  });
+  app.post('/api/projects/:projectId/travel-insurance/quote',{config:{rateLimit:{max:5,timeWindow:'1 minute'}}},async(request,reply)=>{
+    reply.header('Cache-Control','no-store');
+    const project=await service.get(ProjectParams.parse(request.params).projectId);
+    if(project.scenarioType!=='travel')throw new AppError('IF_SCENARIO_UNSUPPORTED','Travel insurance quotes are available in travel projects only',422);
+    return ifTravel.quote(TravelPriceRequestSchema.parse(request.body));
+  });
+  app.post('/api/projects/:projectId/car-insurance/price',{config:{rateLimit:{max:5,timeWindow:'1 minute'}}},async(request,reply)=>{
+    reply.header('Cache-Control','no-store');
+    const project=await service.get(ProjectParams.parse(request.params).projectId);
+    if(project.scenarioType!=='car_purchase')throw new AppError('IF_SCENARIO_UNSUPPORTED','Car insurance prices are available in car purchase projects only',422);
+    return ifCar.price(CarPriceRequestSchema.parse(request.body));
+  });
   app.patch('/api/projects/:projectId/home-insurance/details',async request=>({project:await service.saveInsuranceDetails(ProjectParams.parse(request.params).projectId,HomeInsuranceDraftSchema.parse(request.body))}));
   app.post('/api/projects/:projectId/home-insurance/quote',{config:{rateLimit:{max:5,timeWindow:'1 minute'}}},async(request,reply)=>{
     reply.header('Cache-Control','no-store');

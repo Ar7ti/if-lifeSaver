@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { HomeInsuranceStateSchema } from './home-insurance.js';
 export * from './home-insurance.js';
+export * from './car-insurance.js';
+export * from './travel-insurance.js';
 
 /** Contract v1. All monetary fields ending in Minor are integer euro cents.
  * ResearchRequest.maxPrice is the sole major-unit input, e.g. 250 = €250.

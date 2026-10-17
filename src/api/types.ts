@@ -1,6 +1,6 @@
 import type {
   AddCartItemInput, AssistantRequest, AssistantResponse, CartItemPatch, CartResponse, ConfirmActionInput,
-  CreateProjectInput, CreateProjectResponse, HealthResponse, LifeProject, ProjectPatch, ResearchInput,
+  CreateProjectInput, CreateProjectResponse, HealthResponse, LifeProject, ProjectPatch, ResearchInput, CarPriceRequest, CarPriceResponse, TravelPriceRequest, TravelPriceResponse,
   ResearchResult, ScenariosResponse, SellerMessageInput, SellerMessageResponse, WorkspacePatch, WorkspaceResponse,
   HomeInsuranceDraft, HomeInsuranceResponseSchema, IfQuoteRequest, AddIfExpenseRequest,
 } from '@contracts';
@@ -10,6 +10,10 @@ import type { DataSource } from '@/stores/settings';
 /** One adapter per data source. Every method maps 1:1 to a route in server/docs/FRONTEND_HANDOFF.md. */
 export interface LifeSimApi {
   readonly source: DataSource;
+  carInsuranceStatus(id: string): Promise<{available:boolean;environment:'sandbox'|'live'|'unavailable';message:string}>;
+  carInsurancePrice(id: string, input: CarPriceRequest): Promise<CarPriceResponse>;
+  travelInsuranceStatus(id: string): Promise<{available:boolean;environment:'sandbox'|'live'|'unavailable';message:string}>;
+  travelInsuranceQuote(id: string, input: TravelPriceRequest): Promise<TravelPriceResponse>;
   health(): Promise<HealthResponse>;
   createProject(input: CreateProjectInput): Promise<CreateProjectResponse>;
   getProject(id: string): Promise<LifeProject>;

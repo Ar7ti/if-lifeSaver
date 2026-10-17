@@ -15,6 +15,8 @@ import { QuestionsBlock } from './QuestionsBlock';
 import { scrollToSection } from './scroll';
 import { WorkspaceGrid } from './WorkspaceGrid';
 import { HomeInsuranceSection } from './HomeInsuranceSection';
+import { CarInsuranceSection } from './CarInsuranceSection';
+import { TravelInsuranceSection } from './TravelInsuranceSection';
 
 function useIsDesktop() {
   const query = '(min-width: 1280px)';
@@ -134,6 +136,8 @@ export function WorkspacePage() {
             <ProjectOverview project={ctx.project} />
             <QuestionsBlock />
             {ctx.project.scenarioType==='moving'&&<HomeInsuranceSection key={ctx.project.id}/>}
+            {ctx.project.scenarioType==='car_purchase'&&<CarInsuranceSection key={ctx.project.id}/>}
+            {ctx.project.scenarioType==='travel'&&<TravelInsuranceSection key={ctx.project.id}/>}
             <WorkspaceGrid fresh={fresh} />
           </div>
         </div>

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { LocalProjectRepository } from '../src/repository.js';
-import { createIfInsuranceProvider,insuranceExpense } from '../src/if-insurance.js';
+import { createIfInsuranceProvider,insuranceExpense,containsFinnishIdentityNumber } from '../src/if-insurance.js';
 import { HomeInsuranceResponseSchema,LifeProjectSchema,IfQuoteRequestSchema,HomeInsuranceDraftSchema,type HomeInsuranceDetails } from '../../shared/contracts/index.js';
 
 // All insurer responses and credentials in this file are synthetic test fixtures.
@@ -15,6 +15,10 @@ const details:HomeInsuranceDetails={streetAddress:'Test street 1 A 2',city:'Turk
 const price=(type='Monthly')=>({amountNet:12.50,amountGross:15,amountDiscount:2.50,discountPercentage:16.67,currency:'EUR',type});
 const rawQuote=(type='Monthly')=>({id:'upstream-opaque-id',quoteValidTo:'2099-01-01',activationDateFrom:'2098-01-01',price:[price(type)],insuranceCoverages:[{insuranceBrand:'If',coverageName:'Test coverage',isSelected:true,isDefaultSuggestion:true,coverageItemsIncluded:['TestItem'],price:[price(type)]}],termsAndDetailedInformations:[{name:'Test terms',link:'https://www.if.fi/test-terms'}],links:[{href:'https://evil.example/never-fetch-this',type:'GET',rel:'coverage items'}]});
 const config=()=>loadConfig({AI_MODE:'local',RESEARCH_MODE:'unavailable',STORAGE_MODE:'memory',LOG_LEVEL:'silent'});
+test('identity detection accepts a standalone identity but not a UUID fragment',()=>{
+ assert.equal(containsFinnishIdentityNumber(`Identity: ${pin}.`),true);
+ assert.equal(containsFinnishIdentityNumber('ace123456a123b-5678-90ab-cdef-123456789012'),false);
+});
 function provider(options:{type?:string;env?:'live'|'sandbox';quoteStatus?:number;coverageStatus?:number;invalid?:boolean}={}){
  const calls:{url:string;init:RequestInit}[]=[];
  const fetcher:typeof fetch=async(input,init)=>{

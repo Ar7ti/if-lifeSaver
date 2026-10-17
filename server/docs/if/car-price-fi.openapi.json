@@ -1,0 +1,587 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "Request Price Car Insurance FI",
+        "description": "An API Product to calculate price for private car insurances for Finland. Currently only support calculating price for used cars. Oauth scope: car.price",
+        "version": "v1"
+    },
+    "servers": [
+        {
+            "url": "https://api.if-insurance.com/test/request-price-car-insurance-fi/v1",
+            "description": "Test endpoint (uses test data)"
+        },
+        {
+            "url": "https://api.if-insurance.com/request-price-car-insurance-fi/v1",
+            "description": "Production endpoint (uses live data)"
+        }
+    ],
+    "paths": {
+        "/prices/": {
+            "post": {
+                "tags": [
+                    "GetPriceCarInsurancePrivateFI"
+                ],
+                "summary": "Calculates the prices for car insurance options in If.",
+                "operationId": "getPriceFI",
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "envir",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "IfInsurance-API-Client-Id",
+                        "in": "header",
+                        "schema": {
+                            "maxLength": 36,
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "IfInsurance-API-Client-PartnerId",
+                        "in": "header",
+                        "schema": {
+                            "maxLength": 32,
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "request body",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getPriceFI_request"
+                            },
+                            "example": {
+                                "priceCarInsuranceFI": {
+                                    "request": {
+                                        "registrationNumberFI": "string",
+                                        "socialSecurityNumberFI": "string",
+                                        "driverBelow24YearsOfAge": true,
+                                        "maximumMileagePerYearInKilometers": "string",
+                                        "postCode": "\"\"",
+                                        "streetAddress": "\"\"",
+                                        "carPrice": 0
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/getPriceFI_response_200"
+                                },
+                                "example": {
+                                    "priceCarInsuranceFI": {
+                                        "response": {
+                                            "returnCode": "string",
+                                            "returnTxt": "string",
+                                            "insuranceBrand": "string",
+                                            "deductibleOptions ": [
+                                                0
+                                            ],
+                                            "deductibleDefault": 0,
+                                            "mtplNameFi": "string",
+                                            "mtplRecommended": true,
+                                            "mtplPrice": {
+                                                "priceWithCasco": [
+                                                    {
+                                                        "amountNet": 0,
+                                                        "period": "string",
+                                                        "currency": "string"
+                                                    }
+                                                ],
+                                                "priceWithoutCasco": [
+                                                    {
+                                                        "amountNet": 0,
+                                                        "period": "string",
+                                                        "currency": "string"
+                                                    }
+                                                ]
+                                            },
+                                            "cascoCoverages": [
+                                                {
+                                                    "coverageRecommended": true,
+                                                    "coverageId": "string",
+                                                    "name": "string",
+                                                    "deductibleUsedInCalculation": 0,
+                                                    "prices": [
+                                                        {
+                                                            "amountNet": 0,
+                                                            "period": "string",
+                                                            "currency": "string"
+                                                        }
+                                                    ],
+                                                    "addOnCoverages": [
+                                                        {
+                                                            "addOnCoveragePreSelected": true,
+                                                            "addOnCoverageId": "string",
+                                                            "name": "string",
+                                                            "price": [
+                                                                {
+                                                                    "amountNet": 0,
+                                                                    "period": "string",
+                                                                    "currency": "string"
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ],
+                                            "termsAndDetailedInformation": [
+                                                {
+                                                    "name": "string",
+                                                    "link": "string"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "206": {
+                        "description": "Enter street address and postcode",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/getPriceFI_response_206"
+                                },
+                                "example": {
+                                    "priceCarInsuranceFI": {
+                                        "response": {
+                                            "returnCode": "string",
+                                            "returnTxt": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "No price",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/getPriceFI_response_500"
+                                },
+                                "example": {
+                                    "priceCarInsuranceFI": {
+                                        "response": {
+                                            "returnCode": "string",
+                                            "returnTxt": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "getPriceFI_request": {
+                "type": "object",
+                "properties": {
+                    "priceCarInsuranceFI": {
+                        "type": "object",
+                        "properties": {
+                            "request": {
+                                "type": "object",
+                                "properties": {
+                                    "registrationNumberFI": {
+                                        "maxLength": 8,
+                                        "type": "string",
+                                        "description": "License number of the vehicle. like 'ABC-123'"
+                                    },
+                                    "socialSecurityNumberFI": {
+                                        "maxLength": 11,
+                                        "type": "string",
+                                        "description": "like '010198-123A'"
+                                    },
+                                    "driverBelow24YearsOfAge": {
+                                        "type": "boolean",
+                                        "description": "Is there a driver under 24 years, true/false"
+                                    },
+                                    "maximumMileagePerYearInKilometers": {
+                                        "maxLength": 5,
+                                        "type": "string",
+                                        "description": "Levels:\r\nmax 5000   \r\nmax 10000 \r\nmax 15000  \r\nmax 20000 \r\nmax 25000 \r\nmax 30000 \r\nmax 40000 \r\nmax 50000 \r\nover 50000   = 50001 \r\nMax value is returned\r\n"
+                                    },
+                                    "postCode": {
+                                        "maxLength": 5,
+                                        "type": "string",
+                                        "description": "Post code like '00160'. Given when customer is not found in If.",
+                                        "default": "\"\""
+                                    },
+                                    "streetAddress": {
+                                        "maxLength": 50,
+                                        "type": "string",
+                                        "description": "Customers street address",
+                                        "default": "\"\""
+                                    },
+                                    "carPrice": {
+                                        "maximum": 9999999.99,
+                                        "minimum": 0,
+                                        "type": "number",
+                                        "description": "Price of the selected car",
+                                        "format": "decimal"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "getPriceFI_response_200": {
+                "type": "object",
+                "properties": {
+                    "priceCarInsuranceFI": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "object",
+                                "properties": {
+                                    "returnCode": {
+                                        "maxLength": 3,
+                                        "type": "string",
+                                        "description": "’000’ = OK\r\n002 = SSN not found/ error in SSN\r\n001 = The vehicle is not found in Traficom\r\n003 = not acceptable (UW rules)\r\n009 = Error in price calculation\r\n009 = API key is not correct \r\n"
+                                    },
+                                    "returnTxt": {
+                                        "maxLength": 200,
+                                        "type": "string",
+                                        "description": "Description of an occurred error, or empty"
+                                    },
+                                    "insuranceBrand": {
+                                        "maxLength": 100,
+                                        "type": "string",
+                                        "description": "Brand name   like\r\n‘If Ajoneuvovakuutus’\r\n"
+                                    },
+                                    "deductibleOptions ": {
+                                        "maxItems": 5,
+                                        "minItems": 5,
+                                        "type": "array",
+                                        "items": {
+                                            "maximum": 99999,
+                                            "minimum": 0,
+                                            "type": "integer"
+                                        },
+                                        "description": "max 5 optional deductibles for the Casco."
+                                    },
+                                    "deductibleDefault": {
+                                        "maximum": 99999,
+                                        "minimum": 0,
+                                        "type": "integer",
+                                        "description": "The default deductible for Täyskasko"
+                                    },
+                                    "mtplNameFi": {
+                                        "maxLength": 50,
+                                        "type": "string",
+                                        "description": "The name of the mtpl "
+                                    },
+                                    "mtplRecommended": {
+                                        "type": "boolean",
+                                        "description": "If mtpl is recommeded Y, otherwise N "
+                                    },
+                                    "mtplPrice": {
+                                        "type": "object",
+                                        "properties": {
+                                            "priceWithCasco": {
+                                                "maxItems": 2,
+                                                "minItems": 2,
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "amountNet": {
+                                                            "maximum": 9999999.99,
+                                                            "minimum": 0,
+                                                            "type": "number",
+                                                            "format": "decimal"
+                                                        },
+                                                        "period": {
+                                                            "maxLength": 10,
+                                                            "type": "string"
+                                                        },
+                                                        "currency": {
+                                                            "maxLength": 3,
+                                                            "type": "string",
+                                                            "description": "'EUR'"
+                                                        }
+                                                    }
+                                                },
+                                                "description": "Annual and monthly prices for MTPL when Casco is selected"
+                                            },
+                                            "priceWithoutCasco": {
+                                                "maxItems": 2,
+                                                "minItems": 2,
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "amountNet": {
+                                                            "maximum": 9999999.99,
+                                                            "minimum": 0,
+                                                            "type": "number",
+                                                            "format": "decimal"
+                                                        },
+                                                        "period": {
+                                                            "maxLength": 10,
+                                                            "type": "string",
+                                                            "description": "'Yearly' or 'Monthly'"
+                                                        },
+                                                        "currency": {
+                                                            "maxLength": 3,
+                                                            "type": "string",
+                                                            "description": "'EUR'"
+                                                        }
+                                                    }
+                                                },
+                                                "description": "Annual and monthly prices for MTPL when Casco is not selected"
+                                            }
+                                        },
+                                        "description": "Prices for the mtpl"
+                                    },
+                                    "cascoCoverages": {
+                                        "maxItems": 6,
+                                        "minItems": 6,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "coverageRecommended": {
+                                                    "type": "boolean",
+                                                    "description": "If theis casco is recommeded Y, otherwise N. f recommended is Y, this Casco is shown first. "
+                                                },
+                                                "coverageId": {
+                                                    "maxLength": 1,
+                                                    "type": "string",
+                                                    "description": "id for the main coverage, like 'T' or 'O'"
+                                                },
+                                                "name": {
+                                                    "maxLength": 50,
+                                                    "type": "string",
+                                                    "description": "Name of the fixed coverage pakckage like ’Täyskasko’, ’Osakasko’"
+                                                },
+                                                "deductibleUsedInCalculation": {
+                                                    "maximum": 99999,
+                                                    "minimum": 0,
+                                                    "type": "integer",
+                                                    "description": "Which deductible is used in this casco option"
+                                                },
+                                                "prices": {
+                                                    "maxItems": 2,
+                                                    "minItems": 2,
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "amountNet": {
+                                                                "maximum": 9999999.99,
+                                                                "minimum": 0,
+                                                                "type": "number",
+                                                                "format": "decimal"
+                                                            },
+                                                            "period": {
+                                                                "maxLength": 10,
+                                                                "type": "string"
+                                                            },
+                                                            "currency": {
+                                                                "maxLength": 3,
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "addOnCoverages": {
+                                                    "maxItems": 5,
+                                                    "minItems": 5,
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "addOnCoveragePreSelected": {
+                                                                "type": "boolean",
+                                                                "description": "Additional coverage which is shown as pre selected "
+                                                            },
+                                                            "addOnCoverageId": {
+                                                                "maxLength": 1,
+                                                                "type": "string",
+                                                                "description": "The id for the optional addon coverage, like 'F', 'U', 'J'"
+                                                            },
+                                                            "name": {
+                                                                "maxLength": 50,
+                                                                "type": "string",
+                                                                "description": "The name of the optional addon coverage, like 'Lasiturva', Sijaisautoturva', 'Lunastusturva'"
+                                                            },
+                                                            "price": {
+                                                                "maxItems": 2,
+                                                                "minItems": 2,
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "amountNet": {
+                                                                            "maximum": 9999999.99,
+                                                                            "minimum": 0,
+                                                                            "type": "number",
+                                                                            "format": "decimal"
+                                                                        },
+                                                                        "period": {
+                                                                            "maxLength": 10,
+                                                                            "type": "string",
+                                                                            "description": "'Yearly' or 'Monthly'"
+                                                                        },
+                                                                        "currency": {
+                                                                            "maxLength": 3,
+                                                                            "type": "string",
+                                                                            "description": "'EUR'"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "description": "Annual and montly prices for the optional addon coverage."
+                                                            }
+                                                        }
+                                                    },
+                                                    "description": "max 5 optional coverages for the main coverage"
+                                                }
+                                            }
+                                        },
+                                        "description": "max 5 casco coverage options and their prices and addon coverage options"
+                                    },
+                                    "termsAndDetailedInformation": {
+                                        "maxItems": 5,
+                                        "minItems": 5,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "maxLength": 100,
+                                                    "type": "string",
+                                                    "description": "The name of the document, like ”Yleiset vakuutusehdot\""
+                                                },
+                                                "link": {
+                                                    "maxLength": 200,
+                                                    "type": "string",
+                                                    "description": "The link to the document."
+                                                }
+                                            }
+                                        },
+                                        "description": "Max 5 "
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "getPriceFI_response_206": {
+                "type": "object",
+                "properties": {
+                    "priceCarInsuranceFI": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "object",
+                                "properties": {
+                                    "returnCode": {
+                                        "maxLength": 3,
+                                        "type": "string",
+                                        "description": "’000’ = OK\r\n002 = SSN not found/ error in SSN\r\n001 = The vehicle is not found in Traficom\r\n003 = not acceptable (UW rules)\r\n009 = Error in price calculation\r\n009 = API key is not correct \r\n"
+                                    },
+                                    "returnTxt": {
+                                        "maxLength": 200,
+                                        "type": "string",
+                                        "description": "Description of an occurred error, or empty"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "getPriceFI_response_500": {
+                "type": "object",
+                "properties": {
+                    "priceCarInsuranceFI": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "object",
+                                "properties": {
+                                    "returnCode": {
+                                        "maxLength": 3,
+                                        "type": "string",
+                                        "description": "’000’ = OK\r\n002 = SSN not found/ error in SSN\r\n001 = The vehicle is not found in Traficom\r\n003 = not acceptable (UW rules)\r\n009 = Error in price calculation\r\n009 = API key is not correct \r\n"
+                                    },
+                                    "returnTxt": {
+                                        "maxLength": 200,
+                                        "type": "string",
+                                        "description": "Description of an occurred error, or empty"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "OAuthTest": {
+                "type": "oauth2",
+                "description": "Authentication for calling test data",
+                "flows": {
+                    "clientCredentials": {
+                        "tokenUrl": "https://authtest.if.eu/oauth/v2/oauth-token",
+                        "scopes": {
+                            "car.price": "car.price"
+                        }
+                    }
+                }
+            },
+            "OAuthProduction": {
+                "type": "oauth2",
+                "description": "Authentication for calling prod data",
+                "flows": {
+                    "clientCredentials": {
+                        "tokenUrl": "https://auth.if.eu/oauth/v2/oauth-token",
+                        "scopes": {
+                            "car.price": "car.price"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "security": [
+        {
+            "OAuthTest": [
+                "car.price"
+            ]
+        },
+        {
+            "OAuthProduction": [
+                "car.price"
+            ]
+        }
+    ]
+}
