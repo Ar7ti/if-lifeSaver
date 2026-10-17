@@ -1,0 +1,1530 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Request Quote Householder Insurance FI",
+    "description": "Allow customers to calculate quotes for householder insurance in finland",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "https://api.if-insurance.com/test/request-quote-householder-insurance-fi/v1",
+      "description": "Test endpoint (uses test data)"
+    },
+    {
+      "url": "https://api.if-insurance.com/request-quote-householder-insurance-fi/v1",
+      "description": "Production endpoint (uses live data)"
+    }
+  ],
+  "paths": {
+    "/quotes/{id}": {
+      "get": {
+        "tags": [
+          "Quote"
+        ],
+        "summary": "Get an existing householder quote",
+        "description": "Get an existing householder quote",
+        "operationId": "GetHouseholderQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "Curity access token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bearer xxx"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholderQuoteResponse"
+                },
+                "example": {
+                  "id": "13357C9E-14BE-4990-93B0-5A84CB27FB02.13357C9E-14BE-4990-93B0-5A84CB27FB04",
+                  "quoteValidTo": "2025-01-01",
+                  "activationDateFrom": "2025-01-01",
+                  "insuranceCoverages": [
+                    {
+                      "isSelected": true,
+                      "isDefaultSuggestion": true,
+                      "insuranceBrand": "If",
+                      "coverageName": "Large",
+                      "coverageItemsIncluded": [
+                        "Assistance"
+                      ],
+                      "price": [
+                        {
+                          "amountGross": 1000,
+                          "amountNet": 900,
+                          "type": "Monthly",
+                          "amountDiscount": 100,
+                          "discountPercentage": 10,
+                          "currency": "EUR"
+                        }
+                      ]
+                    }
+                  ],
+                  "price": [
+                    {
+                      "amountGross": 1000,
+                      "amountNet": 900,
+                      "type": "Monthly",
+                      "amountDiscount": 100,
+                      "discountPercentage": 10,
+                      "currency": "EUR"
+                    }
+                  ],
+                  "termsAndDetailedInformations": [
+                    {
+                      "name": "Terms",
+                      "link": "string"
+                    }
+                  ],
+                  "links": [
+                    {
+                      "description": "The coverageItems API offers names and suggested display texts for coverage items.",
+                      "href": "https://api.if-insurance.com/test/list-coverage-items-fi/v1/coverage-items",
+                      "rel": "coverage items",
+                      "type": "GET"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/400",
+                  "title": "Bad request",
+                  "status": 400,
+                  "detail": "Provided Ssn format was invalid",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Not authorized",
+                  "status": 401,
+                  "detail": "Request was not successful because it lacks valid authentication credentials for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Request was not successful because it lacks valid permissions for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not found",
+                  "status": 404,
+                  "detail": "The quote that the update is requested for isn't found.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalErrorProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/500",
+                  "title": "Internal error",
+                  "status": 500,
+                  "detail": "Internal error",
+                  "instance": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Quote"
+        ],
+        "summary": "Replace an existing householder quote",
+        "description": "Replace an existing householder quote",
+        "operationId": "PutHouseholderQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "Curity access token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bearer xxx"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteHouseholderRequest"
+              },
+              "example": {
+                "policyHolder": {
+                  "socialSecurityNumber": "010106A9377",
+                  "postalCode": "20100"
+                },
+                "address": {
+                  "streetAddress": "Keilasatama 2",
+                  "city": "Espoo",
+                  "postalCode": "20100"
+                },
+                "livingSpace": 100,
+                "householderType": "Apartment",
+                "startDate": "2022-12-24"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholderQuoteResponse"
+                },
+                "example": {
+                  "id": "13357C9E-14BE-4990-93B0-5A84CB27FB02.13357C9E-14BE-4990-93B0-5A84CB27FB04",
+                  "quoteValidTo": "2025-01-01",
+                  "activationDateFrom": "2025-01-01",
+                  "insuranceCoverages": [
+                    {
+                      "isSelected": true,
+                      "isDefaultSuggestion": true,
+                      "insuranceBrand": "If",
+                      "coverageName": "Large",
+                      "coverageItemsIncluded": [
+                        "Assistance"
+                      ],
+                      "price": [
+                        {
+                          "amountGross": 1000,
+                          "amountNet": 900,
+                          "type": "Monthly",
+                          "amountDiscount": 100,
+                          "discountPercentage": 10,
+                          "currency": "EUR"
+                        }
+                      ]
+                    }
+                  ],
+                  "price": [
+                    {
+                      "amountGross": 1000,
+                      "amountNet": 900,
+                      "type": "Monthly",
+                      "amountDiscount": 100,
+                      "discountPercentage": 10,
+                      "currency": "EUR"
+                    }
+                  ],
+                  "termsAndDetailedInformations": [
+                    {
+                      "name": "Terms",
+                      "link": "string"
+                    }
+                  ],
+                  "links": [
+                    {
+                      "description": "The coverageItems API offers names and suggested display texts for coverage items.",
+                      "href": "https://api.if-insurance.com/test/list-coverage-items-fi/v1/coverage-items",
+                      "rel": "coverage items",
+                      "type": "GET"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/400",
+                  "title": "Bad request",
+                  "status": 400,
+                  "detail": "Provided Ssn format was invalid",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Not authorized",
+                  "status": 401,
+                  "detail": "Request was not successful because it lacks valid authentication credentials for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Request was not successful because it lacks valid permissions for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not found",
+                  "status": 404,
+                  "detail": "The quote that the update is requested for isn't found.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnprocessableEntityProblemDetails"
+                },
+                "example": {
+                  "instance": "string",
+                  "status": 422,
+                  "type": "https://httpstatuses.com/403",
+                  "detail": "Request was not successful because cannot process the instructions due to semantic errors or invalid data.",
+                  "title": "UnprocessableEntity"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalErrorProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/500",
+                  "title": "Internal error",
+                  "status": 500,
+                  "detail": "Internal error",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadGatewayProblemDetails"
+                },
+                "example": {
+                  "instance": "string",
+                  "detail": "Request was not successful because a gateway did not respond in a correct way.",
+                  "title": "BadGateway",
+                  "status": 502,
+                  "type": "https://httpstatuses.com/502"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Quote"
+        ],
+        "summary": "Delete an existing householder quote",
+        "description": "Delete an existing householder quote",
+        "operationId": "DeleteHouseholderQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "Curity access token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bearer xxx"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Not authorized",
+                  "status": 401,
+                  "detail": "Request was not successful because it lacks valid authentication credentials for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Request was not successful because it lacks valid permissions for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not found",
+                  "status": 404,
+                  "detail": "The quote that the update is requested for isn't found.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalErrorProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/500",
+                  "title": "Internal error",
+                  "status": 500,
+                  "detail": "Internal error",
+                  "instance": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quotes": {
+      "post": {
+        "tags": [
+          "Quote"
+        ],
+        "summary": "Create a new householder quote",
+        "description": "Create a new householder quote",
+        "operationId": "PostHouseholderQuote",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "Curity access token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bearer xxx"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteHouseholderRequest"
+              },
+              "example": {
+                "policyHolder": {
+                  "socialSecurityNumber": "010106A9377",
+                  "postalCode": "20100"
+                },
+                "address": {
+                  "streetAddress": "Keilasatama 2",
+                  "city": "Espoo",
+                  "postalCode": "20100"
+                },
+                "livingSpace": 100,
+                "householderType": "Apartment",
+                "startDate": "2022-12-24"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              },
+              "Location": {
+                "description": "Location of the newly created quote",
+                "schema": {
+                  "type": "string",
+                  "example": "/quotes/13357C9E-14BE-4990-93B0-5A84CB27FB02.13357C9E-14BE-4990-93B0-5A84CB27FB04"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholderQuoteResponse"
+                },
+                "example": {
+                  "id": "13357C9E-14BE-4990-93B0-5A84CB27FB02.13357C9E-14BE-4990-93B0-5A84CB27FB04",
+                  "quoteValidTo": "2025-01-01",
+                  "activationDateFrom": "2025-01-01",
+                  "insuranceCoverages": [
+                    {
+                      "isSelected": true,
+                      "isDefaultSuggestion": true,
+                      "insuranceBrand": "If",
+                      "coverageName": "Large",
+                      "coverageItemsIncluded": [
+                        "Assistance"
+                      ],
+                      "price": [
+                        {
+                          "amountGross": 1000,
+                          "amountNet": 900,
+                          "type": "Monthly",
+                          "amountDiscount": 100,
+                          "discountPercentage": 10,
+                          "currency": "EUR"
+                        }
+                      ]
+                    }
+                  ],
+                  "price": [
+                    {
+                      "amountGross": 1000,
+                      "amountNet": 900,
+                      "type": "Monthly",
+                      "amountDiscount": 100,
+                      "discountPercentage": 10,
+                      "currency": "EUR"
+                    }
+                  ],
+                  "termsAndDetailedInformations": [
+                    {
+                      "name": "Terms",
+                      "link": "string"
+                    }
+                  ],
+                  "links": [
+                    {
+                      "description": "The coverageItems API offers names and suggested display texts for coverage items.",
+                      "href": "https://api.if-insurance.com/test/list-coverage-items-fi/v1/coverage-items",
+                      "rel": "coverage items",
+                      "type": "GET"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/400",
+                  "title": "Bad request",
+                  "status": 400,
+                  "detail": "Provided Ssn format was invalid",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Not authorized",
+                  "status": 401,
+                  "detail": "Request was not successful because it lacks valid authentication credentials for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Request was not successful because it lacks valid permissions for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnprocessableEntityProblemDetails"
+                },
+                "example": {
+                  "instance": "string",
+                  "status": 422,
+                  "type": "https://httpstatuses.com/403",
+                  "detail": "Request was not successful because cannot process the instructions due to semantic errors or invalid data.",
+                  "title": "UnprocessableEntity"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalErrorProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/500",
+                  "title": "Internal error",
+                  "status": 500,
+                  "detail": "Internal error",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadGatewayProblemDetails"
+                },
+                "example": {
+                  "instance": "string",
+                  "detail": "Request was not successful because a gateway did not respond in a correct way.",
+                  "title": "BadGateway",
+                  "status": 502,
+                  "type": "https://httpstatuses.com/502"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BadGatewayProblemDetails": {
+        "type": "object",
+        "properties": {
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Request was not successful because a gateway did not respond in a correct way."
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "BadGateway"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 502
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/502"
+          }
+        },
+        "additionalProperties": {}
+      },
+      "BadRequestProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/400"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Bad request"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 400
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Provided Ssn format was invalid"
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "ForbiddenProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/403"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Forbidden"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 403
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Request was not successful because it lacks valid permissions for the requested resource."
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "HouseholderAddress": {
+        "required": [
+          "city",
+          "postalCode",
+          "streetAddress"
+        ],
+        "type": "object",
+        "properties": {
+          "streetAddress": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The street address of the insured object.",
+            "example": "Keilasatama 2"
+          },
+          "city": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The city of the insured object.",
+            "example": "Espoo"
+          },
+          "postalCode": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The postal code of the insured object.",
+            "example": "20100"
+          }
+        },
+        "additionalProperties": false,
+        "description": "The address"
+      },
+      "HouseholderQuoteResponse": {
+        "required": [
+          "activationDateFrom",
+          "id",
+          "insuranceCoverages",
+          "price",
+          "quoteValidTo"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The unique identifier of the quote",
+            "example": "13357C9E-14BE-4990-93B0-5A84CB27FB02.13357C9E-14BE-4990-93B0-5A84CB27FB04"
+          },
+          "quoteValidTo": {
+            "type": "string",
+            "description": "The quote is valid until this date. After this date a new quote has to be created in order to proceed to purchase.",
+            "format": "date",
+            "example": "2025-01-01"
+          },
+          "activationDateFrom": {
+            "type": "string",
+            "description": "The earliest date the insurance is estimated to start.",
+            "format": "date",
+            "example": "2025-01-01"
+          },
+          "insuranceCoverages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsuranceCoverage"
+            },
+            "description": "The coverages that may be selected with prices"
+          },
+          "price": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Price"
+            },
+            "description": "The price of the quote."
+          },
+          "termsAndDetailedInformations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TermsAndDetailedInformation"
+            },
+            "description": "Terms or detailed information.",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "description": "Link to terms or detailed information.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HouseholderType": {
+        "enum": [
+          "Apartment",
+          "RowHouse",
+          "PairHouse"
+        ],
+        "type": "string"
+      },
+      "InsuranceCoverage": {
+        "required": [
+          "coverageItemsIncluded",
+          "coverageName",
+          "insuranceBrand",
+          "isDefaultSuggestion",
+          "isSelected",
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "isSelected": {
+            "type": "boolean",
+            "description": "Is this the coverage selected for this quote. Unless explicitly changed the default suggestion coverage will be the selected one.",
+            "example": true
+          },
+          "isDefaultSuggestion": {
+            "type": "boolean",
+            "description": "Is this the coverage that was selected by default for this quote.",
+            "example": true
+          },
+          "insuranceBrand": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The brand of the insurance. Default is \"If\", but branded insurances may give other branding names.",
+            "example": "If"
+          },
+          "coverageName": {
+            "minLength": 1,
+            "type": "string",
+            "description": "A name that describes the given coverage.",
+            "example": "Large"
+          },
+          "coverageItemsIncluded": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The identifiers of the coverage items which are included in this coverage. \nAn insurance coverage will be made up of a set of coverage items, and a given coverage item may be in several coverages. \nOne item can for instance describe glass coverage, or fire coverage etc. More information about the coverage item can be fetched from \nhttps://api.if-insurance.com/test/list-coverage-items-travel-insurance-fi/v1/coverage-items",
+            "example": [
+              "Assistance"
+            ]
+          },
+          "price": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Price"
+            },
+            "description": "The price for a coverage"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InternalErrorProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/500"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Internal error"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 500
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Internal error"
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "Link": {
+        "required": [
+          "href",
+          "rel",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A detailed description.",
+            "nullable": true,
+            "example": "The coverageItems API offers names and suggested display texts for coverage items."
+          },
+          "href": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The link to API, potentially prefilled with query parameters.",
+            "example": "https://api.if-insurance.com/test/list-coverage-items-fi/v1/coverage-items"
+          },
+          "rel": {
+            "minLength": 1,
+            "type": "string",
+            "description": "A short description.",
+            "example": "coverage items"
+          },
+          "type": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The HTTP method",
+            "example": "GET"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotFoundProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/404"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Not found"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 404
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "The quote that the update is requested for isn't found."
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "PolicyHolder": {
+        "required": [
+          "postalCode",
+          "socialSecurityNumber"
+        ],
+        "type": "object",
+        "properties": {
+          "socialSecurityNumber": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The social security number",
+            "example": "010106A9377"
+          },
+          "postalCode": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The postal code of the policy holders address.",
+            "example": "20100"
+          }
+        },
+        "additionalProperties": false,
+        "description": "The policy holder"
+      },
+      "Price": {
+        "required": [
+          "amountDiscount",
+          "amountGross",
+          "amountNet",
+          "currency",
+          "discountPercentage",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "amountGross": {
+            "type": "number",
+            "description": "The gross price.",
+            "format": "decimal",
+            "example": 1000
+          },
+          "amountNet": {
+            "type": "number",
+            "description": "The net price.",
+            "format": "decimal",
+            "example": 900
+          },
+          "type": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The price type describes the pricing model.",
+            "example": "Monthly"
+          },
+          "amountDiscount": {
+            "type": "number",
+            "description": "The total discount amount deducted.",
+            "format": "decimal",
+            "example": 100
+          },
+          "discountPercentage": {
+            "type": "number",
+            "description": "The discount percentage.",
+            "format": "decimal",
+            "example": 10
+          },
+          "currency": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The currency of the price represented by a ISO 4217 currency code.",
+            "example": "EUR"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QuoteHouseholderRequest": {
+        "required": [
+          "address",
+          "householderType",
+          "livingSpace",
+          "policyHolder",
+          "startDate"
+        ],
+        "type": "object",
+        "properties": {
+          "policyHolder": {
+            "$ref": "#/components/schemas/PolicyHolder"
+          },
+          "address": {
+            "$ref": "#/components/schemas/HouseholderAddress"
+          },
+          "livingSpace": {
+            "type": "integer",
+            "description": "The living space in m2. Rounded to the nearest integer.",
+            "format": "int32",
+            "example": 100
+          },
+          "householderType": {
+            "$ref": "#/components/schemas/HouseholderType"
+          },
+          "startDate": {
+            "type": "string",
+            "description": "The requested date when insurance should start.",
+            "format": "date",
+            "example": "2022-12-24"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A request to create a quote"
+      },
+      "TermsAndDetailedInformation": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the linked document.",
+            "nullable": true,
+            "example": "Terms"
+          },
+          "link": {
+            "type": "string",
+            "description": "The link to the document.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Terms or detailed information."
+      },
+      "UnauthorizedProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/401"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Not authorized"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 401
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Request was not successful because it lacks valid authentication credentials for the requested resource."
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "UnprocessableEntityProblemDetails": {
+        "type": "object",
+        "properties": {
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 422
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/403"
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Request was not successful because cannot process the instructions due to semantic errors or invalid data."
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "UnprocessableEntity"
+          }
+        },
+        "additionalProperties": {}
+      }
+    },
+    "securitySchemes": {
+      "OAuthTest": {
+        "type": "oauth2",
+        "description": "Authentication for calling test data",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://authtest.if.eu/oauth/v2/oauth-token",
+            "scopes": {
+              "householder.quote.fi": "householder.quote.fi"
+            }
+          }
+        }
+      },
+      "OAuthProduction": {
+        "type": "oauth2",
+        "description": "Authentication for calling prod data",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.if.eu/oauth/v2/oauth-token",
+            "scopes": {
+              "householder.quote.fi": "householder.quote.fi"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "OAuthTest": [
+        "householder.quote.fi"
+      ]
+    },
+    {
+      "OAuthProduction": [
+        "householder.quote.fi"
+      ]
+    }
+  ]
+}

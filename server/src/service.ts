@@ -9,11 +9,13 @@ import { AppError, notFound } from './errors.js';
 import { buildScenarioProfile } from './scenario-profile.js';
 import { classifyScope } from './scope-policy.js';
 import {conversation,appendTurn,extractFacts,groundedInterpretationFacts,pendingClarification,reconcileClarifications,resolveClarification,askClarification,fieldForQuestion,knownField,affirmative,negative,dismisses,normalizePlanningMessage,type Facts} from './conversation.js';
+import { IfQuoteSchema, type HomeInsuranceDraft, type IfQuoteRequest, type AddIfExpenseRequest } from '../../shared/contracts/index.js';
+import { insuranceExpense, type IfInsuranceProvider } from './if-insurance.js';
 
 export class ProjectService {
   constructor(readonly repository: ProjectRepository, private planner: Planner, private search: SearchProvider) {}
   private derive(project: LifeProject, revision = project.revision + 1) {
-    project.budget = recalculateBudget(project.budget, project.cart);
+    project.budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense);
     project.scenarios = simulateScenarios({...project,revision});
     project.risks = analyzeRisks(project);
   }
@@ -96,6 +98,42 @@ export class ProjectService {
     return this.repository.create(LifeProjectSchema.parse(project));
   }
   get(id: string) { return this.repository.get(id); }
+  private requireMoving(project:LifeProject) {
+    if(project.scenarioType!=='moving')throw new AppError('IF_SCENARIO_UNSUPPORTED','Home insurance quotes are available in moving projects only',422);
+  }
+  async homeInsurance(id:string,provider:IfInsuranceProvider) {
+    const project=await this.get(id);this.requireMoving(project);
+    return {status:provider.status(),state:project.homeInsurance??{details:{},quote:null,expense:null}};
+  }
+  saveInsuranceDetails(id:string,details:HomeInsuranceDraft) {
+    return this.repository.update(id,p=>{this.requireMoving(p);
+      const current=p.homeInsurance;
+      if(current?.expense&&JSON.stringify(current.details)!==JSON.stringify(details))throw new AppError('IF_PLAN_CONFLICT','Remove the proposed insurance expense before changing its home details',409);
+      p.homeInsurance={details,quote:JSON.stringify(current?.details)===JSON.stringify(details)?current?.quote??null:null,expense:current?.expense??null};this.derive(p);
+    });
+  }
+  async requestInsuranceQuote(id:string,input:IfQuoteRequest,provider:IfInsuranceProvider) {
+    const snapshot=await this.get(id);this.requireMoving(snapshot);
+    if(snapshot.homeInsurance?.expense)throw new AppError('IF_PLAN_CONFLICT','Remove the proposed insurance expense before requesting a replacement quote',409);
+    if(input.details.startDate<new Date().toISOString().slice(0,10))throw new AppError('VALIDATION_ERROR','The requested insurance start date must be today or later');
+    const quote=IfQuoteSchema.parse(await provider.quote(input.details,input.personalIdentityNumber));
+    if(JSON.stringify(quote).includes(input.personalIdentityNumber))throw new AppError('IF_RESPONSE_INVALID','If returned unexpected personal information; the quote was not saved',502);
+    return this.repository.update(id,p=>{this.requireMoving(p);
+      if(p.revision!==snapshot.revision)throw new AppError('CONFLICT','Your plan changed while requesting the quote. Review it and try again.',409);
+      if(p.homeInsurance?.expense)throw new AppError('IF_PLAN_CONFLICT','Remove the proposed insurance expense before requesting a replacement quote',409);
+      p.homeInsurance={details:input.details,quote,expense:null};this.derive(p);
+    });
+  }
+  addInsuranceExpense(id:string,input:AddIfExpenseRequest) {
+    return this.repository.update(id,p=>{this.requireMoving(p);const state=p.homeInsurance;
+      if(!state?.quote||state.quote.id!==input.quoteId)throw new AppError('IF_QUOTE_MISSING','Request a current quote before adding it to your plan',409);
+      if(state.expense)throw new AppError('IF_ALREADY_PROPOSED','This insurance quote is already in your plan',409);
+      state.expense=insuranceExpense(state.quote,input.premiumIndex,input.planningMonths);this.derive(p);
+    });
+  }
+  removeInsuranceExpense(id:string) {
+    return this.repository.update(id,p=>{this.requireMoving(p);if(p.homeInsurance)p.homeInsurance.expense=null;this.derive(p);});
+  }
   patch(id: string, patch: ProjectPatch) {
     return this.repository.update(id, project => {
       if (patch.title !== undefined) project.title = patch.title;

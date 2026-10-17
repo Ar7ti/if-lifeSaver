@@ -71,3 +71,8 @@ Assistant request/response envelopes are unchanged. Refresh GET project after bo
 Chat answers update canonical project data before model generation, reconcile pending questions, invalidate stale research when relevant, and preserve selected cart choices. Short affirmative answers resume the original task; they do not confirm research, purchases or other proposed actions. Those still require the existing explicit confirmation endpoint. The assistant reuses equivalent pending proposals instead of creating duplicate action records.
 
 No OpenAI model, key location, or provider configuration changed. Ambiguous language can use a bounded strict structured interpretation call; exact evidence from the current user message is required for model-extracted facts. Clear out-of-scope tutorials still redirect before model calls. Use `cd server && npm run check:conversation-live` for the explicit credit-consuming live HTTP check. See `AI_RECOVERY.md` for root causes, tests and limits.
+
+
+## Contract 1.3.0 — Moving-only If home insurance
+
+See [IF_HOME_INSURANCE.md](IF_HOME_INSURANCE.md) for the verified Finnish API endpoints, credentials, new routes, privacy boundary and recurring budget semantics. Additive `LifeProject.homeInsurance` and `Budget.recurringProposedMinor`; existing widget types and assistant payloads are unchanged. The new `HomeInsuranceSection` uses the existing live/mock adapters. Without approved If credentials it explicitly shows unavailable and accepts only safe home details; it never supplies a demo If price. Do not add `recurringProposedMinor` to `proposedMinor`: it is already included.

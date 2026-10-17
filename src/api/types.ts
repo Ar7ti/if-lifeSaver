@@ -2,7 +2,9 @@ import type {
   AddCartItemInput, AssistantRequest, AssistantResponse, CartItemPatch, CartResponse, ConfirmActionInput,
   CreateProjectInput, CreateProjectResponse, HealthResponse, LifeProject, ProjectPatch, ResearchInput,
   ResearchResult, ScenariosResponse, SellerMessageInput, SellerMessageResponse, WorkspacePatch, WorkspaceResponse,
+  HomeInsuranceDraft, HomeInsuranceResponseSchema, IfQuoteRequest, AddIfExpenseRequest,
 } from '@contracts';
+import type { z } from 'zod';
 import type { DataSource } from '@/stores/settings';
 
 /** One adapter per data source. Every method maps 1:1 to a route in server/docs/FRONTEND_HANDOFF.md. */
@@ -21,6 +23,11 @@ export interface LifeSimApi {
   patchWorkspace(id: string, patch: WorkspacePatch): Promise<WorkspaceResponse>;
   sellerMessage(id: string, request: SellerMessageInput): Promise<SellerMessageResponse>;
   confirmAction(id: string, actionId: string, body: ConfirmActionInput): Promise<LifeProject>;
+  homeInsurance(id:string):Promise<z.infer<typeof HomeInsuranceResponseSchema>>;
+  saveInsuranceDetails(id:string,details:HomeInsuranceDraft):Promise<LifeProject>;
+  requestInsuranceQuote(id:string,body:IfQuoteRequest):Promise<LifeProject>;
+  addInsuranceExpense(id:string,body:AddIfExpenseRequest):Promise<LifeProject>;
+  removeInsuranceExpense(id:string):Promise<LifeProject>;
 }
 
 export class ApiError extends Error {

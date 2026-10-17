@@ -11,8 +11,10 @@ import { createPlanner, type Planner } from './ai.js';
 import { createSearchProvider, type SearchProvider } from './research.js';
 import { ProjectService } from './service.js';
 import { AppError } from './errors.js';
+import { HomeInsuranceDraftSchema, IfQuoteRequestSchema, AddIfExpenseRequestSchema } from '../../shared/contracts/index.js';
+import { createIfInsuranceProvider, containsFinnishIdentityNumber, type IfInsuranceProvider } from './if-insurance.js';
 
-export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider}
+export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider; ifInsurance?:IfInsuranceProvider}
 const ProjectParams = z.object({projectId:IdSchema}).strict();
 const ItemParams = ProjectParams.extend({itemId:IdSchema});
 const ActionParams = ProjectParams.extend({actionId:IdSchema});
@@ -24,9 +26,10 @@ export async function buildApp(deps: AppDependencies={}) {
   const search=deps.search??createSearchProvider({mode:config.researchMode,apiKey:config.apiKey,model:config.model,timeoutMs:config.researchTimeoutMs});
   await repository.ready();
   const service=new ProjectService(repository,planner,search);
+  const ifInsurance=deps.ifInsurance??createIfInsuranceProvider(config.ifInsurance);
   // A quiet socket must outlive the maximum bounded provider call (120 seconds).
   // connectionTimeout applies while an async handler is waiting, too.
-  const app=Fastify({bodyLimit:32*1024,requestTimeout:125000,connectionTimeout:130000,logger:config.logLevel==='silent'?false:{level:config.logLevel,redact:['req.headers.authorization','req.headers.cookie','res.headers["set-cookie"]']},trustProxy:false});
+  const app=Fastify({bodyLimit:32*1024,requestTimeout:125000,connectionTimeout:130000,logger:config.logLevel==='silent'?false:{level:config.logLevel,redact:['req.headers.authorization','req.headers.cookie','req.body','res.body','res.headers["set-cookie"]']},trustProxy:false});
   await app.register(helmet);
   await app.register(cors,{origin:config.origins,methods:['GET','POST','PATCH','DELETE','OPTIONS'],allowedHeaders:['Content-Type','Authorization']});
   await app.register(rateLimit,{max:120,timeWindow:'1 minute',errorResponseBuilder:()=>new AppError('RATE_LIMITED','Too many requests; please try again shortly.',429)});
@@ -51,12 +54,27 @@ export async function buildApp(deps: AppDependencies={}) {
     return reply.code(500).send({error:{code:'INTERNAL_ERROR',message:'The request could not be completed'}});
   });
   app.setNotFoundHandler((_request,reply)=>reply.code(404).send({error:{code:'NOT_FOUND',message:'Endpoint not found'}}));
+  app.addHook('preValidation',async request=>{
+    // Identity numbers may only enter the isolated quote request, never chat or persisted project data.
+    const isQuote=request.method==='POST'&&/^\/api\/projects\/[^/]+\/home-insurance\/quote$/.test(request.url);
+    const body=isQuote&&request.body&&typeof request.body==='object'?Object.fromEntries(Object.entries(request.body).filter(([key])=>key!=='personalIdentityNumber')):request.body;
+    if(containsFinnishIdentityNumber(body))throw new AppError('SENSITIVE_INPUT','Enter identity numbers only in the dedicated If quote field. They cannot be saved in your project or sent to the assistant.',400);
+  });
   app.get('/api/health',async()=>({status:'ok' as const,ready:true,contractVersion:CONTRACT_VERSION,configuration:{ai:config.aiMode,research:search.mode,storage:repository.mode,authentication:Boolean(config.apiToken)}}));
   app.post('/api/projects',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(request,reply)=>{
     const project=await service.create(CreateProjectRequestSchema.parse(request.body));
     return reply.code(201).send({project,workspace:project.workspace,questions:project.questions});
   });
   app.get('/api/projects/:projectId',async request=>({project:await service.get(ProjectParams.parse(request.params).projectId)}));
+  app.get('/api/projects/:projectId/home-insurance',async request=>service.homeInsurance(ProjectParams.parse(request.params).projectId,ifInsurance));
+  app.patch('/api/projects/:projectId/home-insurance/details',async request=>({project:await service.saveInsuranceDetails(ProjectParams.parse(request.params).projectId,HomeInsuranceDraftSchema.parse(request.body))}));
+  app.post('/api/projects/:projectId/home-insurance/quote',{config:{rateLimit:{max:5,timeWindow:'1 minute'}}},async(request,reply)=>{
+    reply.header('Cache-Control','no-store');
+    const project=await service.requestInsuranceQuote(ProjectParams.parse(request.params).projectId,IfQuoteRequestSchema.parse(request.body),ifInsurance);
+    return {project};
+  });
+  app.post('/api/projects/:projectId/home-insurance/expense',async request=>({project:await service.addInsuranceExpense(ProjectParams.parse(request.params).projectId,AddIfExpenseRequestSchema.parse(request.body))}));
+  app.delete('/api/projects/:projectId/home-insurance/expense',async request=>({project:await service.removeInsuranceExpense(ProjectParams.parse(request.params).projectId)}));
   app.patch('/api/projects/:projectId',async request=>({project:await service.patch(ProjectParams.parse(request.params).projectId,ProjectPatchSchema.parse(request.body))}));
   app.post('/api/projects/:projectId/assistant',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async request=>service.assistant(ProjectParams.parse(request.params).projectId,AssistantRequestSchema.parse(request.body)));
   app.post('/api/projects/:projectId/research',{config:{rateLimit:{max:8,timeWindow:'1 minute'}}},async request=>service.research(ProjectParams.parse(request.params).projectId,ResearchRequestSchema.parse(request.body)));

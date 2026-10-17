@@ -1,0 +1,313 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "List Coverage Items Householder Insurance FI",
+    "description": "Will be used to get content, text and relevant files describing the householder product in finland ",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "https://api.if-insurance.com/test/list-coverage-items-householder-insurance-fi/v1",
+      "description": "Test endpoint (uses test data)"
+    },
+    {
+      "url": "https://api.if-insurance.com/list-coverage-items-householder-insurance-fi/v1",
+      "description": "Production endpoint (uses live data)"
+    }
+  ],
+  "paths": {
+    "/coverage-items": {
+      "get": {
+        "tags": [
+          "CoverageItems"
+        ],
+        "summary": "List of all householder coverage items",
+        "description": "Gets a list of all coverage items. A coverage item is a single part of a full insurance coverage. For instance, typical coverage items could be natural damages, fires or theft. A set of given coverage items make up an insurance coverage.",
+        "operationId": "householderGetCoverageItems",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "Curity access token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bearer xxx"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CoverageItem"
+                  }
+                },
+                "example": [
+                  {
+                    "coverageItemId": "Assistance",
+                    "coverageItemName": "Ifin matka-apu auttaa puhelimitse 24/7",
+                    "coverageItemDescription": "Kun tarvitset neuvoja tai hoitoa ulkomailla, on matka-apu tukenasi vuorokauden ympäri. Saat puhelimitse palvelua suomeksi, ruotsiksi ja englanniksi.\\n\\nNeuvomme vahingon sattuessa, ohjaamme sopimussairaalaan tai etälääkärille, huolehdimme maksusitoumuksista ja avustamme kotiinkuljetuksissa.\\n\\nEtälääkäriltä saat apua suomeksi chatin kautta mistä päin maailmaa tahansa joka päivä vuorokauden ympäri.\\n\\nLääkäri-chatin toteuttaa Terveystalo."
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Not authorized",
+                  "status": 401,
+                  "detail": "Request was not successful because it lacks valid authentication credentials for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Request was not successful because it lacks valid permissions for the requested resource.",
+                  "instance": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "ifinsurance-api-version": {
+                "description": "Full version number of the API in the format [MAJOR].[MINOR].[PATCH]",
+                "schema": {
+                  "type": "string",
+                  "example": "1.2.3"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalErrorProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/500",
+                  "title": "Internal error",
+                  "status": 500,
+                  "detail": "Internal error",
+                  "instance": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CoverageItem": {
+        "required": [
+          "coverageItemDescription",
+          "coverageItemId",
+          "coverageItemName"
+        ],
+        "type": "object",
+        "properties": {
+          "coverageItemId": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The unique id of this coverage item",
+            "example": "Assistance"
+          },
+          "coverageItemName": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The name of the coverage item",
+            "example": "Ifin matka-apu auttaa puhelimitse 24/7"
+          },
+          "coverageItemDescription": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The description of the coverage item",
+            "example": "Kun tarvitset neuvoja tai hoitoa ulkomailla, on matka-apu tukenasi vuorokauden ympäri. Saat puhelimitse palvelua suomeksi, ruotsiksi ja englanniksi.\\n\\nNeuvomme vahingon sattuessa, ohjaamme sopimussairaalaan tai etälääkärille, huolehdimme maksusitoumuksista ja avustamme kotiinkuljetuksissa.\\n\\nEtälääkäriltä saat apua suomeksi chatin kautta mistä päin maailmaa tahansa joka päivä vuorokauden ympäri.\\n\\nLääkäri-chatin toteuttaa Terveystalo."
+          }
+        },
+        "additionalProperties": false,
+        "description": "A coverage item. A coverage item is a single part of a full insurance coverage. For instance, typical coverage items could be natural damages, fires or theft. A set of given coverage items make up an insurance coverage."
+      },
+      "ForbiddenProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/403"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Forbidden"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 403
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Request was not successful because it lacks valid permissions for the requested resource."
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "InternalErrorProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/500"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Internal error"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 500
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Internal error"
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "UnauthorizedProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://httpstatuses.com/401"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "example": "Not authorized"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "example": 401
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "nullable": true,
+            "example": "Request was not successful because it lacks valid authentication credentials for the requested resource."
+          },
+          "instance": {
+            "type": "string",
+            "description": "A URI reference that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      }
+    },
+    "securitySchemes": {
+      "OAuthTest": {
+        "type": "oauth2",
+        "description": "Authentication for calling test data",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://authtest.if.eu/oauth/v2/oauth-token",
+            "scopes": {
+              "householder.listcoverage.fi": "householder.listcoverage.fi"
+            }
+          }
+        }
+      },
+      "OAuthProduction": {
+        "type": "oauth2",
+        "description": "Authentication for calling prod data",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.if.eu/oauth/v2/oauth-token",
+            "scopes": {
+              "householder.listcoverage.fi": "householder.listcoverage.fi"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "OAuthTest": [
+        "householder.listcoverage.fi"
+      ]
+    },
+    {
+      "OAuthProduction": [
+        "householder.listcoverage.fi"
+      ]
+    }
+  ]
+}

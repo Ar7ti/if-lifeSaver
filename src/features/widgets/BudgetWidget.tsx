@@ -60,6 +60,7 @@ export function BudgetWidget() {
         <Tile label="Remaining" minor={b.remainingMinor} hint="Budget minus spent" tone={b.remainingMinor < 0 ? 'danger' : undefined} />
         <Tile label="Reserve" minor={b.emergencyReserveMinor} hint="Kept for surprises" />
       </dl>
+      {project.homeInsurance?.expense&&<div className="rounded-[10px] bg-canvas px-4 py-3 text-body-sm"><p className="font-medium">Home insurance · proposed recurring expense</p><p className="mt-1 text-graphite">{formatMoney(project.homeInsurance.expense.premiumMinor)} · {project.homeInsurance.expense.billingPeriod}. Your {project.homeInsurance.expense.planningMonths}-month plan includes {formatMoney(project.homeInsurance.expense.plannedMinor)} in proposed spending. This is not a purchased policy; later renewals are excluded.</p></div>}
 
       <div className="grid gap-8 @3xl:grid-cols-2">
         <div>

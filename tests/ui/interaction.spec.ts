@@ -16,6 +16,7 @@ async function openProject(page:Page){
   if(!url.pathname.startsWith('/api/'))return route.continue();
   let body:unknown={project};
   if(url.pathname==='/api/health')body={status:'ok',ready:true,contractVersion:'1.1.0',configuration:{ai:'local',research:'unavailable',storage:'memory',authentication:false}};
+  else if(url.pathname.endsWith('/home-insurance'))body={status:{available:false,environment:'unavailable',message:'If partner access is not configured in this test.',documentationUrl:'https://developer.if-insurance.com/apis/property/householder-insurance-apis-finland/documentation'},state:{details:{},quote:null,expense:null}};
   else if(request.method()==='POST'&&url.pathname.endsWith('/assistant')){writes.push('assistant');body={reply:'Please review your plan.',proposedActions:[],workspacePatch:null};}
   else if(request.method()==='PATCH'){writes.push(url.pathname);const patch=request.postDataJSON();project={...project,preferences:{...project.preferences,...patch.preferences},revision:project.revision+1};body={project};}
   await route.fulfill({json:body});
@@ -62,7 +63,6 @@ for(const viewport of [{width:1440,height:900},{width:768,height:600},{width:390
   if(viewport.width>=768)expect(bounds!.width).toBeGreaterThanOrEqual(700);
   const body=dialog.locator(':scope > div');await body.evaluate(el=>{el.scrollTop=el.scrollHeight;});
   await expect(dialog.getByRole('button',{name:'Save details',exact:true})).toBeInViewport();await expect(dialog.getByRole('button',{name:'Cancel',exact:true})).toBeInViewport();
-  await page.screenshot({path:`test-results/details-${viewport.width}x${viewport.height}.png`});
   await dialog.getByRole('textbox',{name:'Destination',exact:true}).fill('Helsinki, Finland');
   await dialog.getByRole('button',{name:'Save details',exact:true}).click();await expect(dialog).not.toBeVisible();expect(writes).toHaveLength(1);
  });

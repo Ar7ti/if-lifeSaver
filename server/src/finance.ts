@@ -1,4 +1,4 @@
-import { BudgetCategorySchema, BudgetSchema, CartItemSchema, MinorSchema, type Budget, type CartItem, type LifeProject, type Offer, type Risk, type SimulationScenario } from '../../shared/contracts/index.js';
+import { BudgetCategorySchema, BudgetSchema, CartItemSchema, MinorSchema, HomeInsuranceExpenseSchema, type HomeInsuranceExpense, type Budget, type CartItem, type LifeProject, type Offer, type Risk, type SimulationScenario } from '../../shared/contracts/index.js';
 import { AppError } from './errors.js';
 
 const MAX_MINOR = MinorSchema.maxValue!;
@@ -173,7 +173,7 @@ export function allocateBudget(totalMinor: number, confirmed = false): Budget {
 }
 
 /** Allocations are envelopes; only selected cart lines commit money. */
-export function recalculateBudget(budget: Budget, cart: CartItem[]): Budget {
+export function recalculateBudget(budget: Budget, cart: CartItem[], insurance?:HomeInsuranceExpense|null): Budget {
   const parsed = BudgetSchema.safeParse(budget);
   const parsedCart = CartItemSchema.array().max(100).safeParse(cart);
   if (!parsed.success || !parsedCart.success) throw new AppError('INVALID_BUDGET', 'Budget and cart must satisfy the finance contract');
@@ -199,6 +199,13 @@ export function recalculateBudget(budget: Budget, cart: CartItem[]): Budget {
     // unknown charge is shipping rather than a service fee.
     if (item.deliveryCostMinor === null) warnings.push(`Additional line charge unknown for cart item ${item.id}; totals exclude any unpriced charge.`);
   }
+  if(insurance){
+    HomeInsuranceExpenseSchema.parse(insurance);
+    let category=categories.find(c=>c.id==='home_insurance');
+    if(!category){if(categories.length===20)throw new AppError('INVALID_BUDGET','Insurance would exceed the budget category limit');category={id:'home_insurance',title:'Home insurance',allocatedMinor:0,committedMinor:0,proposedMinor:0};categories.push(category);}
+    category.proposedMinor=sum([category.proposedMinor,insurance.plannedMinor],'Proposed insurance');
+    warnings.push(`Home insurance: ${insurance.installments} ${insurance.billingPeriod} premium(s) over ${insurance.planningMonths} planning month(s); proposed only. Future renewals outside this horizon are excluded.`);
+  }
   const committedMinor = sum(categories.map(category => category.committedMinor), 'Committed spending');
   const proposedMinor = sum(categories.map(category => category.proposedMinor), 'Proposed spending');
   const remainingMinor = budget.totalMinor - committedMinor;
@@ -208,7 +215,7 @@ export function recalculateBudget(budget: Budget, cart: CartItem[]): Budget {
   }
   if (remainingMinor < 0) warnings.push('Selected spending exceeds the total budget.');
   if (availableMinor < 0) warnings.push('Selected and proposed spending leaves insufficient funds to preserve the emergency reserve.');
-  return { ...parsed.data, categories, allocatedMinor, committedMinor, proposedMinor, remainingMinor, availableMinor, warnings };
+  return { ...parsed.data, categories, allocatedMinor, committedMinor, proposedMinor, remainingMinor, availableMinor, warnings, recurringProposedMinor:insurance?.plannedMinor??0 };
 }
 
 // A later research snapshot supersedes older snapshots, including unavailable results.
@@ -237,7 +244,7 @@ function eligible(offer: Offer, project: LifeProject): boolean {
 /** Scenarios buy one researched option per uncovered category, never one per search result. */
 export function simulateScenarios(project: LifeProject): SimulationScenario[] {
   const calculatedAt = new Date().toISOString();
-  const budget = recalculateBudget(project.budget, project.cart);
+  const budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense);
   const snapshots = currentResearch(project);
   // Furniture needs may include both a bed and sofa. Other plan envelopes describe
   // one expense choice: e.g. a hotel and a hostel are alternatives for accommodation.
@@ -257,6 +264,7 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
     }
   }
   const covered = new Set(project.cart.map(item => scenarioGroup(item.category)));
+  if(project.homeInsurance?.expense)covered.add(scenarioGroup('home_insurance'));
   // A broad furniture search can contain both beds and sofas. Group its actual offers,
   // rather than collapsing every offer into the search request's envelope.
   const researchedGroups = unique(snapshots.flatMap(result => result.offers.length ? result.offers.map(offer => scenarioGroup(offer.category)) : [scenarioGroup(result.category)]));
@@ -277,7 +285,7 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
   const categories = [...categoryPlans.keys()];
   const allocation = (id: string) => categoryPlans.get(id) ?? 0;
   const minimum = (id: string) => offers.get(id)?.length ? Math.min(...offers.get(id)!.map(offerCost)) : allocation(id);
-  const baseCost = sum(project.cart.map(cartTotal), 'Scenario cart total');
+  const baseCost = sum([...project.cart.map(cartTotal),project.homeInsurance?.expense?.plannedMinor??0], 'Scenario cart total');
   const spendingLimit = budget.totalMinor - budget.emergencyReserveMinor;
   return (['economy', 'balanced', 'comfort'] as const).map(id => {
     let verifiedCostMinor = 0;
@@ -289,6 +297,7 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
     const risks: string[] = [];
     if (!budget.confirmed) missingData.push('The total budget has not been confirmed; affordability cannot be established.');
     const tradeOffs = [id === 'economy' ? 'Selects the lowest known price including recorded line charges in each uncovered category.' : id === 'balanced' ? 'Prefers the highest research score among affordable offers; ties favor lower known cost.' : 'Prefers documented availability, then research score, among affordable offers.'];
+    if(project.homeInsurance?.expense){verifiedCostMinor=project.homeInsurance.expense.plannedMinor;tradeOffs.push(`Home insurance is a proposed recurring expense over ${project.homeInsurance.expense.planningMonths} month(s), not a purchased policy. Later renewals are excluded.`);}
     if (project.preferences.ownsFurniture === true || project.preferences.ownedItems?.length) tradeOffs.push(`Automatic purchases exclude recorded owned items (${project.preferences.ownedItems?.join(', ') || 'furniture'}); explicit cart choices are retained.`);
     const excluded = researchedGroups.filter(group => !automaticCategory(group));
     if (excluded.length) tradeOffs.push(`Research groups excluded from automatic purchases because they are owned, outside this context, or absent from the current budget: ${excluded.join(', ')}.`);
@@ -383,7 +392,7 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
 
 /** Risk identity follows the issue; status follows the exact supporting evidence. */
 export function analyzeRisks(project: LifeProject): Risk[] {
-  const budget = recalculateBudget(project.budget, project.cart);
+  const budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense);
   const risks: Risk[] = [];
   const add = (id: string, category: Risk['category'], severity: Risk['severity'], title: string, explanation: string, evidence: string[], preventiveAction: string, sourceUrl: string | null = null) => {
     if (risks.some(risk => risk.id === id)) return;

@@ -172,6 +172,11 @@ function get(id: string) {
 const cartResponse = (p: LifeProject) => clone({ items: p.cart, budget: p.budget, revision: p.revision });
 
 export const mockApi: LifeSimApi = {
+  async homeInsurance(id){const p=get(id);return {status:{available:false,environment:'unavailable',message:'Live If quotes are unavailable in demo mode. Use a connected backend with approved If partner access.',documentationUrl:'https://developer.if-insurance.com/apis/property/householder-insurance-apis-finland/documentation'},state:p.homeInsurance??{details:{},quote:null,expense:null}};},
+  async saveInsuranceDetails(id,details){const p=get(id);p.homeInsurance={details,quote:null,expense:null};derive(p);return clone(p);},
+  async requestInsuranceQuote(){throw new ApiError('IF_ACCESS_UNAVAILABLE','Live If quotes are unavailable in demo mode.',503);},
+  async addInsuranceExpense(){throw new ApiError('IF_QUOTE_MISSING','A live If quote is required.',409);},
+  async removeInsuranceExpense(id){const p=get(id);if(p.homeInsurance)p.homeInsurance.expense=null;derive(p);return clone(p);},
   source: 'mock',
   async health() {
     return { status: 'ok', ready: true, contractVersion: '1.0.0', configuration: { ai: 'local', research: 'demo', storage: 'memory', authentication: false } };
