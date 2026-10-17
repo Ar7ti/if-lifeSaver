@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, Lightbulb } from 'lucide-react';
 import { useWorkspace } from '@/features/workspace/context';
 import { EmptyState } from '@/components/ui/States';
@@ -21,9 +22,22 @@ function split(text: string): { title: string; detail: string | null } {
   return { title: m[1]!, detail: `${rest.charAt(0).toUpperCase()}${rest.slice(1)}.` };
 }
 
+const GENERIC = /^(next step|step|suggestion|recommendation)s?$/i;
+
+interface Item {
+  key: string;
+  title: string;
+  detail: string | null;
+  priority: 'high' | 'medium' | 'low' | null;
+  prompt: string;
+}
+
+const PRIORITY_LABEL = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' } as const;
+
 export function RecommendationsWidget() {
   const { project, ask } = useWorkspace();
   const [expanded, setExpanded] = useState(false);
+  const reduce = useReducedMotion();
   const recs = project.recommendations;
 
   if (recs.length === 0 && project.assumptions.length === 0)
@@ -33,38 +47,67 @@ export function RecommendationsWidget() {
       </EmptyState>
     );
 
-  const shown = expanded ? recs : recs.slice(0, VISIBLE);
+  // Structured details when the backend provides them; a generic title falls back to the item's own words.
+  const items: Item[] = recs.map((r, i) => {
+    const d = project.recommendationDetails?.[i];
+    const words = split(d && GENERIC.test(d.title.trim()) ? d.explanation : r);
+    const title = d && !GENERIC.test(d.title.trim()) ? d.title : words.title;
+    const detail = d && !GENERIC.test(d.title.trim()) ? d.explanation : words.detail;
+    return { key: `${i}-${r}`, title, detail: detail && detail !== title ? detail : null, priority: d?.priority ?? null, prompt: d?.action ?? r };
+  });
+  const [first, ...rest] = items;
+  const shown = expanded ? rest : rest.slice(0, VISIBLE - 1);
 
   return (
-    <div className="flex flex-col gap-4">
-      {recs.length > 0 && (
-        <ol className="flex flex-col gap-2">
-          {shown.map((r, i) => {
-            const structured=project.recommendationDetails?.[i];
-            const { title, detail } = structured ? {title:structured.title,detail:structured.explanation} : split(r);
-            return (
-              <li key={r} className="flex flex-col gap-3 rounded-[16px] bg-canvas p-3.5 sm:flex-row sm:items-center">
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-surface text-body-sm font-medium tabular shadow-[0_0_0_1px_rgb(0_0_0/0.05)]" aria-hidden>
-                    {i + 1}
+    <div className="flex flex-col gap-3">
+      {first && (
+        <motion.div initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="flex flex-col gap-3 rounded-[16px] bg-canvas p-4 sm:flex-row sm:items-center sm:gap-5">
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 text-caption font-medium text-blue-ink">
+              <span className="relative flex size-2" aria-hidden>
+                {!reduce && <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue/40 [animation-iteration-count:2]" />}
+                <span className="relative inline-flex size-2 rounded-full bg-blue" />
+              </span>
+              Up next
+              {first.priority === 'high' && <span className="text-graphite">· {PRIORITY_LABEL.high}</span>}
+            </p>
+            <p className="mt-1.5 text-[16px] leading-snug font-medium text-ink">{first.title}</p>
+            {first.detail && <p className="mt-0.5 text-body-sm text-graphite">{first.detail}</p>}
+          </div>
+          <Button size="sm" variant="primary" icon={<ArrowRight />} onClick={() => ask(`Help me with this: ${first.prompt}`)} className="flex-row-reverse self-start sm:self-center" aria-label={`Start: ${first.title}`}>
+            Start
+          </Button>
+        </motion.div>
+      )}
+
+      {shown.length > 0 && (
+        <ol className="flex flex-col" start={2}>
+          <AnimatePresence initial={false}>
+            {shown.map((it, i) => (
+              <motion.li key={it.key} initial={reduce ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={reduce ? undefined : { opacity: 0, height: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+                <button onClick={() => ask(`Help me with this: ${it.prompt}`)} className="group flex w-full items-start gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors duration-150 hover:bg-canvas">
+                  <span className="mt-px grid size-6 shrink-0 place-items-center rounded-full text-caption font-medium text-graphite tabular shadow-[inset_0_0_0_1px_rgb(0_0_0/0.12)]" aria-hidden>
+                    {i + 2}
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-[15px] leading-snug font-medium text-ink">{title}</p>
-                    {detail && <p className="mt-0.5 text-body-sm text-graphite">{detail}</p>}
-                  </div>
-                </div>
-                <Button size="sm" variant="primary" icon={<ArrowRight />} onClick={() => ask(`Help me with this: ${project.recommendationDetails?.[i]?.action ?? r}`)} className="flex-row-reverse self-start sm:self-center" aria-label={`Start: ${title}`}>
-                  Start
-                </Button>
-              </li>
-            );
-          })}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body-sm font-medium text-ink">{it.title}</span>
+                    {it.detail && <span className="mt-0.5 block text-caption text-graphite">{it.detail}</span>}
+                    {it.priority === 'high' && <span className="mt-1 inline-block text-caption font-medium text-warn-ink">{PRIORITY_LABEL.high}</span>}
+                  </span>
+                  <span className="mt-0.5 flex shrink-0 items-center gap-1 text-caption font-medium text-graphite transition-colors duration-150 group-hover:text-ink">
+                    Start <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden />
+                  </span>
+                </button>
+              </motion.li>
+            ))}
+          </AnimatePresence>
         </ol>
       )}
+
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        {recs.length > VISIBLE ? (
+        {rest.length > VISIBLE - 1 ? (
           <button onClick={() => setExpanded(v => !v)} aria-expanded={expanded} className="text-body-sm font-medium text-graphite hover:text-ink">
-            {expanded ? 'Show fewer' : `Show ${pluralize(recs.length - VISIBLE, 'more step')}`}
+            {expanded ? 'Show fewer' : `Show ${pluralize(rest.length - (VISIBLE - 1), 'more step')}`}
           </button>
         ) : (
           <span />

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Check, Copy, LayoutGrid, ListPlus, Loader2, MessageSquareText, RotateCw, Search, ShieldCheck, ShoppingBag, Wallet, X, type LucideIcon } from 'lucide-react';
@@ -72,6 +73,7 @@ export function ActionCard({ action }: { action: AgentAction }) {
   const live = project.actions.find(a => a.id === action.id) ?? action;
   const d = describeCommand(live.command, project);
   const [copied, setCopied] = useState(false);
+  const reduce = useReducedMotion();
 
   const review = useMutation({
     mutationFn: (approved: boolean) => writer.api.confirmAction(project.id, live.id, { approved }),
@@ -87,7 +89,7 @@ export function ActionCard({ action }: { action: AgentAction }) {
   const isDraft = live.command.type === 'draft_seller_message' && status === 'applied' && live.result;
 
   return (
-    <div className={cn('rounded-[10px] border bg-surface p-3', status === 'proposed' ? 'border-blue/30' : 'border-hairline')}>
+    <motion.div initial={reduce ? false : { opacity: 0, y: 8, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} className={cn('rounded-[12px] border bg-surface p-3 transition-colors duration-200', status === 'proposed' ? 'border-blue/30' : 'border-hairline')}>
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-[7px] bg-sky-tint text-blue-ink" aria-hidden>
           <d.icon className="size-4" />
@@ -156,6 +158,6 @@ export function ActionCard({ action }: { action: AgentAction }) {
       )}
       {status === 'rejected' && <Pill tone="neutral" className="mt-2">Dismissed</Pill>}
       {status === 'failed' && <p className="mt-2 text-caption text-danger-ink">{live.result ?? 'This action could not be applied.'}</p>}
-    </div>
+    </motion.div>
   );
 }

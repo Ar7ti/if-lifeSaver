@@ -1,7 +1,8 @@
 import { isChatSubmitKey } from '@/lib/keyboard';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowUp, Loader2, X } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
+import { ArrowUp, X } from 'lucide-react';
 import { useWorkspace } from '@/features/workspace/context';
 import { useAssistant } from '@/stores/assistant';
 import { describeError } from '@/api';
@@ -31,6 +32,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
   const focusTick = useAssistant(s => s.focusTick);
   const { push, setDraft } = useAssistant();
   const input = useRef<HTMLTextAreaElement>(null);
+  const reduce = useReducedMotion();
   const scroller = useRef<HTMLDivElement>(null);
 
   const send = useMutation({
@@ -131,7 +133,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
             </li>
           ))}
           {thread.map(m => (
-            <li key={m.id} data-role={m.role} className={cn('flex flex-col gap-2', m.role === 'user' && 'items-end')}>
+            <motion.li key={m.id} data-role={m.role} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className={cn('flex flex-col gap-2', m.role === 'user' && 'items-end')}>
               {m.role === 'user' ? (
                 <p className="max-w-[85%] rounded-[12px] rounded-br-[4px] bg-sky-tint px-3 py-2 text-body-sm break-words text-ink">{m.text}</p>
               ) : m.role === 'error' ? (
@@ -150,13 +152,17 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
                   )}
                 </>
               )}
-            </li>
+            </motion.li>
           ))}
           {send.isPending && (
-            <li className="flex items-center gap-2 text-body-sm text-graphite" role="status">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Waiting for the AI planner{elapsed > 3 ? ` · ${elapsed}s` : ''}
-            </li>
+            <motion.li initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2.5 text-body-sm text-graphite" role="status">
+              <span className="flex h-7 items-center gap-1 rounded-full bg-canvas px-3" aria-hidden>
+                {[0, 1, 2].map(d => (
+                  <motion.span key={d} className="size-1.5 rounded-full bg-ink/45" animate={reduce ? undefined : { opacity: [0.3, 1, 0.3], y: [0, -2, 0] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15, ease: 'easeInOut' }} />
+                ))}
+              </span>
+              Thinking{elapsed > 3 ? ` · ${elapsed}s` : '…'}
+            </motion.li>
           )}
         </ol>
       </div>

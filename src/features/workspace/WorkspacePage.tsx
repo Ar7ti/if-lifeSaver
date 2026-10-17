@@ -30,7 +30,7 @@ function useIsDesktop() {
 
 function LoadingWorkspace() {
   return (
-    <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-8" aria-busy="true" aria-label="Loading workspace">
+    <div role="status" className="mx-auto max-w-[1280px] px-4 py-8 sm:px-8" aria-busy="true" aria-label="Loading workspace">
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-4 h-10 w-80 max-w-full" />
       <Skeleton className="mt-6 h-24 w-full rounded-card" />

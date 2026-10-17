@@ -2,6 +2,7 @@ import { isEditableKeyboardEvent } from '@/lib/keyboard';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CheckSquare, ChevronUp, FolderClosed, Home, LayoutGrid, PanelLeftClose, PanelLeftOpen, Plus, Settings as SettingsIcon, ShoppingBag, Sparkles, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { LayoutGroup, motion } from 'motion/react';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/format';
 import { useUi } from '@/stores/ui';
@@ -55,13 +56,15 @@ function SideLink({ item, compact }: { item: NavItem; compact: boolean }) {
       aria-label={compact ? item.label : undefined}
       title={compact ? item.label : undefined}
       className={cn(
-        'flex h-9 items-center gap-3 rounded-button px-2.5 text-body-sm transition-colors duration-150',
-        active ? 'bg-surface font-medium text-ink shadow-[0_0_0_1px_rgb(0_0_0/0.04),0_1px_2px_rgb(0_0_0/0.05)]' : 'text-ink/70 hover:bg-black/[0.04] hover:text-ink',
+        'relative flex h-9 items-center gap-3 rounded-button px-2.5 text-body-sm transition-colors duration-150',
+        active ? 'font-medium text-ink' : 'text-ink/70 hover:bg-black/[0.04] hover:text-ink',
         compact && 'justify-center px-0',
       )}
     >
-      <item.icon className="size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
-      {!compact && <span className="truncate">{item.label}</span>}
+      {/* The active highlight slides between items instead of jumping. */}
+      {active && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-button bg-surface shadow-[0_0_0_1px_rgb(0_0_0/0.04),0_1px_2px_rgb(0_0_0/0.05)]" transition={{ type: 'spring', stiffness: 520, damping: 40 }} aria-hidden />}
+      <item.icon className="relative size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+      {!compact && <span className="relative truncate">{item.label}</span>}
     </Link>
   );
 }
@@ -221,8 +224,12 @@ function Sidebar() {
         sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[268px]',
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col lg:hidden">{body(true)}</div>
-      <div className="hidden min-h-0 flex-1 flex-col lg:flex">{body(sidebarCollapsed)}</div>
+      <LayoutGroup id="nav-compact">
+        <div className="flex min-h-0 flex-1 flex-col lg:hidden">{body(true)}</div>
+      </LayoutGroup>
+      <LayoutGroup id="nav-wide">
+        <div className="hidden min-h-0 flex-1 flex-col lg:flex">{body(sidebarCollapsed)}</div>
+      </LayoutGroup>
     </aside>
   );
 }

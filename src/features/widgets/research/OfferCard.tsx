@@ -50,10 +50,13 @@ export function OfferCard({ offer, tier, reasons, inCart, stale, comparing, onAd
       className={cn('flex min-w-0 flex-1 flex-col rounded-card bg-surface p-2.5 ring-1 transition-[box-shadow] duration-200', inCart ? 'ring-blue/40' : 'ring-hairline hover:ring-hairline-strong')}
       aria-label={offer.title}
     >
-      <div className="relative">
-        <OfferImage offer={offer} className="aspect-[16/10]" />
-        {tier && <span className="absolute top-2 left-2 rounded-full bg-surface/95 px-2 py-0.5 text-[11px] font-medium text-ink/80">{TIER_LABEL[tier]}</span>}
-      </div>
+      {/* Services rarely have photos: skip the empty image block instead of showing a large placeholder. */}
+      {(offer.imageUrl || offer.kind !== 'service') && (
+        <div className="relative">
+          <OfferImage offer={offer} className="aspect-[16/10]" />
+          {tier && <span className="absolute top-2 left-2 rounded-full bg-surface/95 px-2 py-0.5 text-[11px] font-medium text-ink/80">{TIER_LABEL[tier]}</span>}
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col gap-1.5 px-1.5 pt-3">
         <h3 className="line-clamp-2 text-body-sm leading-snug font-medium" title={offer.title}>

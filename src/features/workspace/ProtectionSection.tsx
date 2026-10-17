@@ -35,7 +35,7 @@ export function ProtectionSection(){
     <ProductTile product={rec.insuranceType}/>
     <div className="min-w-0 flex-1">
      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-      <p className="text-caption text-graphite"><span className="font-medium tracking-[0.06em] uppercase">Smart Protection</span><span aria-hidden> · </span>Prices from If when connected</p>
+      <p className="text-caption text-graphite"><span className="font-medium tracking-[0.06em] uppercase">Smart Protection</span><span aria-hidden> · </span>Insurance by If<span> · prices only when If is connected</span></p>
       <StatusPill status={rec.status}/>
      </div>
      <h2 id="protection-title" className="mt-1.5 text-[19px] leading-snug font-medium tracking-[-0.3px]">{m.title}</h2>
@@ -88,7 +88,7 @@ function CarInsurancePanel(){
  const hasAddress=Boolean(draft.postalCode||draft.streetAddress);
  const vehicleLine=[vehicle?.year,vehicle?.make,vehicle?.model].filter(Boolean).join(' ');
 
- return <div className="card mt-3 overflow-hidden" aria-label="Car insurance pricing">
+ return <div role="region" className="card mt-3 overflow-hidden" aria-label="Car insurance pricing">
   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4 sm:px-6">
    <div className="min-w-0"><h3 className="text-[17px] font-medium tracking-[-0.2px]">Car insurance price</h3><p className="mt-0.5 text-caption text-graphite">{vehicleLine||'Your planned car'}{vehicle?.purchasePriceMinor!==undefined?` · purchase plan ${formatMoney(vehicle.purchasePriceMinor)}`:''}</p></div>
    <StepRail step={step}/>

@@ -205,3 +205,15 @@
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
 }
+
+/* Research in flight: an indeterminate line, not a percentage (no fake progress). */
+@keyframes research-progress {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+.research-progress {
+  animation: research-progress 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .research-progress { animation: none; left: 0; width: 100%; opacity: 0.35; }
+}

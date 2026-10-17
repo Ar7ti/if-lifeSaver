@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { create } from 'zustand';
-import { AlertTriangle, Info, Loader2, PenLine, RotateCw, Search, SearchX, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AlertTriangle, Check, ChevronDown, Info, Loader2, PenLine, RotateCw, Search, SearchX, SlidersHorizontal, Sparkles } from 'lucide-react';
 import type { Offer, ResearchResult, WorkspaceWidget } from '@contracts';
 import { useWorkspace } from '@/features/workspace/context';
 import { useUi, type FurnitureClass } from '@/stores/ui';
@@ -88,6 +89,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const { project, writer, ask } = useWorkspace();
   const { kinds, mark } = useRunKinds();
   const isProduct = kind === 'product';
+  const reduce = useReducedMotion();
   const furnitureClass = useUi(s => s.furnitureClass[project.id]) ?? 'all';
   const setFurnitureClass = useUi(s => s.setFurnitureClass);
 
@@ -218,7 +220,8 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const starters = isProduct ? contextual.products : contextual.services;
   const prefOptions = isProduct ? PRODUCT_PREFS : contextual.prefs;
   const location = project.location ?? 'your destination';
-  const showForm = formOpen || (!current && !research.isPending);
+  // Stays visible during the first search so the running suggestion is shown above the progress line.
+  const showForm = formOpen || !current;
 
   return (
     <div className="@container flex flex-col gap-5">
@@ -236,63 +239,81 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
 
       {/* Search */}
       {showForm ? (
-        <form onSubmit={e => startSearch(query, { e })} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 @lg:flex-row">
+        <form onSubmit={e => startSearch(query, { e })} className="flex flex-col gap-2.5">
+          <div className="group/bar flex flex-col gap-1 rounded-[14px] bg-canvas p-1.5 transition-[background-color,box-shadow] duration-200 focus-within:bg-surface focus-within:shadow-[0_0_0_1px_rgb(0_0_0/0.1),0_6px_20px_rgb(0_0_0/0.06)] @lg:flex-row @lg:items-center">
             <label className="sr-only" htmlFor={`q-${widget.id}`}>
               {isProduct ? 'What are you looking for?' : 'Which service do you need?'}
             </label>
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-stone" aria-hidden />
-              <Input id={`q-${widget.id}`} value={query} maxLength={60} onChange={e => setQuery(e.target.value)} placeholder={`What are you looking for? e.g. ${starters[0] ?? 'Relevant options'}`} className="h-11 rounded-[10px] bg-canvas pl-10 border-transparent" />
+            <div className="relative flex min-w-0 flex-1 items-center">
+              <Search className="pointer-events-none absolute left-3 size-4 text-stone transition-colors duration-200 group-focus-within/bar:text-blue-ink" aria-hidden />
+              <input id={`q-${widget.id}`} value={query} maxLength={60} onChange={e => setQuery(e.target.value)} placeholder={`What are you looking for? e.g. ${starters[0] ?? 'Relevant options'}`} className="h-10 w-full rounded-[10px] bg-transparent pr-2 pl-9 text-body sm:text-body-sm placeholder:text-stone focus:outline-none" />
             </div>
-            <div className="relative @lg:w-32">
-              <label className="sr-only" htmlFor={`max-${widget.id}`}>
-                Maximum price in euros
+            <div className="flex items-center gap-1.5">
+              <label className="flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] px-3 text-body-sm text-graphite transition-colors duration-150 hover:bg-ink/[0.03] @lg:flex-none @lg:border-l @lg:border-hairline-strong @lg:rounded-none @lg:hover:bg-transparent" htmlFor={`max-${widget.id}`}>
+                <span className="shrink-0">Max €</span>
+                <span className="sr-only">Maximum price in euros</span>
+                <input id={`max-${widget.id}`} inputMode="decimal" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Any" className="w-full min-w-0 bg-transparent text-body sm:text-body-sm text-ink tabular placeholder:text-stone focus:outline-none @lg:w-16" />
               </label>
-              <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-body-sm text-graphite" aria-hidden>
-                Max €
-              </span>
-              <Input id={`max-${widget.id}`} inputMode="decimal" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Any" className="h-11 rounded-[10px] border-transparent bg-canvas pl-[3.75rem]" />
+              <Button type="submit" variant="primary" size="sm" className="h-9 shrink-0 rounded-[10px] px-3.5" icon={<Sparkles />} loading={research.isPending}>
+                Research
+              </Button>
             </div>
-            <Button type="submit" variant="ghost" className="h-11" icon={<Sparkles />}>
-              Research
-            </Button>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-caption text-graphite">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-caption text-graphite">
             {!current && (
               <>
-                <span>Try</span>
-                {starters.map(s => (
-                  <button key={s} type="button" onClick={() => { setQuery(s); startSearch(s); }} className="rounded-full bg-ink/[0.05] px-2.5 py-1 font-medium text-ink/80 hover:bg-ink/[0.09]">
-                    {s}
-                  </button>
-                ))}
+                <span className="mr-0.5">Try</span>
+                {starters.map(s => {
+                  const running = research.isPending && lastRequest === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      disabled={research.isPending}
+                      aria-busy={running || undefined}
+                      onClick={() => { setQuery(s); startSearch(s); }}
+                      className={cn('inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 font-medium transition-[background-color,color,box-shadow,scale] duration-150 enabled:active:scale-[0.96] disabled:cursor-default', running ? 'bg-ink text-white' : 'text-ink/75 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.1)] enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-60')}
+                    >
+                      {running && <Loader2 className="size-3 animate-spin" aria-hidden />}
+                      {s}
+                    </button>
+                  );
+                })}
               </>
             )}
-            <button type="button" onClick={() => setPrefsOpen(v => !v)} aria-expanded={prefsOpen} className="ml-auto flex items-center gap-1 rounded-full px-2 py-1 font-medium hover:text-ink">
-              <SlidersHorizontal className="size-3.5" aria-hidden /> Preferences{prefs.length ? ` (${prefs.length})` : ''}
-            </button>
-            {current && (
-              <button type="button" onClick={() => setFormOpen(false)} className="rounded-full px-2 py-1 font-medium hover:text-ink">
-                Cancel
+            <span className="ml-auto flex items-center gap-1">
+              <button type="button" onClick={() => setPrefsOpen(v => !v)} aria-expanded={prefsOpen} className="flex h-7 items-center gap-1 rounded-full px-2 font-medium transition-colors duration-150 hover:bg-hover hover:text-ink">
+                <SlidersHorizontal className="size-3.5" aria-hidden /> Preferences
+                {prefs.length > 0 && <span className="grid size-4 place-items-center rounded-full bg-ink text-[10px] text-white tabular">{prefs.length}</span>}
+                <ChevronDown className={cn('size-3.5 transition-transform duration-200', prefsOpen && 'rotate-180')} aria-hidden />
               </button>
-            )}
+              {current && (
+                <button type="button" onClick={() => setFormOpen(false)} className="h-7 rounded-full px-2 font-medium transition-colors duration-150 hover:bg-hover hover:text-ink">
+                  Cancel
+                </button>
+              )}
+            </span>
           </div>
-          {prefsOpen && (
-            <fieldset className="flex flex-wrap gap-1.5">
-              <legend className="sr-only">Preferences</legend>
-              {prefOptions.map(p => {
-                const on = prefs.includes(p);
-                return (
-                  <label key={p} className={cn('cursor-pointer rounded-full border px-2.5 py-1 text-caption font-medium transition-colors duration-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue', on ? 'border-blue bg-sky-tint text-blue-ink' : 'border-hairline-strong text-ink/75 hover:bg-hover')}>
-                    <input type="checkbox" className="sr-only" checked={on} onChange={() => setPrefs(ps => (on ? ps.filter(x => x !== p) : [...ps, p]))} />
-                    {p}
-                  </label>
-                );
-              })}
-            </fieldset>
-          )}
-          {!current && <p className="text-caption text-graphite">Searches public listings near {location}. Prices found by search are estimates until you confirm them at the source.</p>}
+          <AnimatePresence initial={false}>
+            {prefsOpen && (
+              <motion.fieldset key="prefs" initial={reduce ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={reduce ? undefined : { height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+                <legend className="sr-only">Preferences</legend>
+                <div className="flex flex-wrap gap-1.5 pt-0.5 pb-1">
+                  {prefOptions.map(p => {
+                    const on = prefs.includes(p);
+                    return (
+                      <label key={p} className={cn('relative inline-flex h-7 cursor-pointer items-center gap-1 rounded-full px-2.5 text-caption font-medium transition-[background-color,color,box-shadow] duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue', on ? 'bg-sky-tint text-blue-ink shadow-[inset_0_0_0_1px_rgb(0_117_222/0.35)]' : 'text-ink/75 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.1)] hover:bg-hover')}>
+                        <input type="checkbox" className="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0" checked={on} onChange={() => setPrefs(ps => (on ? ps.filter(x => x !== p) : [...ps, p]))} />
+                        {on && <Check className="size-3" aria-hidden />}
+                        {p}
+                      </label>
+                    );
+                  })}
+                </div>
+              </motion.fieldset>
+            )}
+          </AnimatePresence>
+          {!current && <p className="text-caption text-graphite">Searches public listings near {location}. Prices stay estimates until you confirm them at the source.</p>}
         </form>
       ) : (
         latest.length > 1 && (
@@ -310,31 +331,31 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           </div>
         )
       )}
-      {!isProduct && current && !showForm && (
-        <Button size="sm" variant="text" icon={<Search />} onClick={() => setFormOpen(true)} disabled={research.isPending} className="-mt-2 self-end text-graphite">
-          New search
-        </Button>
-      )}
 
       {/* Live progress */}
       {research.isPending && (
         <div role="status" className="flex flex-col gap-3">
-          <p className="flex items-center gap-2.5 text-body-sm text-blue-ink">
-            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-            <span className="min-w-0 flex-1">
-              Researching <strong className="font-semibold">{lastRequest}</strong>
-              {isProduct && furnitureClass !== 'all' ? ` (${TIER_LABEL[furnitureClass]})` : ''} near {location}. This can take up to 90 seconds.
-            </span>
-            <span className="tabular shrink-0 text-caption" aria-hidden>
-              {elapsed}s
-            </span>
-          </p>
+          <div className="flex flex-col gap-2">
+            <div className="relative h-[3px] overflow-hidden rounded-full bg-ink/[0.06]" aria-hidden>
+              <span className="research-progress absolute inset-y-0 w-1/3 rounded-full bg-blue" />
+            </div>
+            <p className="flex items-center gap-2 text-body-sm text-graphite">
+              <span className="min-w-0 flex-1">
+                Researching <strong className="font-medium text-ink">{lastRequest}</strong>
+                {isProduct && furnitureClass !== 'all' ? ` (${TIER_LABEL[furnitureClass]})` : ''} near {location}. No results yet; this can take up to 90 seconds.
+              </span>
+              <span className="tabular shrink-0 text-caption" aria-hidden>
+                {elapsed}s
+              </span>
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-3 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4" aria-hidden>
             {[0, 1, 2].map(i => (
-              <div key={i} className={cn('rounded-card p-2.5 ring-1 ring-hairline', i === 2 && 'hidden @3xl:block')}>
-                <Skeleton className="aspect-[16/10] w-full" />
-                <Skeleton className="mt-3 h-4 w-4/5" />
+              <div key={i} className={cn('rounded-card p-3 ring-1 ring-hairline', i === 2 && 'hidden @3xl:block')} style={{ animationDelay: `${i * 120}ms` }}>
+                {isProduct && <Skeleton className="mb-3 aspect-[16/10] w-full" />}
+                <Skeleton className="h-4 w-4/5" />
                 <Skeleton className="mt-2 h-5 w-1/3" />
+                <Skeleton className="mt-3 h-8 w-full" />
               </div>
             ))}
           </div>
@@ -367,8 +388,9 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
                 <strong className={cn('font-semibold tabular', envelopeLeft < 0 ? 'text-danger-ink' : 'text-ink')}>{envelopeLeft < 0 ? `${formatMoney(-envelopeLeft)} over` : `${formatMoney(envelopeLeft)} left`}</strong>
               </span>
             )}
+            <div className="ml-auto flex items-center gap-1">
             {current.offers.length > 0 && (
-              <div className="ml-auto flex items-center gap-1">
+              <>
                 <Select aria-label="Sort options" value={sort} onChange={e => setSort(e.target.value as Sort)} className="h-8 w-auto border-transparent bg-transparent text-caption hover:bg-hover">
                   <option value="recommended">Best match</option>
                   <option value="price_asc">Lowest price</option>
@@ -377,8 +399,14 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
                 <Button size="sm" variant="text" icon={<SlidersHorizontal />} onClick={() => setMoreFilters(v => !v)} aria-expanded={moreFilters} className="text-caption text-graphite">
                   Filters{activeFilters ? ` (${activeFilters})` : ''}
                 </Button>
-              </div>
+              </>
             )}
+            {!isProduct && !showForm && (
+              <Button size="sm" variant="text" icon={<Search />} onClick={() => setFormOpen(true)} disabled={research.isPending} className="text-caption text-graphite">
+                New search
+              </Button>
+            )}
+            </div>
           </div>
 
           {moreFilters && current.offers.length > 0 && (
@@ -449,9 +477,9 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
               }
             />
           ) : (
-            <ul className="grid grid-cols-1 gap-3 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
-              {offers.map(o => (
-                <li key={o.id} className="flex">
+            <ul key={current.id} className="grid grid-cols-1 gap-3 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
+              {offers.map((o, oi) => (
+                <motion.li key={o.id} className="flex" initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: Math.min(oi, 8) * 0.04 }}>
                   <OfferCard
                     offer={o}
                     tier={isProduct && current.offers.length > 1 ? tiers.get(o.id) : undefined}
@@ -475,7 +503,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
                     }}
                     onContact={() => setContact(o)}
                   />
-                </li>
+                </motion.li>
               ))}
             </ul>
           )}

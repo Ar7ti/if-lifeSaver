@@ -82,7 +82,7 @@ export function SellerMessageDialog({ offer, onClose }: { offer: Offer | null; o
           />
         </div>
         {generate.isPending ? (
-          <div className="flex flex-col gap-2 rounded-button border border-hairline p-3" aria-label="Writing draft">
+          <div role="status" className="flex flex-col gap-2 rounded-button border border-hairline p-3" aria-label="Writing draft">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-11/12" />
             <Skeleton className="h-4 w-3/4" />
