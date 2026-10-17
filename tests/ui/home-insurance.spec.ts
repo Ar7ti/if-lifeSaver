@@ -6,15 +6,17 @@ let moving:LifeProject;let travel:LifeProject;
 test.beforeAll(async({request})=>{
  for(const [scenario,message]of [['moving','Moving to Turku with €2000 on 2027-06-10'],['travel','Travel to Rome with €900']] as const){const r=await request.post('/api/projects',{data:{message}});expect(r.status()).toBe(201);const p=(await r.json()).project;if(scenario==='moving')moving=p;else travel=p;}
 });
-const section=(page:Page)=>page.getByRole('region',{name:'Home insurance with If'});
+const section=(page:Page)=>page.getByRole('region',{name:'Home insurance quote'});
+/** The quote flow opens on request (progressive disclosure), or by itself once started. */
+const openHome=async(page:Page)=>{const card=section(page);await page.locator('#project-title').waitFor();if(!(await card.isVisible()))await page.getByRole('region',{name:'If Smart Protection'}).getByRole('button',{name:'Check home insurance',exact:true}).click();await expect(card).toBeVisible();return card;};
 
 test('real backend unavailable flow prepares reusable details without collecting identity or requesting quotes',async({page})=>{
  let quotes=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/home-insurance/quote'))quotes++;});
- await page.goto(`/app/p/${moving.id}`);const card=section(page);await expect(card).toBeVisible();await expect(card.getByText('Live quote unavailable',{exact:true})).toBeVisible();
- await expect(card.getByLabel('City',{exact:true})).toHaveValue('Turku');await expect(card.getByLabel('Requested start date',{exact:true})).toHaveValue('2027-06-10');
+ await page.goto(`/app/p/${moving.id}`);const card=await openHome(page);await expect(card.getByText('Live quote unavailable',{exact:true})).toBeVisible();
+ await expect(card.getByLabel('City',{exact:true})).toHaveValue('Turku');await expect(card.getByLabel('Cover starts',{exact:true})).toHaveValue('2027-06-10');
  await expect(card.locator('input[type=password]')).toHaveCount(0);expect(quotes).toBe(0);
- await card.getByLabel('Street address',{exact:true}).fill('Test street 1 A 2');await card.getByLabel('Home postal code',{exact:true}).fill('20100');await card.getByLabel('Home type',{exact:true}).selectOption('Apartment');await card.getByLabel('Living area (m²)',{exact:true}).fill('45');await card.getByLabel('Your current postal code',{exact:true}).fill('00100');
- await card.getByRole('button',{name:'Save home details',exact:true}).click();await expect(card.getByRole('status').filter({hasText:'Home details saved'})).toBeVisible();
+ await card.getByLabel('Street address',{exact:true}).fill('Test street 1 A 2');await card.getByLabel('Postal code',{exact:true}).fill('20100');await card.getByRole('radio',{name:'Apartment',exact:true}).check();await card.getByLabel('Living area (m²)',{exact:true}).fill('45');await card.getByLabel('Your current postal code',{exact:true}).fill('00100');
+ await card.getByRole('button',{name:'Save details',exact:true}).click();await expect(card.getByRole('status').filter({hasText:'Home details saved'})).toBeVisible();
  const p=(await(await page.request.get(`/api/projects/${moving.id}`)).json()).project;expect(p.homeInsurance.details.livingSpace).toBe(45);expect(p.homeInsurance.quote).toBeNull();
  await page.reload();await expect(card.getByLabel('Street address',{exact:true})).toHaveValue('Test street 1 A 2');await card.getByRole('button',{name:'Request If quote',exact:true}).click();await expect(card.getByRole('status').filter({hasText:'Approved If partner credentials'}).last()).toBeVisible();expect(quotes).toBe(0);await expect(card).not.toContainText('€');
  await card.screenshot({path:'test-results/if-home-desktop.png'});
@@ -25,7 +27,7 @@ test('home insurance appears only in moving projects',async({page})=>{
 });
 
 test('mobile insurance form stays within the viewport with visible actions',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.goto(`/app/p/${moving.id}`);const card=section(page);await expect(card).toBeVisible();
+ await page.setViewportSize({width:390,height:844});await page.goto(`/app/p/${moving.id}`);const card=await openHome(page);
  const bounds=await card.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(391);
  expect(await card.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBeTruthy();await card.getByRole('button',{name:'Request If quote',exact:true}).scrollIntoViewIfNeeded();await expect(card.getByRole('button',{name:'Request If quote',exact:true})).toBeInViewport();
  await card.screenshot({path:'test-results/if-home-mobile.png'});
@@ -50,13 +52,13 @@ test('explicit quote request shows sourced coverage and billing period; adding a
  // Enter while editing must not implicitly send personal information to If.
  await card.getByLabel('Street address',{exact:true}).focus();await page.keyboard.press('Enter');await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve())));expect(quoteRequests).toBe(0);
  await card.getByRole('button',{name:'Request If quote',exact:true}).click();
- await expect(card.getByText('Quote returned by If',{exact:true})).toBeVisible();expect(quoteRequests).toBe(1);await expect(card).toContainText('€12.50');await expect(card).toContainText('Monthly');await expect(card.locator('input[type=password]')).toHaveValue('');
- await card.getByText('Test coverage · Selected by If',{exact:true}).click();await expect(card.getByText('Coverage text returned by the test provider.',{exact:true})).toBeVisible();
- await card.getByLabel('Months to include in your moving budget',{exact:true}).selectOption('3');await expect(card).toContainText('€37.50');await card.getByRole('button',{name:'Add quote as proposed expense',exact:true}).click();
- await expect(card.getByText('Proposed in your plan',{exact:true})).toBeVisible();expect(proposals).toBe(1);await expect(page.locator('#w-budget')).toContainText('Your 3-month plan includes €37.50');await expect(card).toContainText('This is not a purchased policy');
+ await expect(card.getByText('Price returned by If',{exact:true})).toBeVisible();expect(quoteRequests).toBe(1);await expect(card).toContainText('€12.50');await expect(card).toContainText('Monthly');await expect(card.locator('input[type=password]')).toHaveValue('');
+ await card.getByText('What’s covered',{exact:true}).click();await card.locator('summary',{hasText:'Test coverage'}).click();await expect(card.getByText('Coverage text returned by the test provider.',{exact:true})).toBeVisible();
+ await card.getByLabel('Plan for',{exact:true}).selectOption('3');await expect(card).toContainText('€37.50');await card.getByRole('button',{name:'Add to budget',exact:true}).click();
+ await expect(card.getByText(/In your budget · proposed, not purchased/)).toBeVisible();expect(proposals).toBe(1);await expect(page.locator('#w-budget')).toContainText('Your 3-month plan includes €37.50');await expect(card).toContainText('not purchased');
  const saved=await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}));expect(saved).not.toContain(testIdentity);await expect(page.locator('body')).not.toContainText(testIdentity);
  // A persisted annual choice must not reset to the first (monthly) price on reload.
  project.homeInsurance!.quote!.premiums.push({amountMinor:12000,grossMinor:12000,discountMinor:0,currency:'EUR',billingPeriod:'Annual',periodMonths:12});
  project.homeInsurance!.expense={...project.homeInsurance!.expense!,premiumMinor:12000,billingPeriod:'Annual',periodMonths:12,planningMonths:12,installments:1,plannedMinor:12000,annualEquivalentMinor:12000};
- await page.reload();await expect(card.getByLabel('Price and billing period',{exact:true})).toHaveValue('1');await expect(card.getByLabel('Price and billing period',{exact:true})).toBeDisabled();await expect(card).toContainText('€120.00');
+ await page.reload();await expect(card.getByRole('radio',{name:/Annual/})).toBeChecked();await expect(card.getByRole('radio',{name:/Annual/})).toBeDisabled();await expect(card).toContainText('€120.00');
 });

@@ -1,35 +1,73 @@
 import { Link } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { ShieldCheck,ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useApi } from '@/api';
 import { useProjects } from '@/stores/projects';
 import { projectKey,useProjectWriter } from '@/hooks/useProject';
 import { PageContainer,PageHeader } from './PageHeader';
-import { protectionLabels } from '@/features/workspace/ProtectionSection';
-import { Button } from '@/components/ui/Button';
+import { Button, buttonClass } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/States';
 import { formatMoney } from '@/lib/format';
+import { cn } from '@/lib/cn';
+import { PRODUCT_NAME, ProductTile, SourceBadge, StatusPill } from '@/features/protection/ui';
 import type { LifeProject,ProtectionRecommendation } from '@contracts';
 
+/** One compact row per recommendation: what, where, status, price, budget, next action. */
 function ProtectionRow({project,rec}:{project:LifeProject;rec:ProtectionRecommendation}){
  const writer=useProjectWriter(project.id);const quote=project.protection?.car.quotes.at(-1);const home=project.homeInsurance?.quote;
  const reopen=async()=>{try{writer.setProject(await writer.api.updateProtection(project.id,{product:rec.insuranceType,status:'in_progress'}));}catch(e){writer.fail(e);}};
- return <article className="card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-caption font-medium uppercase tracking-[0.08em] text-graphite">{rec.insuranceType} · {project.title}</p><h3 className="mt-2 text-body font-semibold">{protectionLabels[rec.status]}</h3></div><ShieldCheck className="size-5 text-[#003b5c]"/></div>
-  <p className="mt-3 text-body-sm text-graphite">{rec.status==='already_insured_self_reported'?'Existing insurance was reported by you. No policy or coverage has been independently verified.':rec.status==='reviewed'?'You marked this reviewed. This does not mean insurance was purchased.':rec.explanation}</p>
-  {rec.insuranceType==='car'&&quote&&<div className="mt-3 rounded-button bg-canvas p-3 text-body-sm"><p className="font-medium">{quote.sourceMode==='demo'?'Demo quote — not an official If insurance price.':quote.sourceMode==='sandbox'?'If sandbox test data':'If returned prices'} · {quote.status}</p>{quote.options.map(o=><p key={o.id} className="mt-1">{o.title}: {o.prices.map(v=>`${formatMoney(v.amountMinor,{exact:true})} / ${v.billingPeriod}`).join(' · ')}</p>)}<p className="mt-2 text-caption">{quote.validUntil?`Valid until ${quote.validUntil}`:'No expiry supplied. Recheck before relying on the price.'}</p></div>}
-  {rec.insuranceType==='home'&&home&&<p className="mt-3 rounded-button bg-canvas p-3 text-body-sm">{home.environment==='sandbox'?'If sandbox test quote':'Saved If home quote'} · {home.premiums.map(p=>`${formatMoney(p.amountMinor,{exact:true})} / ${p.billingPeriod}`).join(' · ')} · Valid through {home.validTo}</p>}
-  {rec.insuranceType==='car'&&project.protection?.car.budgetLink&&<p className="mt-3 text-body-sm">Proposed ownership expense: {formatMoney(project.protection.car.budgetLink.plannedMinor)} / {project.protection.car.budgetLink.planningMonths} planning months{project.protection.car.budgetLink.needsReview?' · Needs revalidation':''}.</p>}
-  {rec.insuranceType==='home'&&project.homeInsurance?.expense&&<p className="mt-3 text-body-sm">Proposed home expense: {formatMoney(project.homeInsurance.expense.plannedMinor)} / {project.homeInsurance.expense.planningMonths} planning months.</p>}
-  <div className="mt-4 flex flex-wrap items-center gap-3"><Link to={`/app/p/${project.id}#protection`} onClick={()=>void reopen()} className="inline-flex items-center gap-1.5 text-body-sm font-medium text-blue-ink hover:underline">Open protection in workspace<ArrowRight className="size-3"/></Link>{rec.status!=='dismissed'&&<Button size="sm" onClick={async()=>{try{writer.setProject(await writer.api.updateProtection(project.id,{product:rec.insuranceType,status:'dismissed'}));}catch(e){writer.fail(e);}}}>Not now</Button>}</div>
- </article>;
+ const carLink=rec.insuranceType==='car'?project.protection?.car.budgetLink:null;
+ const homeExpense=rec.insuranceType==='home'?project.homeInsurance?.expense:null;
+ const price=rec.insuranceType==='car'&&quote?{source:quote.sourceMode,options:quote.options.map(o=>`${o.title}: ${o.prices.map(v=>`${formatMoney(v.amountMinor,{exact:true})} / ${v.billingPeriod}`).join(' · ')}`),valid:quote.validUntil?`Valid until ${quote.validUntil}`:'No expiry supplied · recheck before relying on it',state:quote.status}
+  :rec.insuranceType==='home'&&home?{source:home.environment,options:[home.premiums.map(p=>`${formatMoney(p.amountMinor,{exact:true})} / ${p.billingPeriod}`).join(' · ')],valid:`Valid through ${home.validTo}`,state:'available' as const}:null;
+ const note=rec.status==='already_insured_self_reported'?'You said you already have cover. It hasn’t been verified here.':rec.status==='reviewed'?'Marked as reviewed. This doesn’t mean insurance was bought.':rec.status==='dismissed'?'Postponed. Reopen it whenever you’re ready.':rec.explanation;
+ return <li className="card p-4 sm:p-5">
+  <div className="flex items-start gap-3.5">
+   <ProductTile product={rec.insuranceType} size="sm"/>
+   <div className="min-w-0 flex-1">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+     <h3 className="text-body font-medium">{PRODUCT_NAME[rec.insuranceType]}<span className="font-normal text-graphite"> · {project.title}</span></h3>
+     <StatusPill status={rec.status}/>
+    </div>
+    <p className="mt-1 text-body-sm text-graphite">{note}</p>
+    {price&&<div className="mt-3 rounded-[12px] bg-canvas px-3.5 py-3">
+     <SourceBadge source={price.source}/>
+     {price.options.map(o=><p key={o} className="mt-2 text-body-sm font-medium tabular">{o}</p>)}
+     <p className="mt-1 text-caption text-graphite">{price.valid}{price.state!=='available'?` · ${price.state}`:''}</p>
+    </div>}
+    {(carLink||homeExpense)&&<p className="mt-2 flex flex-wrap items-center gap-1.5 text-body-sm"><span className="emoji" aria-hidden>💸</span>In budget: <strong className="font-semibold tabular">{formatMoney((carLink??homeExpense)!.plannedMinor)}</strong><span className="text-graphite">over {(carLink??homeExpense)!.planningMonths} months · proposed{carLink?.needsReview?' · needs revalidation':''}</span></p>}
+    <div className="mt-3 flex flex-wrap items-center gap-1">
+     <Link to={`/app/p/${project.id}#protection`} onClick={()=>{if(['detected','suggested','dismissed'].includes(rec.status))void reopen();}} className={buttonClass('ghost','sm','group')}>Open in workspace<ArrowRight className="transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden/></Link>
+     {rec.status!=='dismissed'&&<Button size="sm" variant="text" className="text-graphite" onClick={async()=>{try{writer.setProject(await writer.api.updateProtection(project.id,{product:rec.insuranceType,status:'dismissed'}));}catch(e){writer.fail(e);}}}>Not now</Button>}
+    </div>
+   </div>
+  </div>
+ </li>;
 }
+
+const GROUPS=[
+ {key:'attention',title:'Needs attention',filter:(r:ProtectionRecommendation)=>['quote_expired','quote_unavailable'].includes(r.status)},
+ {key:'quotes',title:'Prices received',filter:(r:ProtectionRecommendation)=>r.status==='quote_available'},
+ {key:'recommended',title:'Recommended for you',filter:(r:ProtectionRecommendation)=>['detected','suggested','in_progress'].includes(r.status)},
+ {key:'done',title:'Reviewed or postponed',filter:(r:ProtectionRecommendation)=>['dismissed','reviewed','already_insured_self_reported'].includes(r.status)},
+];
+
 export function MyProtection(){
  const api=useApi();const known=useProjects(s=>s.projects).filter(p=>p.source===api.source);
  const results=useQueries({queries:known.map(p=>({queryKey:projectKey(api.source,p.id),queryFn:()=>api.getProject(p.id),retry:false}))});
  const rows=results.flatMap(q=>q.data?(q.data.protection?.recommendations??[]).map(rec=>({project:q.data!,rec})):[]);
- return <PageContainer><PageHeader title="My Protection" description="Insurance planning across your workspaces. This is not an official If policy account; active cover is not verified here."/>
-  {results.some(q=>q.isPending)&&<p role="status" className="mb-5 text-body-sm text-graphite">Loading protection from your saved workspaces…</p>}
-  {results.some(q=>q.isError)&&<p role="alert" className="mb-5 rounded-button bg-warn-tint p-3 text-body-sm text-warn-ink">Some workspaces could not be loaded. Check the connection and reload; their records have not been removed.</p>}
-  {!rows.length&&!results.some(q=>q.isPending)&&<div className="card p-8"><ShieldCheck className="mb-4 size-7 text-graphite"/><h2 className="text-subheading font-semibold">Plan your next chapter first</h2><p className="mt-2 text-body-sm text-graphite">Open or create a moving, car purchase or travel workspace to see relevant protection. Only workspaces known to this browser are listed.</p><Link to="/app/new" className="mt-4 inline-block text-blue-ink hover:underline">Create a workspace</Link></div>}
-  {[{title:'Needs attention',filter:(r:ProtectionRecommendation)=>['quote_expired','quote_unavailable'].includes(r.status)},{title:'Quotes and estimates',filter:(r:ProtectionRecommendation)=>r.status==='quote_available'},{title:'Recommended for you',filter:(r:ProtectionRecommendation)=>['detected','suggested','in_progress'].includes(r.status)},{title:'Already reviewed or postponed',filter:(r:ProtectionRecommendation)=>['dismissed','reviewed','already_insured_self_reported'].includes(r.status)}].map(group=>{const items=rows.filter(r=>group.filter(r.rec));return items.length?<section key={group.title} className="mb-8"><h2 className="mb-3 text-subheading font-semibold">{group.title}</h2><div className="grid gap-4 lg:grid-cols-2">{items.map(r=><ProtectionRow key={r.rec.id} {...r}/>)}</div></section>:null;})}
+ const loading=results.some(q=>q.isPending);
+ const inBudget=rows.reduce((sum,r)=>sum+(r.rec.insuranceType==='car'?r.project.protection?.car.budgetLink?.plannedMinor??0:r.rec.insuranceType==='home'?r.project.homeInsurance?.expense?.plannedMinor??0:0),0);
+ const counts=GROUPS.map(g=>({...g,count:rows.filter(r=>g.filter(r.rec)).length}));
+ return <PageContainer className="max-w-[960px]"><PageHeader title="My Protection" description="Insurance planning across your workspaces. Not an If policy account: active cover isn’t verified here."/>
+  {results.some(q=>q.isError)&&<p role="alert" className="mb-5 rounded-button bg-warn-tint px-3.5 py-2.5 text-body-sm text-warn-ink">Some workspaces couldn&rsquo;t be loaded. Check the connection and reload; nothing has been removed.</p>}
+  {loading&&!rows.length?<div className="flex flex-col gap-3" role="status" aria-label="Loading protection"><Skeleton className="h-20 rounded-[20px]"/><Skeleton className="h-36 rounded-[20px]"/><Skeleton className="h-36 rounded-[20px]"/></div>
+  :!rows.length?<div className="card flex flex-col items-center p-10 text-center"><img src="/illustrations/guide.png" alt="" width="72" height="72" className="size-16 object-contain" aria-hidden/><h2 className="mt-3 text-subheading font-medium">Nothing to protect yet</h2><p className="mt-2 max-w-sm text-body-sm text-graphite">Plan a move, a car purchase or a trip, and relevant insurance shows up here. Only workspaces from this browser are listed.</p><Link to="/app/new" className={buttonClass('primary','md','mt-5')}>Start a life project</Link></div>
+  :<>
+   <dl className="mb-8 grid grid-cols-2 gap-px overflow-hidden rounded-[20px] bg-black/[0.06] shadow-[0_0_0_1px_rgb(0_0_0/0.04)] sm:grid-cols-4">
+    {[...counts.slice(0,3).map(c=>({label:c.title,value:String(c.count),alert:c.key==='attention'&&c.count>0})),{label:'Planned in budgets',value:formatMoney(inBudget),alert:false}].map(s=><div key={s.label} className="bg-surface px-4 py-3.5"><dt className="text-caption text-graphite">{s.label}</dt><dd className={cn('mt-0.5 text-[22px] font-semibold tracking-[-0.5px] tabular',s.alert&&'text-warn-ink')}>{s.value}</dd></div>)}
+   </dl>
+   {counts.map(group=>{const items=rows.filter(r=>group.filter(r.rec));return items.length?<section key={group.key} aria-labelledby={`pg-${group.key}`} className="mb-8"><h2 id={`pg-${group.key}`} className="mb-3 flex items-center gap-2 text-[11px] font-medium tracking-[0.08em] text-graphite uppercase">{group.title}<span className="tabular" aria-hidden>{items.length}</span></h2><ul className="flex flex-col gap-3">{items.map(r=><ProtectionRow key={`${r.project.id}-${r.rec.id}`} {...r}/>)}</ul></section>:null;})}
+  </>}
  </PageContainer>;
 }
