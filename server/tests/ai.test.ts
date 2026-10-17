@@ -183,6 +183,24 @@ test('OpenAI assistant drops invalid, unknown, and ungrounded commands', async (
   assert.deepEqual(result.explanations, ['valid comparison']);
 });
 
+test('model guesses never turn unknown delivery and used-item preferences into hard filters',async()=>{
+  const local=await createPlanner(options).createProject(input);
+  const planner=createPlannerWithClient({mode:'openai',model:'test',timeoutMs:1000},async()=>({
+    status:'completed',output:[],output_parsed:{...local,preferences:{...local.preferences,deliveryRequired:true,allowUsed:false},aiMode:'openai'},
+  }));
+  const unknown=await planner.createProject(input);
+  assert.equal(unknown.preferences.deliveryRequired,null);
+  assert.equal(unknown.preferences.allowUsed,null);
+  assert.ok(unknown.questions.some(q=>/delivery/i.test(q)));
+  assert.ok(unknown.questions.some(q=>/used/i.test(q)));
+  const explicit=await planner.createProject({...input,message:input.message+'. Delivery required. New only.'});
+  assert.equal(explicit.preferences.deliveryRequired,true);
+  assert.equal(explicit.preferences.allowUsed,false);
+  const noDelivery=await planner.createProject({...input,message:input.message+". I don't need delivery. Used is okay."});
+  assert.equal(noDelivery.preferences.deliveryRequired,false);
+  assert.equal(noDelivery.preferences.allowUsed,true);
+});
+
 test('OpenAI assistant replaces unsupported completion claims', async () => {
   const planner = createPlannerWithClient({mode: 'openai', model: 'test', timeoutMs: 1000}, async () => ({
     status: 'completed', output: [], output_parsed: {

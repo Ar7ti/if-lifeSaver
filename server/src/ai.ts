@@ -80,8 +80,8 @@ function hasExplicitEuroBudget(message: string): boolean {
 }
 
 function localPreferences(message: string, moveDate: string | null) {
-  const deliveryRequired = /\b(?:need|require|must have)\s+delivery\b|\bdelivery\s+(?:required|needed)\b/i.test(message) ? true
-    : /\b(?:no delivery|delivery not (?:needed|required)|pickup (?:is )?(?:fine|okay|ok))\b/i.test(message) ? false : null;
+  const deliveryRequired = /\b(?:no delivery|delivery (?:is )?not (?:needed|required)|(?:do not|don't) (?:need|require) delivery|pickup (?:is )?(?:fine|okay|ok)|(?:can|will) collect)\b/i.test(message) ? false
+    : /\b(?:need|require|must have|want)\s+(?:home\s+)?delivery\b|\bdelivery\s+(?:is\s+)?(?:required|needed)\b/i.test(message) ? true : null;
   const allowUsed = /\b(?:new only|only new|no used|avoid used|no secondhand|no second-hand)\b/i.test(message) ? false
     : /\b(?:used|secondhand|second-hand)\s+(?:is\s+)?(?:fine|okay|ok|allowed|acceptable)\b|\b(?:open to|allow)\s+(?:used|secondhand|second-hand)\b/i.test(message) ? true : null;
   const notes = /\b(?:mov(?:e|ing)|relocat(?:e|ing))\b[^.!?\n]{0,100}\bnext month\b/i.test(message)
@@ -315,12 +315,18 @@ export function createPlannerWithClient(options: PlannerOptions, parse: PlannerP
       const preferences = {
         ...blueprint.preferences,
         moveDate: local.preferences.moveDate,
-        deliveryRequired: local.preferences.deliveryRequired ?? blueprint.preferences.deliveryRequired,
-        allowUsed: local.preferences.allowUsed ?? blueprint.preferences.allowUsed,
+        // These are hard research filters. An ungrounded model boolean must never
+        // exclude options; leave it unknown until stated or edited by the user.
+        deliveryRequired: local.preferences.deliveryRequired,
+        allowUsed: local.preferences.allowUsed,
         notes: local.preferences.notes || blueprint.preferences.notes,
       };
+      if (blueprint.scenarioType === 'moving') {
+        if (preferences.deliveryRequired === null && !questions.some(q=>/delivery|collect|pickup/i.test(q))) questions.push('Do you need delivery, or can you collect items?');
+        if (preferences.allowUsed === null && !questions.some(q=>/used|second.hand|new items/i.test(q))) questions.push('Are used items acceptable, or do you want new items only?');
+      }
       return ProjectBlueprintSchema.parse({
-        ...blueprint, aiMode: 'openai', budgetMinor, questions, preferences,
+        ...blueprint, aiMode: 'openai', budgetMinor, questions: questions.slice(0,20), preferences,
         confirmedFacts: budgetMinor !== null && local.budgetMinor === null
           ? [...local.confirmedFacts, `User stated a budget of €${(budgetMinor / 100).toFixed(2)}.`]
           : local.confirmedFacts,
