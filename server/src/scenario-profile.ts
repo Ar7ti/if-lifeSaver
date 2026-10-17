@@ -13,27 +13,48 @@ const task = (title: string, category: string): TaskInput => ({title, category, 
 const numberWords: Record<string,number> = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20};
 const countValue = (value: string) => /^\d+$/.test(value) ? Number(value) : numberWords[value.toLowerCase()] ?? null;
 
-function euroBudget(message: string): number|null {
-  const clause = /\b(?:budget|can spend|have to spend|spending limit|with)\b[^.!?\n]{0,100}/i.exec(message)?.[0] ?? '';
-  if (/\$|£|\b(?:usd|dollars?|gbp|pounds?|cad|aud|sek|kronor|krona|jpy|yen)\b/i.test(clause)) return null;
-  const goalLimit = /\b(?:buy|buying|purchase|purchasing)\b[^.!?\n]{0,70}\b(?:car|vehicle|van|suv)\b|\b(?:travel|trip|holiday|vacation)\b/i.test(message);
-  const amount = String.raw`([0-9]{1,3}(?:[.,\s][0-9]{3})+|[0-9]+)(?:([.,])([0-9]{1,2}))?`;
-  const match = [
-    new RegExp(String.raw`\b(?:budget|can spend|have to spend|spending limit)\s*(?:of|is|:|around|about)?\s*(?:€|EUR\s*)?\s*${amount}\s*(?:€|euros?\b|eur\b)?`, 'i'),
-    new RegExp(String.raw`\bwith\s+(?:€|EUR\s*)\s*${amount}`, 'i'),
-    new RegExp(String.raw`\bwith\s+${amount}\s*(?:€|euros?\b|eur\b)`, 'i'),
-    ...(goalLimit ? [new RegExp(String.raw`\b(?:under|up to|no more than|maximum|max)\s*(?:€|EUR\s*)\s*${amount}\s*(?:€|euros?\b|eur\b)?`, 'i')] : []),
-    ...(/\b(?:buy|buying|purchase|purchasing)\b[^.!?\n]{0,70}\b(?:car|vehicle|van|suv)\b/i.test(message)
-      ? [new RegExp(String.raw`\b(?:car|vehicle|van|suv)\b[^.!?\n]{0,35}\bfor\s*(?:€|EUR\s*)\s*${amount}\s*(?:€|euros?\b|eur\b)?`, 'i')] : []),
-  ].map(re => re.exec(message)).find(Boolean);
-  if (!match) return null;
-  const minor = Number(match[1]!.replace(/[.,\s]/g, '')) * 100 + Number((match[3] ?? '').padEnd(2, '0'));
+const euroAmount = String.raw`(?:[0-9]{1,3}(?:[.,\s][0-9]{3})+(?:[.,][0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)`;
+const euroToken = String.raw`(?:€\s*${euroAmount}|EUR\s*${euroAmount}|${euroAmount}\s*(?:€|euros?\b|EUR\b))`;
+const foreignCurrency = /\$|£|\b(?:usd|dollars?|gbp|pounds?|cad|aud|sek|kronor|krona|jpy|yen)\b/i;
+
+function toMinor(amount: string): number|null {
+  const compact = amount.replace(/\s/g,'');
+  const decimal = /[.,]\d{1,2}$/.exec(compact)?.[0];
+  const whole = decimal ? compact.slice(0,-decimal.length) : compact;
+  const minor = Number(whole.replace(/[.,]/g,''))*100 + (decimal ? Number(decimal.slice(1).padEnd(2,'0')) : 0);
   return Number.isSafeInteger(minor) && minor <= 1_000_000_000 ? minor : null;
+}
+
+/** Parse only a stated EUR total or limit. Item listings and bare numbers are not budgets. */
+export function parseExplicitBudget(message: string): number|null {
+  const text = message.trim();
+  if(foreignCurrency.test(text)&&!/(?:€|\bEUR\b|\beuros?\b)/i.test(text))return null;
+  const budgetClause = /\b(?:budget|can spend|have to spend|spending limit|with|under|up to|no more than|maximum|max)\b[^.!?\n]{0,100}/i.exec(text)?.[0] ?? '';
+  if (foreignCurrency.test(budgetClause)) return null;
+  const goalLimit = /\b(?:buy|buying|purchase|purchasing)\b[^.!?\n]{0,70}\b(?:car|vehicle|van|suv)\b|\b(?:travel(?:l?ing)?|going|trip|holiday|vacation|flying)\b/i.test(text);
+  const carGoal = /\b(?:buy|buying|purchase|purchasing)\b[^.!?\n]{0,70}\b(?:car|vehicle|van|suv)\b/i.test(text);
+  const patterns = [
+    new RegExp(String.raw`\b(?:budget|can spend|have to spend|spending limit)\s*(?:of|is|:|around|about)?\s*(?:€|EUR\s*)?\s*(${euroAmount})(?!\d)(?:\s*(?:€|euros?\b|EUR\b))?`,'i'),
+    new RegExp(String.raw`\bwith\s*(${euroToken})(?!\d)`,'i'),
+    new RegExp(String.raw`\bwith\s*(${euroAmount})\s+budget\b`,'i'),
+    new RegExp(String.raw`(${euroToken})\s+budget\b`,'i'),
+    ...(goalLimit ? [new RegExp(String.raw`\b(?:under|up to|no more than|maximum|max)\s*(${euroToken})(?!\d)`,'i')] : []),
+    ...(carGoal ? [new RegExp(String.raw`\b(?:car|vehicle|van|suv)\b[^.!?\n]{0,35}\bfor\s*(${euroToken})(?!\d)`,'i')] : []),
+    new RegExp(String.raw`^\s*(${euroToken})\s*[.!?]?\s*$`,'i'),
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (!match?.[1]) continue;
+    const amount = new RegExp(euroAmount).exec(match[1])?.[0];
+    if (amount) return toMinor(amount);
+  }
+  return null;
 }
 
 function scenario(message: string): ScenarioType {
   if (/\b(?:buy|buying|purchase|purchasing|looking for|need)\b[^.!?\n]{0,50}\b(?:car|vehicle|van|suv)\b|\b(?:car|vehicle) purchase\b/i.test(message)) return 'car_purchase';
-  if (/\b(?:travel|trip|holiday|vacation|visit|flight|hotel|nights? abroad)\b/i.test(message)) return 'travel';
+  if (/\b(?:travel(?:l?ing)?|trip|holiday|vacation|visit(?:ing)?|fly(?:ing)?|flight|hotel|nights? abroad)\b/i.test(message)
+    || /\bgoing\s+(?:to\s+)?(?!to\b|buy\b|move\b|furnish\b|study\b|school\b|college\b|university\b|work\b|a\b|an\b|the\b)[\p{L}'-]+/iu.test(message)) return 'travel';
   if (/\b(?:furnish|furnishing|furniture|decorate|bedroom setup|buy a sofa)\b/i.test(message) && !/\b(?:mov(?:e|ing)|relocat(?:e|ion|ing))\b/i.test(message)) return 'home_furnishing';
   if (/\b(?:student|university|college|campus|semester|dorm|studies|studying|course|courses|tuition)\b/i.test(message)) return 'student_life';
   if (/\b(?:mov(?:e|ing)|relocat(?:e|ion|ing)|muut(?:to|an|taa))\b/i.test(message)) return 'moving';
@@ -43,24 +64,30 @@ function scenario(message: string): ScenarioType {
 function destination(message: string, type: ScenarioType): string|null {
   if (type === 'car_purchase') return clean(/\b(?:in|near|around)\s+([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:under|for|with|budget|to)|[,.!?]|$)/iu.exec(message)?.[1] ?? '') || null;
   if (type === 'travel') {
-    const route = /\b(?:travel|traveling|trip|fly|flying)\s+from\s+[\p{L}][\p{L} '-]{1,70}?\s+to\s+([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:for|on|in|with|under|budget)|[,.!?]|$)/iu.exec(message);
+    const route = /\b(?:travel(?:l?ing)?|trip|fly(?:ing)?|going)\s+from\s+[\p{L}][\p{L} '-]{1,70}?\s+to\s+([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:for|on|in|with|under|budget)|[,.!?]|$)/iu.exec(message);
     if (route?.[1]) return clean(route[1]);
   }
   const verb = type === 'moving' ? String.raw`(?:mov(?:e|ing)\s+to|relocat(?:e|ing)\s+to|muut(?:an|taa|to)\s+)`
-    : type === 'travel' ? String.raw`(?:travel(?:ing)?\s+to|trip\s+to|visit(?:ing)?\s+|holiday\s+in|vacation\s+in|fly(?:ing)?\s+to)`
+    : type === 'travel' ? String.raw`(?:travel(?:l?ing)?\s+(?:to\s+)?|going\s+(?:to\s+)?|trip\s+to|visit(?:ing)?\s+|holiday\s+in|vacation\s+in|fly(?:ing)?\s+(?:to\s+)?)`
     : type === 'student_life' ? String.raw`(?:stud(?:y|ying)\s+in|university\s+in|college\s+in)` : '';
   if (!verb) return null;
-  const match = new RegExp(String.raw`\b${verb}\s*([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:next|this|in|on|by|with|for|budget|and|from|in\s+\d|for\s+\d)|[,.!?]|$)`, 'iu').exec(message);
+  const match = new RegExp(String.raw`\b${verb}\s*([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:next|this|in|on|by|with|for|budget|and|from|starting|between|\d+\s+days?|(?:one|two|three|four|five|six|seven|eight|nine|ten)\s+days?)\b|[,.!?]|$)`, 'iu').exec(message);
   const place = clean(match?.[1] ?? '');
   return /^turku$/i.test(place) ? 'Turku, Finland' : place || null;
 }
 
 function inferredPreferences(message: string, type: ScenarioType, base?: Preferences): Preferences {
-  const dates = [...message.matchAll(/\b20\d{2}-\d{2}-\d{2}\b/g)].map(m => date(m[0])).filter((v): v is string => !!v);
-  const count = /\b(?:for|with)\s+(\d{1,2})\s+(?:people|persons|travelers|travellers|guests)\b|\b(\d{1,2})\s+(?:of us|travelers|travellers|people)\b/i.exec(message);
+  const isoDates = [...message.matchAll(/\b20\d{2}-\d{2}-\d{2}\b/g)].map(m => date(m[0])).filter((v): v is string => !!v);
+  const monthNames: Record<string,number> = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  const namedDates = [...message.matchAll(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})\b/gi)]
+    .map(match => date(`${match[3]}-${String(monthNames[match[1]!.slice(0,3).toLowerCase()]).padStart(2,'0')}-${match[2]!.padStart(2,'0')}`))
+    .filter((v): v is string => !!v);
+  const dates = isoDates.length ? isoDates : namedDates;
+  const countWord = String.raw`(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)`;
+  const count = new RegExp(String.raw`\b(?:for|with)\s+(${countWord})\s+(?:people|persons|travelers|travellers|guests)\b|\b(${countWord})\s+(?:of us|travelers|travellers|people)\b`,'i').exec(message);
   const nights = /\b(\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s+nights?\b/i.exec(message);
   const days = /\b(\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s+days?\b/i.exec(message);
-  const origin = /\bfrom\s+([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:to|next|this|with|on|in)|[,.!?]|$)/iu.exec(message)?.[1]?.trim() ?? null;
+  const origin = /\bfrom\s+([\p{L}][\p{L} '-]{1,70}?)(?=\s+(?:to|next|this|with|on|in|for|starting|between)|[,.!?]|$)/iu.exec(message)?.[1]?.trim() ?? null;
   const daySpan = dates.length > 1 ? Math.round((Date.parse(`${dates[1]}T00:00:00Z`) - Date.parse(`${dates[0]}T00:00:00Z`))/86400000)+1 : null;
   const inferredEnd = type === 'travel' && dates[0] && nights ? new Date(Date.parse(`${dates[0]}T00:00:00Z`) + countValue(nights[1]!)!*86400000).toISOString().slice(0,10) : null;
   const deliveryRequired = /\b(?:no delivery|delivery (?:is )?not (?:needed|required)|(?:do not|don't) (?:need|require) delivery|pickup (?:is )?(?:fine|okay|ok)|(?:can|will) collect)\b/i.test(message) ? false
@@ -77,10 +104,10 @@ function inferredPreferences(message: string, type: ScenarioType, base?: Prefere
     : /\b(?:no furniture|need (?:all|new) furniture|furnish from scratch)\b/i.test(message) ? false : null;
   const vehicleType = /\b(?:(?:reliable|used|new|electric|hybrid|family|small)\s+){1,3}(?:car|vehicle|van|suv)\b/i.exec(message)?.[0] ?? null;
   const inferred = {
-    moveDate: type === 'moving' ? dates[0] ?? null : null, origin: type === 'moving' || type === 'travel' ? origin : null, householdSize: type === 'moving' && count ? Number(count[1] ?? count[2]) : null,
+    moveDate: type === 'moving' ? dates[0] ?? null : null, origin: type === 'moving' || type === 'travel' ? origin : null, householdSize: type === 'moving' && count ? countValue(count[1] ?? count[2]!) : null,
     deliveryRequired, allowUsed, priorities: [], notes: type === 'moving' && /\bnext month\b/i.test(message) ? 'User said the move is next month; exact date is not specified.' : '',
     startDate: type === 'travel' ? dates[0] ?? null : null, endDate: type === 'travel' ? dates[1] ?? inferredEnd : null,
-    durationDays: type === 'travel' ? days ? countValue(days[1]!) : nights ? countValue(nights[1]!)!+1 : daySpan && daySpan > 0 ? daySpan : null : null, travelers: type === 'travel' && count ? Number(count[1] ?? count[2]) : null,
+    durationDays: type === 'travel' ? days ? countValue(days[1]!) : nights ? countValue(nights[1]!)!+1 : daySpan && daySpan > 0 ? daySpan : null : null, travelers: type === 'travel' && count ? countValue(count[1] ?? count[2]!) : null,
     ownsFurniture, ownedItems: [...ownedItems], vehicleType: type === 'car_purchase' ? vehicleType : null, useCase: null,
   };
   const saved = <K extends keyof Preferences>(key: K, value: Preferences[K]): Preferences[K] => base && Object.prototype.hasOwnProperty.call(base,key) ? base[key] : value;
@@ -100,7 +127,10 @@ export function buildScenarioProfile(input: {message: string; scenarioType?: Sce
   const scenarioType = ScenarioTypeSchema.parse(input.scenarioType ?? scenario(message));
   const preferences = inferredPreferences(message, scenarioType, input.preferences);
   const location = input.location ?? destination(message, scenarioType);
-  const budgetMinor = input.totalMinor ?? euroBudget(message);
+  // A currency-only follow-up is interpreted by conversation state, not as an
+  // initial project's total. Explicit goal budgets still parse here.
+  const standaloneAmount = new RegExp(String.raw`^\s*${euroToken}\s*[.!?]?\s*$`,'i').test(message);
+  const budgetMinor = input.totalMinor ?? (standaloneAmount ? null : parseExplicitBudget(message));
   const owned = new Set(preferences.ownedItems?.map(x => x.toLowerCase()) ?? []);
   const categories: Category[] = [];
   const add = (id: string, title: string, reason: string, weight: number) => categories.push({id,title,reason,weight});

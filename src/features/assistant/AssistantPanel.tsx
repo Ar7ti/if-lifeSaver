@@ -43,6 +43,8 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
       const { title, detail } = describeError(e);
       push(project.id, { role: 'error', text: `${title}. ${detail}` });
       writer.reloadOnConflict(e);
+      // Explicit answers can be saved before an upstream model failure.
+      void writer.refresh();
     },
   });
   const elapsed = useElapsed(send.isPending);

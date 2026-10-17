@@ -81,3 +81,7 @@ npm run test:ui
 Browser tests start/reuse test servers on API 3002 and frontend 5174. Their real workflows use the local planner and explicitly fictional demo research. Independent backend tests mock OpenAI/search responses. Opt-in live verification: start the server with credentials, then run `cd server && npm run check:context-live`. It checks moving with owned furniture, Helsinki–Rome travel, and used-car purchasing; records sourced search outcomes and scope redirects; and leaves test projects. Empty/limited results are recorded honestly and do not imply market availability. General technical tutorials are redirected before model invocation; the model also receives a specialized scope policy. The deterministic English parser and scope rules are intentionally bounded, and unusual or multilingual phrasing may require clarification.
 
 The separate frontend mock adapter is a fixed moving fixture. For contextual planning without credentials, use the API data source with `AI_MODE=local` and optional `RESEARCH_MODE=demo`.
+
+## AI conversation recovery
+
+See [AI recovery](docs/AI_RECOVERY.md) for the project-scoped clarification flow, canonical answer updates and verified failure recovery. Existing assistant API envelopes are unchanged; optional persisted conversation metadata is described in the [contract handoff](docs/FRONTEND_HANDOFF.md). The configured provider/model remains unchanged. `npm run check:conversation-live` is an opt-in live HTTP regression check and consumes model credits.

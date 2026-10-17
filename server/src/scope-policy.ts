@@ -1,3 +1,4 @@
+import {normalizePlanningMessage,affirmative} from './conversation.js';
 import type { LifeProject } from '../../shared/contracts/index.js';
 
 export type ScopeClass='IN_SCOPE'|'CONTEXTUAL_FOLLOW_UP'|'OUT_OF_SCOPE'|'AMBIGUOUS';
@@ -15,14 +16,15 @@ const HARMFUL=/\b(make|build|create|carry|buy)\b[\s\S]{0,50}\b(bomb|explosive|we
 /** The server gate runs before any model/provider call and before mutations.
  * Positive life context never whitelists an embedded unrelated tutorial request. */
 export function classifyScope(message:string,project?:Pick<LifeProject,'scenarioType'|'originalMessage'>):ScopeDecision {
- const text=message.trim();
+ const text=normalizePlanningMessage(message.trim());
  if(SAFETY.test(text)&&!HARMFUL.test(text))return {classification:'IN_SCOPE',reason:'Safety-related assistance remains available'};
  if(HARMFUL.test(text))return {classification:'OUT_OF_SCOPE',reason:'Unsafe external actions',reply:'I can help with practical safety and risk prevention, but cannot help carry out harmful actions.'};
  if(BYPASS.test(text))return {classification:'OUT_OF_SCOPE',reason:'Attempt to override the product role',reply:redirect};
  if(COURSE_PLAN.test(text)&&!DIRECT_TUTORING.test(text)&&!/(?:then|also|and)\s+(?:teach|explain|write|debug)\b/i.test(text))return {classification:'IN_SCOPE',reason:'Education logistics and budgeting are life planning'};
  if(TUTORING.test(text))return {classification:'OUT_OF_SCOPE',reason:'General technical or creative tutoring',reply:redirect};
- if(LIFE.test(text))return {classification:'IN_SCOPE',reason:'Practical life decision'};
- if(project&&FOLLOW.test(text))return {classification:'CONTEXTUAL_FOLLOW_UP',reason:'Follow-up resolves against the saved project'};
+ if(project && (affirmative(text)||/\b(?:yeah|yep|chill|relax|there|that one|this one)\b/i.test(text)))return {classification:'CONTEXTUAL_FOLLOW_UP',reason:'Conversational continuation of the saved project'};
+ if(LIFE.test(text)||/\b(?:going|headed|heading|flying)\s+(?:from\s+.{1,60}?\s+)?to\s+\p{L}/iu.test(text))return {classification:'IN_SCOPE',reason:'Practical life decision'};
+ if(project&&(/\b(?:find|organize|organise|sleep|aviatickets|tickets)\b/i.test(text)||FOLLOW.test(text)))return {classification:'CONTEXTUAL_FOLLOW_UP',reason:'Follow-up resolves against the saved project'};
  if(/^(thanks?|thank you|hello|hi|hey|ok(?:ay)?)[!. ]*$/i.test(text))return {classification:'CONTEXTUAL_FOLLOW_UP',reason:'Conversational acknowledgment',reply:'I can help with your current plan. What would you like to work on next?'};
  return {classification:'AMBIGUOUS',reason:'No clear supported goal',reply:project?'Is this about your current plan, or another real-life decision you want to organize?':'What real-life goal would you like to plan—for example a trip, a purchase, starting university or a move?'};
 }

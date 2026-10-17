@@ -8,6 +8,7 @@ import { createWorkspace, patchWorkspace } from './workspace.js';
 import { AppError, notFound } from './errors.js';
 import { buildScenarioProfile } from './scenario-profile.js';
 import { classifyScope } from './scope-policy.js';
+import {conversation,appendTurn,extractFacts,groundedInterpretationFacts,pendingClarification,reconcileClarifications,resolveClarification,askClarification,fieldForQuestion,knownField,affirmative,negative,dismisses,normalizePlanningMessage,type Facts} from './conversation.js';
 
 export class ProjectService {
   constructor(readonly repository: ProjectRepository, private planner: Planner, private search: SearchProvider) {}
@@ -16,12 +17,68 @@ export class ProjectService {
     project.scenarios = simulateScenarios({...project,revision});
     project.risks = analyzeRisks(project);
   }
+  private reconcile(project:LifeProject) {
+    const profile=buildScenarioProfile({message:project.originalMessage,scenarioType:project.scenarioType,preferences:project.preferences,location:project.location,totalMinor:project.budget.confirmed?project.budget.totalMinor:undefined});
+    project.questions=profile.questions.filter(question=>!project.answeredQuestions?.[question]&&project.conversation?.clarifications.findLast(c=>c.field===fieldForQuestion(question,project))?.status!=='dismissed');
+    project.categoryReasons=profile.categories.map(({id,reason})=>({id,reason}));
+    const missingTypes=profile.widgetTypes.filter(type=>!project.workspace.widgets.some(widget=>widget.type===type));
+    if(missingTypes.length) {
+      const additions=createWorkspace(project.title,missingTypes,project.scenarioType).widgets;
+      const bottom=Math.max(0,...project.workspace.widgets.map(w=>w.position.y+w.position.h));
+      additions.forEach(w=>{w.position.y=Math.min(100,w.position.y+bottom);});
+      project.workspace.widgets.push(...additions);
+      project.workspace.updatedAt=new Date().toISOString();
+    }
+    if(project.preferences.ownsFurniture===true && !profile.widgetTypes.includes('product_catalog')) project.workspace.widgets.filter(w=>w.type==='product_catalog').forEach(w=>{w.visible=false;});
+    project.questions=project.questions.filter(question=>{const field=fieldForQuestion(question,project);return field==='context'||!knownField(project,field);});
+    reconcileClarifications(project);
+  }
+  private applyFacts(project:LifeProject,facts:Facts,answer?:string) {
+    const before=JSON.stringify({location:project.location,preferences:project.preferences});
+    if(facts.location!==undefined)project.location=facts.location;
+    if(facts.preferences)project.preferences={...project.preferences,...facts.preferences};
+    if(project.preferences.startDate&&project.preferences.endDate&&project.preferences.endDate<project.preferences.startDate)throw new AppError('VALIDATION_ERROR','Return date must be on or after departure');
+    if(facts.budgetMinor!==undefined) {
+      if(!project.budget.confirmed) {
+        const profile=buildScenarioProfile({message:project.originalMessage,scenarioType:project.scenarioType,preferences:project.preferences,location:project.location,totalMinor:facts.budgetMinor});
+        project.budget=allocateBudgetForPlan(facts.budgetMinor,profile.categories,10,true);
+      } else {
+        if(project.budget.allocatedMinor+project.budget.emergencyReserveMinor>facts.budgetMinor)throw new AppError('BUDGET_ALLOCATION_CONFLICT','The new budget is below your current allocations. Adjust the allocation in Budget first, then retry.',409);
+        project.budget={...project.budget,totalMinor:facts.budgetMinor,confirmed:true};
+      }
+      project.confirmedFacts=[...project.confirmedFacts.filter(f=>!/budget/i.test(f)),`User confirmed budget: EUR ${(facts.budgetMinor/100).toFixed(2)}.`].slice(-20);
+    }
+    if(before!==JSON.stringify({location:project.location,preferences:project.preferences}))for(const result of project.researchResults)if(!result.warnings.some(w=>w.startsWith('Project constraints changed')))result.warnings.push('Project constraints changed after this search; research again before selecting these offers.');
+    if(answer)for(const entry of conversation(project).clarifications)if(entry.status==='pending'&&((entry.field==='budget'&&facts.budgetMinor!==undefined)||(entry.field==='destination'&&facts.location!==undefined)||(facts.preferences&&Object.hasOwn(facts.preferences,entry.field)))&&knownField(project,entry.field))resolveClarification(project,entry,'answered',answer);
+    this.reconcile(project);
+  }
+  private repairInitialFacts(project:LifeProject) {
+    const stated=buildScenarioProfile({message:project.originalMessage});
+    if(project.scenarioType==='other'&&stated.scenarioType!=='other')project.scenarioType=stated.scenarioType;
+    const facts:Facts={};
+    if(!project.budget.confirmed&&stated.budgetMinor!==null)facts.budgetMinor=stated.budgetMinor;
+    if(!project.location&&stated.location)facts.location=stated.location;
+    const prefs:NonNullable<ProjectPatch['preferences']>={};
+    for(const [field,value]of Object.entries(stated.preferences)){
+      if(value===null||value===undefined||value===''||(Array.isArray(value)&&value.length===0))continue;
+      const current=project.preferences[field as keyof LifeProject['preferences']];
+      const hasConfirmedAnswer=project.conversation?.clarifications.some(c=>c.field===field&&c.status==='answered')||Object.keys(project.answeredQuestions??{}).some(q=>fieldForQuestion(q,project)===field);
+      if(!hasConfirmedAnswer&&(current===null||current===undefined||(Array.isArray(current)&&current.length===0)))Object.assign(prefs,{[field]:value});
+    }
+    if(Object.keys(prefs).length)facts.preferences=prefs;
+    if(Object.keys(facts).length)this.applyFacts(project,facts);else this.reconcile(project);
+  }
   async create(input: CreateProjectRequest) {
     const scope = classifyScope(input.message);
     if(scope.classification==='AMBIGUOUS') throw new AppError('SCOPE_CLARIFICATION',scope.reply??'What practical life goal would you like to plan?',422);
     if (scope.classification === 'OUT_OF_SCOPE') throw new AppError('OUT_OF_SCOPE',scope.reply??'Please describe a practical life-planning goal.',422);
     const plan = await this.planner.createProject(input);
-    const profile = buildScenarioProfile({message:input.message,scenarioType:plan.scenarioType,preferences:plan.preferences,location:plan.location,totalMinor:plan.budgetMinor??undefined});
+    const stated=buildScenarioProfile({message:input.message});
+    if(stated.scenarioType!=='other')plan.scenarioType=stated.scenarioType;
+    if(stated.budgetMinor!==null)plan.budgetMinor=stated.budgetMinor;
+    if(stated.location)plan.location=stated.location;
+    const explicitPrefs=Object.fromEntries(Object.entries(stated.preferences).filter(([,value])=>value!==null&&value!==undefined&&value!==''&&(!Array.isArray(value)||value.length>0)));
+    const profile = buildScenarioProfile({message:input.message,scenarioType:plan.scenarioType,preferences:{...plan.preferences,...explicitPrefs},location:plan.location,totalMinor:plan.budgetMinor??undefined});
     const now = new Date().toISOString();
     let budget = allocateBudgetForPlan(plan.budgetMinor ?? 0,profile.categories,10,plan.budgetMinor !== null);
     if (plan.allocation && plan.budgetMinor !== null && plan.allocation.categories.every(c=>profile.categories.some(p=>p.id===c.id))) {
@@ -34,6 +91,7 @@ export class ProjectService {
       assumptions:[...new Set([...plan.assumptions,'Category allocations and missing-data scenario costs are provisional planning estimates; review them before committing.'])],confirmedFacts:plan.confirmedFacts,questions:profile.questions,answeredQuestions:{},categoryReasons:profile.categories.map(({id,reason})=>({id,reason})),recommendationDetails:plan.recommendationDetails??profile.recommendationDetails,budget,cart:[],tasks:plan.tasks.slice(0,200).map(t=>({...t,id:randomUUID(),status:'todo',origin:plan.aiMode==='local'?'template':'ai'})),
       workspace:createWorkspace(plan.title,profile.widgetTypes,plan.scenarioType),researchResults:[],risks:[],scenarios:[],actions:[],recommendations:plan.recommendations,aiMode:plan.aiMode,createdAt:now,updatedAt:now,
     };
+    this.reconcile(project);
     this.derive(project,0);
     return this.repository.create(LifeProjectSchema.parse(project));
   }
@@ -46,9 +104,11 @@ export class ProjectService {
       if (patch.preferences) project.preferences = {...project.preferences,...patch.preferences};
       if(project.preferences.startDate && project.preferences.endDate && project.preferences.endDate < project.preferences.startDate) throw new AppError('VALIDATION_ERROR','Return date must be on or after departure');
       if (patch.budget) {
+        const wasKnown=project.budget.confirmed;
         const {categories,...fields} = patch.budget;
         project.budget = {...project.budget,...fields,confirmed:true};
         if (categories) project.budget.categories = categories.map(c=>({...c,committedMinor:0,proposedMinor:0}));
+        else if(!wasKnown&&fields.totalMinor!==undefined){const profile=buildScenarioProfile({message:project.originalMessage,scenarioType:project.scenarioType,preferences:project.preferences,location:project.location,totalMinor:fields.totalMinor});project.budget=allocateBudgetForPlan(fields.totalMinor,profile.categories,10,true);}
       }
       if (patch.tasks) for (const update of patch.tasks) {
         const task = project.tasks.find(t=>t.id===update.id);
@@ -57,23 +117,17 @@ export class ProjectService {
       }
       if (patch.answers) {
         project.answeredQuestions ??= {};
+        const knownQuestions=new Set([...project.questions,...Object.keys(project.answeredQuestions)]);
         for (const answer of patch.answers) {
-          if (!project.questions.includes(answer.question) && !Object.hasOwn(project.answeredQuestions,answer.question)) throw new AppError('VALIDATION_ERROR','Answer must refer to a project question');
+          if (!knownQuestions.has(answer.question) && !Object.hasOwn(project.answeredQuestions,answer.question)) throw new AppError('VALIDATION_ERROR','Answer must refer to a project question');
           project.answeredQuestions[answer.question]=answer.answer;
+          const field=fieldForQuestion(answer.question,project);
+          const entry=project.conversation?.clarifications.findLast(c=>c.field===field&&c.status==='pending');
+          const matched=entry??askClarification(project,field,answer.question,project.originalMessage).clarification;
+          this.applyFacts(project,extractFacts(project,answer.answer,matched),answer.answer);
         }
       }
-      const profile=buildScenarioProfile({message:project.originalMessage,scenarioType:project.scenarioType,preferences:project.preferences,location:project.location,totalMinor:project.budget.confirmed?project.budget.totalMinor:undefined});
-      project.questions=profile.questions.filter(question=>!project.answeredQuestions?.[question]);
-      project.categoryReasons=profile.categories.map(({id,reason})=>({id,reason}));
-      const missingTypes=profile.widgetTypes.filter(type=>!project.workspace.widgets.some(widget=>widget.type===type));
-      if(missingTypes.length) {
-        const additions=createWorkspace(project.title,missingTypes,project.scenarioType).widgets;
-        const bottom=Math.max(0,...project.workspace.widgets.map(w=>w.position.y+w.position.h));
-        additions.forEach(w=>{w.position.y=Math.min(100,w.position.y+bottom);});
-        project.workspace.widgets.push(...additions);
-        project.workspace.updatedAt=new Date().toISOString();
-      }
-      if(patch.preferences?.ownsFurniture===true && !profile.widgetTypes.includes('product_catalog')) project.workspace.widgets.filter(w=>w.type==='product_catalog').forEach(w=>{w.visible=false;});
+      this.reconcile(project);
       // Research is retained for audit, but stale offers cannot enter new simulations/cart.
       if (patch.location !== undefined || patch.preferences?.deliveryRequired !== undefined || patch.preferences?.allowUsed !== undefined || patch.preferences?.startDate !== undefined || patch.preferences?.endDate !== undefined || patch.preferences?.durationDays !== undefined || patch.preferences?.travelers !== undefined || patch.preferences?.ownsFurniture !== undefined || patch.preferences?.ownedItems !== undefined || patch.preferences?.vehicleType !== undefined || patch.preferences?.useCase !== undefined) {
         project.researchResults.forEach(r=> { if (!r.warnings.includes('Project constraints changed after this search; research again before selecting these offers.')) r.warnings.push('Project constraints changed after this search; research again before selecting these offers.'); });
@@ -134,21 +188,76 @@ export class ProjectService {
   deleteCart(id: string,itemId: string) { return this.repository.update(id,p=>{const index=p.cart.findIndex(i=>i.id===itemId);if(index<0)throw notFound('Cart item');p.cart.splice(index,1);this.derive(p);}); }
   scenarios(id: string) { return this.repository.update(id,p=>this.derive(p)); }
   async assistant(id: string,request: AssistantRequest):Promise<AssistantResponse> {
-    const snapshot=await this.get(id);
-    const scope=classifyScope(request.message,snapshot);
-    if(scope.classification==='OUT_OF_SCOPE'||scope.classification==='AMBIGUOUS'||scope.reply) return {reply:scope.reply??'Which part of your life plan should we work on?',proposedActions:[],workspacePatch:null};
-    const output=await this.planner.assistant(snapshot,request);
-    const seen=new Set<string>();
-    const commands=output.commands.slice(0,5).map(command=>AgentCommandSchema.parse(command)).filter(command=>{const key=JSON.stringify(command);if(seen.has(key))return false;seen.add(key);return true;});
-    let actions:AgentAction[]=[];
-    await this.repository.update(id,p=>{
-      actions=commands.map(command=>({id:randomUUID(),command,status:'proposed',requiresConfirmation:true,explanation:output.explanations[output.commands.findIndex(candidate=>JSON.stringify(candidate)===JSON.stringify(command))]??'Review and confirm this change.',result:null,createdAt:new Date().toISOString()}));
-      p.actions=[...p.actions,...actions].slice(-200);
-      // Proposals never mutate user selections; confirmation is a separate request.
+    const initial=await this.get(id);
+    let scope=classifyScope(request.message,initial);
+    if(scope.classification==='OUT_OF_SCOPE')return {reply:scope.reply!,proposedActions:[],workspacePatch:null};
+    const requestedGoal=buildScenarioProfile({message:request.message});
+    if(requestedGoal.scenarioType!=='other'&&requestedGoal.scenarioType!==initial.scenarioType&&/\b(?:i want to|i am|i'm|new project|start (?:a|another))\b/i.test(request.message)&&initial.scenarioType!=='other')return {reply:`That sounds like a separate ${requestedGoal.scenarioType.replace('_',' ')} project. Start a new project for it so your ${initial.scenarioType.replace('_',' ')} details stay together.`,proposedActions:[],workspacePatch:null};
+    const pending=pendingClarification(initial);
+    let facts=extractFacts(initial,request.message,pending);
+    let hasFacts=Object.keys(facts).length>0;
+    let resumed:string|undefined;
+    let dismissed=false;
+    // Save explicit user facts before a model call. Later provider errors cannot discard them.
+    let project=await this.repository.update(id,p=>{
+      this.repairInitialFacts(p);
+      facts=extractFacts(p,request.message,pending??pendingClarification(p));hasFacts=Object.keys(facts).length>0;
+      const state=conversation(p);
+      appendTurn(p,'user',request.message);
+      if(pending&&dismisses(request.message)){const entry=state.clarifications.find(c=>c.id===pending.id)!;resolveClarification(p,entry,'dismissed',request.message);dismissed=true;}
+      else if(pending?.field==='context'&&(affirmative(request.message)||negative(request.message))){
+        const entry=state.clarifications.find(c=>c.id===pending.id)!;
+        resolveClarification(p,entry,affirmative(request.message)?'answered':'dismissed',request.message);
+        if(affirmative(request.message))resumed=entry.context.request;else {dismissed=true;state.activeRequest=null;}
+      }
+      this.applyFacts(p,facts,request.message);
+      if(hasFacts&&pending&&knownField(p,pending.field))resumed=pending.context.request;
+      if(!hasFacts&&!affirmative(request.message)&&!dismissed)state.activeRequest=request.message;
       this.derive(p);
-    },snapshot.revision);
-    const workspace=commands.find(c=>c.type==='update_workspace');
-    return {reply:output.reply,proposedActions:actions,workspacePatch:workspace?.type==='update_workspace'?workspace.arguments:null};
+    },initial.revision);
+    const finish=async(reply:string,commands:AgentCommand[]=[],explanations:string[]=[]):Promise<AssistantResponse>=>{
+      let actions:AgentAction[]=[];
+      const saved=await this.repository.update(id,p=>{
+        let text=reply;
+        // A model cannot re-ask facts already in canonical state or restart a scope loop.
+        for(const match of text.matchAll(/[^.!?\n]*\?/g)) {
+          const question=match[0].trim();const field=fieldForQuestion(question,p);
+          if((field!=='context'&&knownField(p,field))||/is this about|real.life decision/i.test(question)){text=text.replace(match[0],'');continue;}
+          const entry=askClarification(p,field,question,conversation(p).activeRequest??request.message);
+          if(entry.clarification.attempts>=3)text=text.replace(match[0],field==='context'?'You can tell me the specific next step, or start another project.':`The ${field} detail is still missing; you can add it in Plan details. I can prepare the rest of the plan meanwhile.`);
+        }
+        text=text.trim()||'I have your saved project details. We can continue with the next planning step.';
+        actions=commands.map((command,i)=>p.actions.find(a=>a.status==='proposed'&&JSON.stringify(a.command)===JSON.stringify(command))??({id:randomUUID(),command,status:'proposed',requiresConfirmation:true,explanation:explanations[i]??'Review and confirm this change.',result:null,createdAt:new Date().toISOString()}));
+        p.actions=[...p.actions,...actions.filter(action=>!p.actions.some(existing=>existing.id===action.id))].slice(-200);appendTurn(p,'assistant',text);reply=text;this.derive(p);
+      },project.revision);
+      project=saved;
+      const workspace=commands.find(c=>c.type==='update_workspace');
+      return {reply,proposedActions:actions,workspacePatch:workspace?.type==='update_workspace'?workspace.arguments:null};
+    };
+    if(dismissed)return finish('Understood. I have kept your saved project details. Tell me the next step you want to work on.');
+    if(scope.reply&&scope.classification!=='AMBIGUOUS'&&!hasFacts&&!affirmative(request.message))return finish(scope.reply);
+    if(scope.classification==='AMBIGUOUS'&&!hasFacts&&!resumed&&!affirmative(request.message)&&this.planner.interpret) {
+      const interpreted=await this.planner.interpret(project,request);
+      scope={classification:interpreted.classification,reason:'Structured contextual interpretation',reply:interpreted.reply};
+      if(interpreted.classification==='OUT_OF_SCOPE')return finish(interpreted.reply||'I help with practical life planning and decisions.');
+      const modelFacts=groundedInterpretationFacts(project,request.message,interpreted);
+      if(Object.keys(modelFacts).length){project=await this.repository.update(id,p=>{this.applyFacts(p,modelFacts,request.message);this.derive(p);},project.revision);scope.classification='CONTEXTUAL_FOLLOW_UP';}
+      if(scope.classification==='AMBIGUOUS'&&interpreted.clarification&&!knownField(project,interpreted.clarification.field))return finish(interpreted.clarification.question);
+    }
+    if(scope.classification==='AMBIGUOUS'&&!hasFacts&&!resumed&&!affirmative(request.message)) {
+      const question=project.questions[0]??`Which part of your ${project.scenarioType.replace('_',' ')} plan would you like help with?`;
+      return finish(question);
+    }
+    const defaults=project.scenarioType==='travel'?'Find accommodation and flights for my current trip':project.scenarioType==='car_purchase'?'Find vehicles for my current car purchase':project.scenarioType==='moving'?'Research moving services for my current move':'Continue planning the next steps for my current project';
+    let effective=resumed??(affirmative(request.message)?project.conversation?.activeRequest??defaults:request.message);
+    if(classifyScope(effective,project).classification==='AMBIGUOUS')effective=defaults;
+    const output=await this.planner.assistant(project,{...request,message:normalizePlanningMessage(effective)});
+    const seen=new Set<string>();const commands:AgentCommand[]=[];const explanations:string[]=[];
+    for(const [i,raw] of output.commands.slice(0,5).entries()){const command=AgentCommandSchema.parse(raw);const key=JSON.stringify(command);if(!seen.has(key)){seen.add(key);commands.push(command);explanations.push(output.explanations[i]??'Review this proposed action.');}}
+    let reply=output.reply;
+    if(hasFacts)reply=`Your details are saved. ${reply}`;
+    if((resumed||commands.length)&&!reply.includes('?')&&project.questions[0]&&!project.conversation?.turns.some(t=>t.role==='assistant'&&t.content.includes(project.questions[0]!)))reply+=` ${project.questions[0]}`;
+    return finish(reply,commands,explanations);
   }
   private async applyCommand(project: LifeProject, command: AgentCommand):Promise<string> {
     switch(command.type) {

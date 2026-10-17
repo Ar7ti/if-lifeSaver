@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {buildScenarioProfile} from '../src/scenario-profile.js';
+import {buildScenarioProfile,parseExplicitBudget} from '../src/scenario-profile.js';
 
 test('moving profile respects owned furniture and a price is not a total budget', () => {
   const profile = buildScenarioProfile({message:'I am moving to Turku on 2027-04-05 from Helsinki. I already own my bed and desk. I saw a sofa for €250.'});
@@ -118,4 +118,57 @@ test('explicitly edited owned inventory overrides the original stated inventory'
  const first=buildScenarioProfile({message:'Moving to Turku with €2000. I own a bed and desk.'});
  const changed=buildScenarioProfile({message:'Moving to Turku with €2000. I own a bed and desk.',preferences:{...first.preferences,ownedItems:[]}});
  assert.deepEqual(changed.preferences.ownedItems,[]);
+});
+
+test('going to Rome extracts travel intent, destination, duration, and EUR budget',()=>{
+  const profile=buildScenarioProfile({message:'Im going to Rome for five days with EUR900'});
+  assert.equal(profile.scenarioType,'travel');
+  assert.equal(profile.location,'Rome');
+  assert.equal(profile.preferences.durationDays,5);
+  assert.equal(profile.budgetMinor,90000);
+  const compact=buildScenarioProfile({message:'traveling Rome five days with900 budget'});
+  assert.equal(compact.scenarioType,'travel');
+  assert.equal(compact.location,'Rome');
+  assert.equal(compact.preferences.durationDays,5);
+  assert.equal(compact.budgetMinor,90000);
+});
+
+test('traveling and travelling to Rome preserve route, dates, and travelers',()=>{
+  for (const verb of ['traveling','travelling','flying']) {
+    const profile=buildScenarioProfile({message:`I am ${verb} from Helsinki to Rome for five days with 2 travelers and €900 budget. Dates 2027-06-01 to 2027-06-05.`});
+    assert.equal(profile.scenarioType,'travel');
+    assert.equal(profile.location,'Rome');
+    assert.equal(profile.preferences.origin,'Helsinki');
+    assert.equal(profile.preferences.durationDays,5);
+    assert.equal(profile.preferences.travelers,2);
+    assert.equal(profile.preferences.startDate,'2027-06-01');
+    assert.equal(profile.preferences.endDate,'2027-06-05');
+    assert.equal(profile.budgetMinor,90000);
+  }
+});
+
+test('explicit EUR budgets normalize grouping and decimals without guessing item prices or foreign money',()=>{
+  for (const [message,expected] of [
+    ['EUR900',90000], ['900 euros',90000], ['with EUR900',90000], ['with900 budget',90000],
+    ['budget of €1,500.50',150050], ['budget EUR 1.500,50',150050], ['budget 1 500,50 euros',150050],
+  ] as const) assert.equal(parseExplicitBudget(message),expected,message);
+  for (const message of ['900','I saw a sofa for €250','A bed costs EUR900','budget of $900','budget 900 dollars','with USD900']) {
+    assert.equal(parseExplicitBudget(message),null,message);
+    assert.equal(buildScenarioProfile({message}).budgetMinor,null,message);
+  }
+  assert.equal(parseExplicitBudget('EUR900'),90000);
+  assert.equal(buildScenarioProfile({message:'EUR900'}).budgetMinor,null);
+  assert.equal(buildScenarioProfile({message:'900 euros'}).budgetMinor,null);
+  assert.equal(buildScenarioProfile({message:'I am going to rome for five days with EUR900'}).scenarioType,'travel');
+});
+
+test('owned inventory stays authoritative after a travel parsing rebuild',()=>{
+  const first=buildScenarioProfile({message:'I am moving to Rome. I already own a bed and desk.'});
+  const rebuilt=buildScenarioProfile({message:'I am moving to Rome. I already own a bed and desk.',preferences:{...first.preferences,ownedItems:['desk']}});
+  assert.deepEqual(rebuilt.preferences.ownedItems,['desk']);
+  assert.ok(!rebuilt.categories.some(category=>category.id==='bed'));
+});
+
+test('going to university remains student life rather than a travel keyword false positive',()=>{
+ assert.equal(buildScenarioProfile({message:'Help me plan going to university with a budget of €900.'}).scenarioType,'student_life');
 });
