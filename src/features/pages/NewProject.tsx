@@ -8,6 +8,7 @@ export function NewProject() {
   const composer = useRef<ComposerHandle>(null);
   return (
     <PageContainer className="max-w-[900px] pt-12 sm:pt-20">
+      <img src="/illustrations/guide.png" alt="" width="80" height="80" className="mx-auto mb-4 size-20 object-contain" aria-hidden />
       <h1 className="text-center text-[36px] leading-[1.08] font-semibold tracking-[-1.2px] sm:text-display-sm">
         What are you{' '}
         <span className="inline-block rounded-full bg-peach px-[0.3em] leading-[1.15]">planning?</span>

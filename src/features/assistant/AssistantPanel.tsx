@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowUp, Loader2, Sparkles, X } from 'lucide-react';
+import { ArrowUp, Loader2, X } from 'lucide-react';
 import { useWorkspace } from '@/features/workspace/context';
 import { useAssistant } from '@/stores/assistant';
 import { describeError } from '@/api';
@@ -73,9 +73,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
   return (
     <div className={cn('flex h-full min-h-0 flex-col bg-surface', className)}>
       <header className="flex items-center gap-2 border-b border-hairline px-4 py-3">
-        <span className="grid size-7 place-items-center rounded-full bg-midnight text-marigold" aria-hidden>
-          <Sparkles className="size-3.5" />
-        </span>
+        <img src="/illustrations/guide.png" alt="" width="36" height="36" className="size-9 shrink-0 object-contain" aria-hidden />
         <div className="min-w-0 flex-1">
           <h2 className="text-body-sm font-semibold">Assistant</h2>
           <p className="text-caption text-graphite">Proposes changes. You decide.</p>

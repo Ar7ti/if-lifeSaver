@@ -1,22 +1,13 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowRight, Car, Compass, Home, LayoutGrid, Plane, ShieldCheck, Sofa, Scale, Search, Sparkles, Truck } from 'lucide-react';
+import { ArrowRight, LayoutGrid, ShieldCheck, Scale, Search } from 'lucide-react';
 import { Composer, type ComposerHandle } from '@/features/create/Composer';
 import { ExampleCards } from '@/features/create/ExampleCards';
+import { EXAMPLES } from '@/features/create/examples';
 import { Logo } from '@/features/shell/Logo';
 import { DataSourceBanner } from '@/features/shell/DataSourceBanner';
 import { WorkspacePreview } from './WorkspacePreview';
-import { cn } from '@/lib/cn';
-
-const MARKS = [
-  { icon: Truck, ring: 'border-signal-blue' },
-  { icon: Sofa, ring: 'border-coral' },
-  { icon: Car, ring: 'border-marigold' },
-  { icon: Home, ring: 'border-sky-wash' },
-  { icon: Plane, ring: 'border-signal-blue' },
-  { icon: Compass, ring: 'border-coral' },
-];
 
 const rise = {
   hidden: { opacity: 0, y: 14 },
@@ -65,10 +56,10 @@ export function Landing() {
       <main>
         {/* Hero */}
         <section className="mx-auto max-w-[1440px] px-4 pt-14 pb-16 text-center sm:px-8 sm:pt-20">
-          <motion.ul initial="hidden" animate="show" className="mb-8 flex justify-center gap-2 sm:gap-3" aria-hidden>
-            {MARKS.map((m, i) => (
-              <motion.li key={i} custom={i} variants={rise} className={cn('grid size-10 place-items-center rounded-full border-2 bg-surface sm:size-12', m.ring)}>
-                <m.icon className="size-[18px] text-ink sm:size-5" />
+          <motion.ul initial="hidden" animate="show" className="mb-8 flex justify-center gap-1 sm:gap-3" aria-hidden>
+            {EXAMPLES.map((example, i) => (
+              <motion.li key={example.id} custom={i} variants={rise} className="grid size-14 place-items-center rounded-[18px] bg-surface shadow-nav sm:size-[72px] sm:rounded-[22px]">
+                <img src={example.image} alt="" width="68" height="68" className="size-[52px] object-contain sm:size-[68px]" />
               </motion.li>
             ))}
           </motion.ul>
@@ -196,7 +187,7 @@ export function Landing() {
         {/* Closing CTA */}
         <section className="border-t border-hairline bg-surface py-20 text-center">
           <div className="mx-auto max-w-2xl px-4">
-            <Sparkles className="mx-auto size-6 text-saffron" aria-hidden />
+            <img src="/illustrations/guide.png" alt="" width="80" height="80" className="mx-auto size-20 object-contain" aria-hidden />
             <h2 className="mt-4 text-[36px] leading-[1.08] font-semibold tracking-[-1.2px] sm:text-[48px] sm:tracking-[-1.7px]">What are you planning next?</h2>
             <Link
               to="/app/new"
