@@ -11,6 +11,7 @@ import { ErrorState, Skeleton } from '@/components/ui/States';
 import { AssistantPanel } from '@/features/assistant/AssistantPanel';
 import { WorkspaceContext, type WorkspaceContextValue } from './context';
 import { ProjectOverview } from './ProjectOverview';
+import { QuestionsBlock } from './QuestionsBlock';
 import { WorkspaceGrid } from './WorkspaceGrid';
 
 function useIsDesktop() {
@@ -117,6 +118,7 @@ export function WorkspacePage() {
         <div className="min-w-0 flex-1">
           <div className="mx-auto max-w-[1280px] px-4 pt-6 pb-24 sm:px-8 sm:pt-8">
             <ProjectOverview project={ctx.project} />
+            <QuestionsBlock />
             <WorkspaceGrid fresh={fresh} />
           </div>
         </div>

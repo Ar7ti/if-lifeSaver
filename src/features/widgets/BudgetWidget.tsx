@@ -1,56 +1,29 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { AlertTriangle, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { Budget } from '@contracts';
+import { AlertTriangle, ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useWorkspace } from '@/features/workspace/context';
 import { Money } from '@/components/ui/Money';
-import { Progress } from '@/components/ui/Progress';
-import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Field';
 import { ErrorState } from '@/components/ui/States';
-import { centsToInput, formatMoney, parseEuros } from '@/lib/format';
+import { centsToInput, formatMoney, humanizeCategory, parseEuros } from '@/lib/format';
+import { BudgetDonut, type Slice } from './budget/BudgetDonut';
 import { toast } from '@/stores/toast';
 import { cn } from '@/lib/cn';
 
-function Stat({ label, minor, hint, tone }: { label: string; minor: number; hint?: string; tone?: 'danger' }) {
+const SERIES = ['var(--color-series-1)', 'var(--color-series-2)', 'var(--color-series-3)', 'var(--color-series-4)', 'var(--color-series-5)', 'var(--color-series-6)', 'var(--color-series-7)'];
+/** Color follows the category's position in the budget, so it never changes when values do. */
+export const categoryColor = (index: number) => SERIES[index] ?? 'var(--color-series-other)';
+
+function Tile({ label, minor, hint, tone }: { label: string; minor: number; hint?: string; tone?: 'danger' }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 rounded-[10px] bg-canvas px-4 py-3.5">
       <dt className="text-caption text-graphite">{label}</dt>
-      <dd className={cn('mt-0.5 text-[17px] font-semibold tracking-[-0.2px]', tone === 'danger' && 'text-danger-ink')}>
+      <dd className={cn('mt-1 text-[22px] leading-tight font-semibold tracking-[-0.5px]', tone === 'danger' && 'text-danger-ink')}>
         <Money minor={minor} />
       </dd>
-      {hint && <dd className="text-caption text-graphite">{hint}</dd>}
-    </div>
-  );
-}
-
-/** Segments of the overall budget, all straight from server-calculated fields. */
-function BudgetBar({ budget }: { budget: Budget }) {
-  const total = Math.max(budget.totalMinor, 1);
-  const segs = [
-    { key: 'Committed', v: budget.committedMinor, cls: 'bg-blue' },
-    { key: 'Proposed', v: budget.proposedMinor, cls: 'bg-sky-wash' },
-    { key: 'Emergency reserve', v: budget.emergencyReserveMinor, cls: 'bg-marigold' },
-  ];
-  return (
-    <div>
-      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-ink/[0.07]" role="img" aria-label={segs.map(s => `${s.key} ${formatMoney(s.v)}`).join(', ') + ` of ${formatMoney(budget.totalMinor)}`}>
-        {segs.map(s => (s.v > 0 ? <div key={s.key} className={cn('h-full transition-[width] duration-500', s.cls)} style={{ width: `${Math.min(100, (s.v / total) * 100)}%` }} /> : null))}
-      </div>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-graphite" aria-hidden>
-        {segs.map(s => (
-          <li key={s.key} className="flex items-center gap-1.5">
-            <span className={cn('size-2 rounded-full', s.cls)} />
-            {s.key}
-          </li>
-        ))}
-        <li className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-ink/[0.12]" />
-          Unplanned
-        </li>
-      </ul>
+      {hint && <dd className="mt-0.5 text-caption text-graphite">{hint}</dd>}
     </div>
   );
 }
@@ -71,65 +44,87 @@ export function BudgetWidget() {
       </div>
     );
 
+  const unassigned = Math.max(0, b.totalMinor - b.allocatedMinor - b.emergencyReserveMinor);
+  const slices: Slice[] = [
+    ...b.categories.map((c, i) => ({ id: c.id, label: humanizeCategory(c.title), minor: c.allocatedMinor, color: categoryColor(i) })),
+    { id: '__reserve', label: 'Emergency reserve', minor: b.emergencyReserveMinor, color: 'var(--color-series-other)' },
+    ...(unassigned > 0 ? [{ id: '__free', label: 'Not yet assigned', minor: unassigned, color: 'rgb(0 0 0 / 0.12)' }] : []),
+  ];
+  const spentPct = Math.round((b.committedMinor / b.totalMinor) * 100);
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-caption text-graphite">Total budget</p>
-          <p className="text-[34px] leading-none font-semibold tracking-[-1px]">
-            <Money minor={b.totalMinor} />
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!b.confirmed && <Pill tone="warn">Not confirmed</Pill>}
-          <Button size="sm" variant="outline" icon={<Pencil />} onClick={() => setEditing(true)}>
-            Edit allocations
-          </Button>
-        </div>
-      </div>
-
-      <BudgetBar budget={b} />
-
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-        <Stat label="Reserved" minor={b.emergencyReserveMinor} hint="Emergency reserve" />
-        <Stat label="Committed" minor={b.committedMinor} hint="Chosen in your plan" />
-        <Stat label="Proposed" minor={b.proposedMinor} hint="Not chosen yet" />
-        <Stat label="Available" minor={b.availableMinor} hint="After all of the above" tone={b.availableMinor < 0 ? 'danger' : undefined} />
+    <div className="@container flex flex-col gap-7">
+      <dl className="grid grid-cols-2 gap-2.5 @2xl:grid-cols-4">
+        <Tile label="Total budget" minor={b.totalMinor} hint={b.confirmed ? undefined : 'Not confirmed yet'} />
+        <Tile label="Spent in plan" minor={b.committedMinor} hint={`${spentPct}% of budget`} />
+        <Tile label="Remaining" minor={b.remainingMinor} hint="Budget minus spent" tone={b.remainingMinor < 0 ? 'danger' : undefined} />
+        <Tile label="Reserve" minor={b.emergencyReserveMinor} hint="Kept for surprises" />
       </dl>
 
-      {b.categories.length > 0 && (
+      <div className="grid gap-8 @3xl:grid-cols-2">
         <div>
-          <h3 className="mb-2 text-body-sm font-semibold">Categories</h3>
-          <ul className="flex flex-col gap-3">
-            {b.categories.map(c => {
+          <h3 className="mb-3 text-body-sm font-semibold">Where your budget goes</h3>
+          <BudgetDonut slices={slices} total={b.totalMinor} centerLabel="Total" />
+        </div>
+
+        <div>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h3 className="text-body-sm font-semibold">Spent vs. planned</h3>
+            <Button size="sm" variant="text" icon={<Pencil />} onClick={() => setEditing(true)} className="-mr-2 text-graphite">
+              Edit
+            </Button>
+          </div>
+          <ul className="flex flex-col gap-4">
+            {b.categories.map((c, i) => {
               const used = c.committedMinor + c.proposedMinor;
               const over = used > c.allocatedMinor;
+              const base = Math.max(c.allocatedMinor, used, 1);
               return (
                 <li key={c.id}>
-                  <div className="mb-1 flex items-baseline justify-between gap-2 text-body-sm">
-                    <span className="truncate font-medium">{c.title}</span>
-                    <span className={cn('tabular shrink-0 text-graphite', over && 'font-medium text-danger-ink')}>
-                      {formatMoney(used)} of {formatMoney(c.allocatedMinor)}
-                      {over && ' · over'}
+                  <div className="mb-1.5 flex items-baseline justify-between gap-2 text-body-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="size-2 shrink-0 rounded-full" style={{ background: categoryColor(i) }} aria-hidden />
+                      <span className="truncate" title={c.title}>
+                        {humanizeCategory(c.title)}
+                      </span>
+                    </span>
+                    <span className={cn('shrink-0 text-caption tabular', over ? 'font-medium text-danger-ink' : 'text-graphite')}>
+                      {over && <AlertTriangle className="mr-1 inline size-3" aria-hidden />}
+                      {formatMoney(used)} / {formatMoney(c.allocatedMinor)}
+                      {over && ' over'}
                     </span>
                   </div>
-                  <Progress value={used} max={c.allocatedMinor || 1} tone={over ? 'danger' : c.committedMinor > 0 ? 'blue' : 'sky'} label={`${c.title}: ${formatMoney(used)} of ${formatMoney(c.allocatedMinor)}`} />
+                  <div
+                    className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-ink/[0.06]"
+                    role="img"
+                    aria-label={`${c.title}: ${formatMoney(c.committedMinor)} spent, ${formatMoney(c.proposedMinor)} proposed, ${formatMoney(c.allocatedMinor)} planned`}
+                  >
+                    {c.committedMinor > 0 && <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${(c.committedMinor / base) * 100}%`, background: categoryColor(i) }} />}
+                    {c.proposedMinor > 0 && <div className="h-full rounded-full opacity-40 transition-[width] duration-500" style={{ width: `${(c.proposedMinor / base) * 100}%`, background: categoryColor(i) }} />}
+                  </div>
                 </li>
               );
             })}
           </ul>
+          <p className="mt-4 text-caption text-graphite">Solid: spent in your plan · Light: proposed · Track: planned envelope</p>
         </div>
-      )}
+      </div>
 
       {b.warnings.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {b.warnings.map(w => (
-            <li key={w} className="flex items-start gap-2 rounded-[10px] bg-warn-tint px-3 py-2 text-body-sm text-warn-ink">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span className="min-w-0 break-words">{w}</span>
-            </li>
-          ))}
-        </ul>
+        <details className="group rounded-[10px] bg-warn-tint px-4 py-2.5 text-body-sm text-warn-ink">
+          <summary className="flex cursor-pointer list-none items-center gap-2 font-medium [&::-webkit-details-marker]:hidden">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden />
+            {b.warnings.length === 1 ? '1 budget note' : `${b.warnings.length} budget notes`}
+            <ChevronDown className="ml-auto size-4 transition-transform duration-200 group-open:rotate-180" aria-hidden />
+          </summary>
+          <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+            {b.warnings.map(w => (
+              <li key={w} className="break-words">
+                {w}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       <BudgetEditor open={editing} onClose={() => setEditing(false)} />

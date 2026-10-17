@@ -42,12 +42,11 @@ function Meter({ label, value }: { label: string; value: keyof typeof LEVEL }) {
 function ScenarioCard({ s, chosen, onChoose, offers, inCartIds }: { s: SimulationScenario; chosen: boolean; onChoose: () => void; offers: Map<string, Offer>; inCartIds: Set<string> }) {
   const meta = META[s.id];
   const picked = s.selectedOfferIds.map(id => offers.get(id)).filter((o): o is Offer => Boolean(o));
-  const verifiedShare = s.estimatedTotalMinor ? (s.verifiedCostMinor / s.estimatedTotalMinor) * 100 : 0;
-  return (
+    return (
     <motion.li layout className="flex">
       <label
         className={cn(
-          'relative flex w-full cursor-pointer flex-col gap-4 rounded-card border bg-surface p-5 transition-[border-color,box-shadow] duration-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-blue',
+          'relative flex w-full cursor-pointer flex-col gap-5 rounded-card border bg-surface p-5 transition-[border-color,box-shadow] duration-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-blue',
           chosen ? 'border-blue shadow-[0_0_0_3px_rgba(0,117,222,0.14)]' : 'border-hairline hover:border-hairline-strong',
         )}
       >
@@ -84,16 +83,7 @@ function ScenarioCard({ s, chosen, onChoose, offers, inCartIds }: { s: Simulatio
           <p className={cn('mt-0.5 text-body-sm', s.withinBudget ? 'text-ok-ink' : 'text-danger-ink')}>
             {s.withinBudget ? <Check className="mr-1 inline size-3.5" aria-hidden /> : <AlertTriangle className="mr-1 inline size-3.5" aria-hidden />}
             {s.remainingMinor >= 0 ? `${formatMoney(s.remainingMinor)} left` : `${formatMoney(-s.remainingMinor)} over budget`}
-            {s.withinBudget ? ', within budget' : ''}
-          </p>
-        </div>
-
-        <div>
-          <div className="flex h-1.5 overflow-hidden rounded-full bg-warn-tint" role="img" aria-label={`${formatMoney(s.verifiedCostMinor)} verified, ${formatMoney(s.estimatedCostMinor)} estimated`}>
-            <div className="h-full bg-ok-ink/70" style={{ width: `${verifiedShare}%` }} />
-          </div>
-          <p className="mt-1 text-caption text-graphite tabular">
-            {formatMoney(s.verifiedCostMinor)} verified · {formatMoney(s.estimatedCostMinor)} estimated
+            {s.withinBudget ? ', within budget' : s.remainingMinor >= 0 ? ', but it dips into your reserve' : ''}
           </p>
         </div>
 
@@ -102,47 +92,54 @@ function ScenarioCard({ s, chosen, onChoose, offers, inCartIds }: { s: Simulatio
           <Meter label="Effort" value={s.effort} />
         </div>
 
-        <div>
-          <p className="text-caption font-medium text-ink/85">Included</p>
-          <p className="mt-0.5 text-caption text-graphite">
-            {picked.length > 0 ? picked.map(o => o.title).slice(0, 3).join(' · ') + (picked.length > 3 ? ` +${picked.length - 3} more` : '') : s.lockedCartItemIds.length ? `${pluralize(s.lockedCartItemIds.length, 'item')} already in your plan` : 'Allocation estimates only: no researched options yet'}
-          </p>
-          {picked.some(o => !inCartIds.has(o.id)) && <p className="mt-0.5 text-caption text-blue-ink">{pluralize(picked.filter(o => !inCartIds.has(o.id)).length, 'option')} not yet in your plan</p>}
-        </div>
+        {picked.some(o => !inCartIds.has(o.id)) && <p className="-mt-2 text-caption text-blue-ink">{pluralize(picked.filter(o => !inCartIds.has(o.id)).length, 'option')} not yet in your plan</p>}
 
-        {s.tradeOffs.length > 0 && (
-          <div>
-            <p className="text-caption font-medium text-ink/85">Trade-offs</p>
-            <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-caption text-graphite">
-              {s.tradeOffs.slice(0, 3).map(t => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
+        <details className="mt-auto border-t border-hairline pt-3 text-caption" onClick={e => e.stopPropagation()}>
+          <summary className="cursor-pointer font-medium text-graphite hover:text-ink">Details</summary>
+          <div className="mt-3 flex flex-col gap-3 text-graphite">
+            <p className="tabular">
+              {formatMoney(s.verifiedCostMinor)} verified · {formatMoney(s.estimatedCostMinor)} estimated
+            </p>
+            <div>
+              <p className="font-medium text-ink/85">Included</p>
+              <p className="mt-0.5">
+                {picked.length > 0 ? picked.map(o => o.title).join(' · ') : s.lockedCartItemIds.length ? `${pluralize(s.lockedCartItemIds.length, 'item')} already in your plan` : 'Allocation estimates only: no researched options yet'}
+              </p>
+            </div>
+            {s.tradeOffs.length > 0 && (
+              <div>
+                <p className="font-medium text-ink/85">Trade-offs</p>
+                <ul className="mt-0.5 flex list-disc flex-col gap-0.5 pl-4">
+                  {s.tradeOffs.map(t => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {s.risks.length > 0 && (
+              <div>
+                <p className="font-medium text-ink/85">Risks</p>
+                <ul className="mt-0.5 flex list-disc flex-col gap-0.5 pl-4">
+                  {s.risks.map(r => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {s.missingData.length > 0 && (
+              <div>
+                <p className="font-medium text-ink/85">Based on estimates</p>
+                <ul className="mt-0.5 flex flex-col gap-1">
+                  {s.missingData.map(m => (
+                    <li key={m} className="break-words">
+                      {m}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        )}
-
-        {s.risks.length > 0 && (
-          <ul className="flex flex-col gap-1">
-            {s.risks.slice(0, 2).map(r => (
-              <li key={r} className="flex items-start gap-1.5 rounded-md bg-warn-tint px-2 py-1.5 text-caption text-warn-ink">
-                <AlertTriangle className="mt-px size-3 shrink-0" aria-hidden /> {r}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {s.missingData.length > 0 && (
-          <details className="mt-auto text-caption" onClick={e => e.stopPropagation()}>
-            <summary className="cursor-pointer font-medium text-graphite hover:text-ink">{pluralize(s.missingData.length, 'figure')} based on estimates</summary>
-            <ul className="mt-1.5 flex flex-col gap-1 text-graphite">
-              {s.missingData.map(m => (
-                <li key={m} className="break-words">
-                  {m}
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
+        </details>
       </label>
     </motion.li>
   );

@@ -4,6 +4,7 @@ import { safeStorage } from '@/lib/storage';
 import type { SimulationScenario } from '@contracts';
 
 type ScenarioId = SimulationScenario['id'];
+export type FurnitureClass = 'all' | 'economy' | 'mid' | 'premium';
 
 interface UiState {
   sidebarCollapsed: boolean;
@@ -12,7 +13,15 @@ interface UiState {
   collapsed: Record<string, Record<string, boolean>>;
   /** The scenario a person chose to plan around. The API has no field for this, so it stays local. */
   chosenScenario: Record<string, ScenarioId>;
+  /** Questions answered in this browser, keyed by question text. The API has no answer route. */
+  answered: Record<string, Record<string, string>>;
+  furnitureClass: Record<string, FurnitureClass>;
+  /** Tasks a person starred as priority. The API has no priority field, so this stays local. */
+  starred: Record<string, string[]>;
   toggleSidebar: () => void;
+  markAnswered: (projectId: string, question: string, answer: string) => void;
+  setFurnitureClass: (projectId: string, value: FurnitureClass) => void;
+  toggleStar: (projectId: string, taskId: string) => void;
   setAssistantOpen: (open: boolean) => void;
   toggleCollapsed: (projectId: string, widgetId: string) => void;
   chooseScenario: (projectId: string, id: ScenarioId | null) => void;
@@ -25,6 +34,17 @@ export const useUi = create<UiState>()(
       assistantOpen: false,
       collapsed: {},
       chosenScenario: {},
+      answered: {},
+      furnitureClass: {},
+      starred: {},
+      markAnswered: (projectId, question, answer) =>
+        set(s => ({ answered: { ...s.answered, [projectId]: { ...(s.answered[projectId] ?? {}), [question]: answer } } })),
+      setFurnitureClass: (projectId, value) => set(s => ({ furnitureClass: { ...s.furnitureClass, [projectId]: value } })),
+      toggleStar: (projectId, taskId) =>
+        set(s => {
+          const list = s.starred[projectId] ?? [];
+          return { starred: { ...s.starred, [projectId]: list.includes(taskId) ? list.filter(x => x !== taskId) : [...list, taskId] } };
+        }),
       toggleSidebar: () => set(s => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setAssistantOpen: assistantOpen => set({ assistantOpen }),
       toggleCollapsed: (projectId, widgetId) =>

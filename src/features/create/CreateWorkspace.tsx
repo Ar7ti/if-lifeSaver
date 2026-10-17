@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Check, CircleDashed, FlaskConical, Loader2, Sear
 import type { CreateProjectResponse } from '@contracts';
 import { useApi } from '@/api';
 import { projectKey } from '@/hooks/useProject';
+import { recommendedPatch } from '@/features/workspace/layout';
 import { useProjects } from '@/stores/projects';
 import { useSettings } from '@/stores/settings';
 import { formatMoney, pluralize } from '@/lib/format';
@@ -58,7 +59,20 @@ export function CreateWorkspace() {
   const started = useRef(false);
 
   const create = useMutation({
-    mutationFn: (text: string) => api.createProject({ message: text, locale: 'en' }),
+    mutationFn: async (text: string) => {
+      const res = await api.createProject({ message: text, locale: 'en' });
+      // Arrange the new workspace in the recommended reading order. Best effort: the
+      // AI's own order is kept if this fails.
+      const patch = recommendedPatch(res.workspace.widgets);
+      if (!patch.length) return res;
+      try {
+        const arranged = await api.patchWorkspace(res.project.id, { widgets: patch });
+        const project = { ...res.project, workspace: arranged.workspace, revision: arranged.revision };
+        return { ...res, project, workspace: arranged.workspace };
+      } catch {
+        return res;
+      }
+    },
     onSuccess: res => {
       qc.setQueryData(projectKey(api.source, res.project.id), res.project);
       remember(res.project, api.source);

@@ -1,24 +1,28 @@
-import { Check, ExternalLink, MapPin, MessageSquareText, Plus, Truck, X } from 'lucide-react';
+import { Check, ExternalLink, MessageSquareText, Plus, X } from 'lucide-react';
 import type { CartItem, Offer } from '@contracts';
 import { Button } from '@/components/ui/Button';
-import { Pill } from '@/components/ui/Pill';
 import { formatMoney, hostOf } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { OfferImage } from './OfferImage';
-import { availabilityLabel, conditionLabel, priceStatusLabel, sellerTypeLabel, verificationLabel } from './labels';
+import { conditionLabel, priceStatusLabel, sellerTypeLabel, verificationLabel } from './labels';
+import { TIER_LABEL, type Tier } from './tiers';
 
-/** The server explains its score as "Score 75/100: … ; … . Sentence. Sentence." Split it into readable reasons. */
-function reasons(offer: Offer) {
-  const text = offer.recommendation.replace(/^Score \d+\/100:\s*/, '');
-  return text
-    .split(/(?<=\.)\s+|;\s*/)
-    .map(s => s.trim().replace(/\.$/, ''))
-    .filter(Boolean)
-    .slice(0, 8);
+/** Plain-language reasons, derived only from facts present in the offer data. */
+export function offerReasons(offer: Offer, envelopeLeftMinor: number | null, city: string | null): string[] {
+  const out: string[] = [];
+  if (offer.priceMinor !== null && envelopeLeftMinor !== null && offer.priceMinor + (offer.delivery.costMinor ?? 0) <= envelopeLeftMinor) out.push('Fits your budget');
+  const place = city?.split(',')[0]?.trim();
+  if (place && offer.location?.toLowerCase().includes(place.toLowerCase())) out.push(`In ${place}`);
+  if (offer.delivery.costMinor !== null) out.push(offer.delivery.costMinor === 0 ? 'Free delivery' : 'Delivery price listed');
+  if (offer.condition === 'new') out.push('New condition');
+  if (offer.verificationStatus === 'source_checked') out.push('Cited source');
+  return out.slice(0, 2);
 }
 
-export function OfferCard({ offer, inCart, stale, comparing, onAdd, onRemove, onCompare, onContact, adding, removing }: {
+export function OfferCard({ offer, tier, reasons, inCart, stale, comparing, onAdd, onRemove, onCompare, onContact, adding, removing }: {
   offer: Offer;
+  tier: Tier | undefined;
+  reasons: string[];
   inCart: CartItem | undefined;
   stale: boolean;
   comparing: boolean;
@@ -30,128 +34,84 @@ export function OfferCard({ offer, inCart, stale, comparing, onAdd, onRemove, on
   removing: boolean;
 }) {
   const price = priceStatusLabel[offer.priceStatus];
-  const verify = verificationLabel[offer.verificationStatus];
-  const condition = conditionLabel[offer.condition];
-  const availability = availabilityLabel[offer.availability];
   const host = hostOf(offer.sourceUrl);
   const canAdd = offer.priceMinor !== null && offer.availability !== 'out_of_stock' && !stale;
   const canContact = offer.seller.type === 'private' || offer.kind === 'service';
-  const why = reasons(offer);
+  const condition = conditionLabel[offer.condition];
+  const meta = [
+    offer.seller.name ?? host ?? offer.sourceName,
+    offer.seller.type === 'private' ? sellerTypeLabel.private : null,
+    condition && offer.condition !== 'unknown' ? condition : null,
+    offer.delivery.costMinor !== null ? `Delivery ${formatMoney(offer.delivery.costMinor)}` : offer.delivery.available === false ? 'Pickup only' : 'Delivery unknown',
+  ].filter(Boolean);
 
   return (
-    <article className={cn('flex min-w-0 flex-col rounded-[10px] border bg-surface p-3 transition-colors duration-200', inCart ? 'border-blue/40' : 'border-hairline hover:border-hairline-strong')} aria-label={offer.title}>
+    <article
+      className={cn('flex min-w-0 flex-1 flex-col rounded-card bg-surface p-2.5 ring-1 transition-[box-shadow] duration-200', inCart ? 'ring-blue/40' : 'ring-hairline hover:ring-hairline-strong')}
+      aria-label={offer.title}
+    >
       <div className="relative">
-        <OfferImage offer={offer} />
-        <span className="absolute top-2 left-2 rounded-full bg-surface/95 px-2 py-0.5 text-caption font-semibold tabular shadow-[0_1px_2px_rgba(0,0,0,0.08)]" title="Match score from the research engine">
-          {Math.round(offer.score)}
-          <span className="font-normal text-graphite">/100 match</span>
-        </span>
+        <OfferImage offer={offer} className="aspect-[16/10]" />
+        {tier && <span className="absolute top-2 left-2 rounded-full bg-surface/95 px-2 py-0.5 text-[11px] font-medium text-ink/80">{TIER_LABEL[tier]}</span>}
       </div>
 
-      <div className="mt-3 flex min-w-0 flex-1 flex-col gap-2">
-        <h3 className="line-clamp-2 text-body-sm font-semibold leading-snug" title={offer.title}>
+      <div className="flex flex-1 flex-col gap-1.5 px-1.5 pt-3">
+        <h3 className="line-clamp-2 text-body-sm leading-snug font-medium" title={offer.title}>
           {offer.title}
         </h3>
-
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-[20px] font-semibold tracking-[-0.4px] tabular">{offer.priceMinor === null ? 'Price unknown' : formatMoney(offer.priceMinor)}</span>
-          {offer.priceMinor !== null && (
-            <Pill tone={price.tone} title={price.hint}>
-              {price.label}
-            </Pill>
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-[19px] font-semibold tracking-[-0.3px] tabular">{offer.priceMinor === null ? 'Price unknown' : formatMoney(offer.priceMinor)}</span>
+          {offer.priceMinor !== null && offer.priceStatus !== 'verified' && (
+            <span className="text-caption text-warn-ink" title={price.hint}>
+              {offer.priceStatus === 'demo' ? 'demo price' : 'estimate'}
+            </span>
           )}
-        </div>
-
-        <dl className="flex flex-col gap-1 text-caption text-graphite">
-          <div className="flex items-center gap-1.5">
-            <dt className="sr-only">Seller</dt>
-            <dd className="truncate">
-              <span className="font-medium text-ink/80">{offer.seller.name ?? host ?? offer.sourceName}</span> · {sellerTypeLabel[offer.seller.type]}
-              {offer.seller.verified && ' · verified seller'}
-            </dd>
-          </div>
-          {(condition || availability) && (
-            <div>
-              <dt className="sr-only">Condition</dt>
-              <dd>{[condition, availability].filter(Boolean).join(' · ')}</dd>
-            </div>
-          )}
-          <div className="flex items-start gap-1.5">
-            <dt>
-              <MapPin className="mt-px size-3.5" aria-hidden />
-              <span className="sr-only">Location</span>
-            </dt>
-            <dd>{offer.location ?? 'Location not stated'}</dd>
-          </div>
-          <div className="flex items-start gap-1.5">
-            <dt>
-              <Truck className="mt-px size-3.5" aria-hidden />
-              <span className="sr-only">Delivery</span>
-            </dt>
-            <dd className="line-clamp-2" title={offer.delivery.details}>
-              {offer.delivery.costMinor !== null ? `Delivery ${formatMoney(offer.delivery.costMinor)}` : offer.delivery.available === false ? 'No delivery: pickup only' : 'Delivery cost unknown'}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="flex flex-wrap gap-1">
-          <Pill tone={verify.tone} title={verify.hint}>
-            {verify.label}
-          </Pill>
-        </div>
-
-        <details className="group rounded-button bg-canvas px-3 py-2 text-caption">
-          <summary className="flex cursor-pointer list-none items-center justify-between font-medium text-ink/85 [&::-webkit-details-marker]:hidden">
-            Why did AI choose this?
-            <Plus className="size-3.5 transition-transform duration-200 group-open:rotate-45" aria-hidden />
-          </summary>
-          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-graphite">
-            {why.map(r => (
-              <li key={r}>{r}</li>
+        </p>
+        <p className="text-caption text-graphite">{meta.join(' · ')}</p>
+        {reasons.length > 0 && (
+          <ul className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-caption text-ok-ink">
+            {reasons.map(r => (
+              <li key={r} className="flex items-center gap-1">
+                <Check className="size-3" aria-hidden /> {r}
+              </li>
             ))}
           </ul>
-          {offer.evidence.length > 0 && (
-            <>
-              <p className="mt-2 font-medium text-ink/80">Evidence</p>
-              <ul className="mt-1 flex flex-col gap-1 text-graphite">
-                {offer.evidence.map(e => (
-                  <li key={e} className="break-words">
-                    {e}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+        )}
+        <details className="text-caption text-graphite">
+          <summary className="cursor-pointer font-medium hover:text-ink">Why AI chose this</summary>
+          <p className="mt-1.5 break-words">{offer.recommendation}</p>
+          <p className="mt-1.5">
+            {verificationLabel[offer.verificationStatus].label}: {verificationLabel[offer.verificationStatus].hint}
+          </p>
+          {offer.location && <p className="mt-1.5">Location: {offer.location}</p>}
         </details>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 border-t border-hairline pt-3">
+      <div className="mt-3 flex flex-col gap-1.5 px-1.5 pb-1">
         {inCart ? (
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex h-9 items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 text-body-sm font-medium text-blue-ink">
               <Check className="size-4" aria-hidden /> In your plan
             </span>
-            <Button size="sm" variant="text" icon={<X />} loading={removing} onClick={onRemove}>
+            <Button size="sm" variant="text" icon={<X />} loading={removing} onClick={onRemove} className="text-graphite">
               Remove
             </Button>
           </div>
         ) : (
-          <Button variant="ghost" size="md" icon={<Plus />} loading={adding} disabled={!canAdd} onClick={onAdd} className="w-full justify-center">
+          <Button variant="ghost" icon={<Plus />} loading={adding} disabled={!canAdd} onClick={onAdd} className="w-full justify-center">
             Add to plan
           </Button>
         )}
-        {!canAdd && !inCart && (
-          <p className="text-caption text-graphite">{stale ? 'Search again: your constraints changed.' : offer.priceMinor === null ? 'Needs a confirmed price before it can be planned.' : 'Listed as out of stock.'}</p>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-1">
-          <label className="flex cursor-pointer items-center gap-2 rounded-button px-1 py-1 text-caption font-medium text-ink/80 hover:bg-hover">
+        {!canAdd && !inCart && <p className="text-caption text-graphite">{stale ? 'Search again: your details changed.' : offer.priceMinor === null ? 'Needs a confirmed price first.' : 'Listed as out of stock.'}</p>}
+        <div className="flex items-center justify-between gap-1">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-button py-1 pr-1 text-caption text-graphite hover:text-ink">
             <input type="checkbox" checked={comparing} onChange={e => onCompare(e.target.checked)} className="size-3.5 accent-blue" />
             Compare
           </label>
           <div className="flex items-center">
             {canContact && (
-              <Button size="sm" variant="text" icon={<MessageSquareText />} onClick={onContact} className="px-2 text-caption">
-                {offer.kind === 'service' ? 'Draft quote request' : 'Ask AI to contact seller'}
+              <Button size="sm" variant="text" icon={<MessageSquareText />} onClick={onContact} className="h-8 px-2 text-caption text-graphite">
+                {offer.kind === 'service' ? 'Request quote' : 'Contact seller'}
               </Button>
             )}
             {offer.sourceUrl && (

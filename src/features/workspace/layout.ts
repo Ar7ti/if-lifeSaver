@@ -26,3 +26,28 @@ export function reflow(ordered: { widget: WorkspaceWidget; w: number }[]): Works
   }
   return patch;
 }
+
+/** Calm reading order: money first, then what to do, then what to buy, then the rest. */
+const RECOMMENDED: { type: WorkspaceWidget['type']; w: number }[] = [
+  { type: 'budget', w: 12 },
+  { type: 'recommendations', w: 12 },
+  { type: 'product_catalog', w: 12 },
+  { type: 'task_list', w: 6 },
+  { type: 'shopping_cart', w: 6 },
+  { type: 'service_finder', w: 12 },
+  { type: 'scenario_comparison', w: 12 },
+  { type: 'risk_guardian', w: 6 },
+  { type: 'timeline', w: 6 },
+];
+
+/** A patch that re-flows the workspace into the recommended order. Visibility is untouched. */
+export function recommendedPatch(widgets: WorkspaceWidget[]): WorkspacePatch['widgets'] {
+  const rank = (w: WorkspaceWidget) => {
+    const i = RECOMMENDED.findIndex(r => r.type === w.type);
+    return i === -1 ? RECOMMENDED.length : i;
+  };
+  const ordered = [...widgets].sort((a, b) => rank(a) - rank(b) || byPosition(a, b));
+  const visible = ordered.filter(w => w.visible);
+  const hidden = ordered.filter(w => !w.visible);
+  return reflow([...visible, ...hidden].map(w => ({ widget: w, w: RECOMMENDED.find(r => r.type === w.type)?.w ?? w.position.w })));
+}

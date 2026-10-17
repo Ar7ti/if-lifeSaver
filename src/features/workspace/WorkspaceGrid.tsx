@@ -14,7 +14,7 @@ import { useWorkspace } from './context';
 import { REGISTRY } from './registry';
 import { WidgetFrame } from './WidgetFrame';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { byPosition, reflow } from './layout';
+import { byPosition, recommendedPatch, reflow } from './layout';
 
 function useLayoutMutation() {
   const { project, writer } = useWorkspace();
@@ -149,7 +149,25 @@ export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
         </div>
       )}
 
-      <Dialog open={customizing} onClose={() => setCustomizing(false)} title="Customize workspace" description="Choose which tools appear and in what order. Changes are saved to your project.">
+      <Dialog
+        open={customizing}
+        onClose={() => setCustomizing(false)}
+        title="Customize workspace"
+        description="Choose which tools appear and in what order. Changes are saved to your project."
+        footer={
+          <Button
+            variant="text"
+            onClick={() => {
+              const patch = recommendedPatch(ordered);
+              if (patch.length) layout.mutate({ widgets: patch });
+              else toast.info('Already using the recommended layout');
+            }}
+            disabled={layout.isPending}
+          >
+            Use recommended layout
+          </Button>
+        }
+      >
         <ul className="flex flex-col divide-y divide-hairline">
           {[...visible, ...hidden].map(w => {
             const vi = visible.findIndex(v => v.id === w.id);

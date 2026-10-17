@@ -39,7 +39,10 @@ npm run dev                     # frontend on http://localhost:5173, /api proxie
 4. **No recommended-scenario field.** No scenario is badged as recommended.
 5. **`ResearchResult` has no `kind`.** For empty results, the widget infers product versus service from the offers, or from the widget that ran the search.
 6. **Live research can fail upstream** ("incomplete or invalid response") or take more than 100 s. The UI shows a recoverable error with retry and a manual-estimate fallback.
-7. **Tasks have no stage field.** The timeline orders tasks by `dueDate` and lists undated tasks as "Not scheduled yet" instead of inventing stages.
+7. **Tasks have no stage field.** The checklist groups tasks into Before moving / Important purchases / Services to arrange / Final tasks from category and title keywords. The timeline orders tasks by `dueDate`.
+8. **No answer route for planner questions.** Recognized answers (move date, origin, people, delivery, second-hand) are saved to `preferences`; free-text answers are appended to `preferences.notes`, which the AI assistant reads. Which questions were answered is remembered in the browser.
+9. **No priority field on tasks.** Starred tasks and the furniture class (Economy / Mid-range / Premium, which splits a search's priced results into price thirds and steers new searches) are browser-local preferences.
+10. **Recommended layout.** New workspaces are re-flowed once into a fixed reading order with `PATCH /workspace`; "Use recommended layout" in Customize does the same for existing projects.
 
 ## Verified (2026-10-17)
 

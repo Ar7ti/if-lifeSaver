@@ -41,6 +41,16 @@
   /* Danger count on the midnight island (8:1 on #02093a). */
   --color-danger-on-dark: #ff9c8f;
 
+  /* Chart series: validated categorical order (dataviz validator, light surface). Fixed order, never cycled. */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #e87ba4;
+  --color-series-6: #008300;
+  --color-series-7: #6250d6;
+  --color-series-other: #a8a5a0;
+
   --color-hairline: rgb(0 0 0 / 0.08);
   --color-hairline-strong: rgb(0 0 0 / 0.14);
   --color-hover: rgb(0 0 0 / 0.04);
