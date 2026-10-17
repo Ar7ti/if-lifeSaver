@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Check, Copy, LayoutGrid, ListPlus, Loader2, MessageSquareText, RotateCw, Search, ShieldCheck, ShoppingBag, Wallet, X, type LucideIcon } from 'lucide-react';
 import type { AgentAction, AgentCommand, LifeProject } from '@contracts';
@@ -22,6 +23,7 @@ export function describeCommand(c: AgentCommand, project: LifeProject): Describe
   const widget = (id: string) => project.workspace.widgets.find(w => w.id === id)?.title ?? 'a tool';
   const offer = (id: string) => project.researchResults.flatMap(r => r.offers).find(o => o.id === id);
   switch (c.type) {
+    case 'protection_action':return {icon:ShieldCheck,title:c.arguments.operation==='overview'?'Open My Protection':`Review ${c.arguments.product} protection`,details:['Uses your workspace’s saved protection state. No automatic quote request or purchase.']};
     case 'propose_budget_allocation':
       return {
         icon: Wallet,
@@ -66,6 +68,7 @@ export function describeCommand(c: AgentCommand, project: LifeProject): Describe
 
 export function ActionCard({ action }: { action: AgentAction }) {
   const { project, writer } = useWorkspace();
+  const navigate=useNavigate();
   const live = project.actions.find(a => a.id === action.id) ?? action;
   const d = describeCommand(live.command, project);
   const [copied, setCopied] = useState(false);
@@ -75,7 +78,7 @@ export function ActionCard({ action }: { action: AgentAction }) {
     onSuccess: (p, approved) => {
       writer.setProject(p);
       const updated = p.actions.find(a => a.id === live.id);
-      if (approved && updated?.status === 'applied') toast.success('Done', updated.result ?? d.title);
+      if (approved && updated?.status === 'applied') {toast.success('Done', updated.result ?? d.title);if(live.command.type==='protection_action')navigate(live.command.arguments.operation==='overview'?'/app/protection':`/app/p/${project.id}#protection`);}
     },
     onError: writer.reloadOnConflict,
   });

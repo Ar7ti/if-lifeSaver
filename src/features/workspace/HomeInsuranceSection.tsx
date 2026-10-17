@@ -53,7 +53,7 @@ export function HomeInsuranceSection(){
   const premium=quote?.premiums[selectedPremiumIndex];
   const installments=premium?.periodMonths?Math.ceil(months/premium.periodMonths):null;
   const planned=premium&&installments?premium.amountMinor*installments:null;
-  const expired=Boolean(quote&&quote.validTo<new Date().toISOString().slice(0,10));
+  const expired=Boolean(quote&&(quote.validTo<new Date().toISOString().slice(0,10)||project.protection?.recommendations.some(r=>r.insuranceType==='home'&&r.status==='quote_unavailable')));
   const canQuote=availability?.available&&!expense;
   const requestQuote=()=>{setError('');setNotice('');if(canQuote)request.mutate();else{setNotice(availability?.message??'Quote availability could not be checked. Please retry.');void status.refetch();}};
 
@@ -105,7 +105,7 @@ export function HomeInsuranceSection(){
           <p className="mt-3 text-body-sm text-graphite">Your price and available coverage details will appear here after If returns a quote.</p>
           <div className="mt-6 rounded-button border border-hairline bg-surface p-3.5" role="status"><p className="flex items-center gap-2 text-body-sm font-medium"><Info className="size-4 shrink-0 text-graphite" aria-hidden/>{status.isPending?'Checking availability…':availability?.available?(availability.environment==='sandbox'?'If sandbox · test data':'Ready to request'):'Live quote unavailable'}</p><p className="mt-1.5 text-caption text-graphite">{availability?.message??(status.isError?'Could not check the If connection. Your home details can still be prepared.':'Checking the If connection.')}</p></div>
         </div>:<div className="rounded-card border border-hairline p-5">
-          <div className="mb-4 flex items-center justify-between gap-2"><h3 className="text-body-sm font-semibold">Quote returned by If</h3><span className="rounded-full bg-canvas px-2.5 py-1 text-caption">{quote.environment==='sandbox'?'Sandbox · test data':expired?'Expired':'Live quote'}</span></div>
+          <div className="mb-4 flex items-center justify-between gap-2"><h3 className="text-body-sm font-semibold">Quote returned by If</h3><span className="rounded-full bg-canvas px-2.5 py-1 text-caption">{quote.environment==='sandbox'?'Sandbox · test data':expired?'Review required':'Live quote'}</span></div>
           {quote.premiums.length>0?<><Field label="Price and billing period">{props=><Select {...props} value={selectedPremiumIndex} disabled={Boolean(expense)} onChange={e=>setPremiumIndex(Number(e.target.value))}>{quote.premiums.map((p,i)=><option key={i} value={i}>{formatMoney(p.amountMinor,{exact:true})} · {p.billingPeriod}</option>)}</Select>}</Field>
             <p className="mt-4 text-[32px] font-semibold tracking-tight">{formatMoney(premium?.amountMinor,{exact:true})}<span className="ml-2 text-body-sm font-normal text-graphite">/ {premium?.billingPeriod}</span></p>
             <p className="mt-1 text-caption text-graphite">Net premium returned by If. Gross: {formatMoney(premium?.grossMinor,{exact:true})}. Discount: {formatMoney(premium?.discountMinor,{exact:true})}.</p>

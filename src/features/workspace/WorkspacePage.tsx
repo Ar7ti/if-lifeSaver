@@ -14,7 +14,7 @@ import { ProjectOverview } from './ProjectOverview';
 import { QuestionsBlock } from './QuestionsBlock';
 import { scrollToSection } from './scroll';
 import { WorkspaceGrid } from './WorkspaceGrid';
-import { HomeInsuranceSection } from './HomeInsuranceSection';
+import { ProtectionSection } from './ProtectionSection';
 
 function useIsDesktop() {
   const query = '(min-width: 1280px)';
@@ -91,6 +91,7 @@ export function WorkspacePage() {
   const hasData = Boolean(query.data);
   useEffect(() => {
     if (!hasData || !location.hash) return;
+    if(location.hash==='#protection'){requestAnimationFrame(()=>scrollToSection('protection'));return;}
     if (location.hash === '#assistant') {
       ask();
       return;
@@ -133,7 +134,7 @@ export function WorkspacePage() {
           <div className="mx-auto max-w-[1280px] px-4 pt-6 pb-24 sm:px-8 sm:pt-8">
             <ProjectOverview project={ctx.project} />
             <QuestionsBlock />
-            {ctx.project.scenarioType==='moving'&&<HomeInsuranceSection key={ctx.project.id}/>}
+            <ProtectionSection key={ctx.project.id}/>
             <WorkspaceGrid fresh={fresh} />
           </div>
         </div>

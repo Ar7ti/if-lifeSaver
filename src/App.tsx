@@ -10,6 +10,7 @@ const AppShell = lazy(() => import('@/features/shell/AppShell').then(m => ({ def
 const Dashboard = lazy(() => import('@/features/pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const NewProject = lazy(() => import('@/features/pages/NewProject').then(m => ({ default: m.NewProject })));
 const MyProjects = lazy(() => import('@/features/pages/MyProjects').then(m => ({ default: m.MyProjects })));
+const MyProtection = lazy(() => import('@/features/pages/MyProtection').then(m => ({ default: m.MyProtection })));
 const Settings = lazy(() => import('@/features/pages/Settings').then(m => ({ default: m.Settings })));
 const CreateWorkspace = lazy(() => import('@/features/create/CreateWorkspace').then(m => ({ default: m.CreateWorkspace })));
 const WorkspacePage = lazy(() => import('@/features/workspace/WorkspacePage').then(m => ({ default: m.WorkspacePage })));
@@ -35,6 +36,7 @@ export function App() {
             <Route path="projects" element={<MyProjects />} />
             <Route path="p/:projectId" element={<WorkspacePage />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="protection" element={<MyProtection />} />
             <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>
           <Route path="*" element={<NotFound />} />

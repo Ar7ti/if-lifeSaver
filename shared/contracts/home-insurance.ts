@@ -23,7 +23,7 @@ export const IfCoverageSchema = z.object({
 export const IfQuoteSchema = z.object({
   id: z.string().uuid(), provider: z.literal('If'), environment: z.enum(['sandbox','live']),
   receivedAt: z.string().datetime(), validTo: date, activationDateFrom: date,
-  details: HomeInsuranceDetailsSchema, premiums: z.array(IfPremiumSchema).max(20),
+  details: HomeInsuranceDetailsSchema, inputFingerprint:z.string().optional(), premiums: z.array(IfPremiumSchema).max(20),
   coverages: z.array(IfCoverageSchema).max(20), warnings: z.array(z.string().max(1000)).max(20),
   terms: z.array(z.object({name:text, url:z.string().url().refine(s=>{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password;})}).strict()).max(20),
 }).strict();

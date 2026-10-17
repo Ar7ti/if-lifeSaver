@@ -13,8 +13,10 @@ import { ProjectService } from './service.js';
 import { AppError } from './errors.js';
 import { HomeInsuranceDraftSchema, IfQuoteRequestSchema, AddIfExpenseRequestSchema } from '../../shared/contracts/index.js';
 import { createIfInsuranceProvider, containsFinnishIdentityNumber, type IfInsuranceProvider } from './if-insurance.js';
+import { createCarInsuranceProvider, type CarInsuranceProvider } from './car-insurance.js';
+import { ProtectionUpdateSchema, CarInsuranceDraftSchema, CarQuoteRequestSchema, ProtectionBudgetRequestSchema } from '../../shared/contracts/index.js';
 
-export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider; ifInsurance?:IfInsuranceProvider}
+export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider; ifInsurance?:IfInsuranceProvider;carInsurance?:CarInsuranceProvider}
 const ProjectParams = z.object({projectId:IdSchema}).strict();
 const ItemParams = ProjectParams.extend({itemId:IdSchema});
 const ActionParams = ProjectParams.extend({actionId:IdSchema});
@@ -27,6 +29,7 @@ export async function buildApp(deps: AppDependencies={}) {
   await repository.ready();
   const service=new ProjectService(repository,planner,search);
   const ifInsurance=deps.ifInsurance??createIfInsuranceProvider(config.ifInsurance);
+  const carInsurance=deps.carInsurance??createCarInsuranceProvider(config.ifInsurance);
   // A quiet socket must outlive the maximum bounded provider call (120 seconds).
   // connectionTimeout applies while an async handler is waiting, too.
   const app=Fastify({bodyLimit:32*1024,requestTimeout:125000,connectionTimeout:130000,logger:config.logLevel==='silent'?false:{level:config.logLevel,redact:['req.headers.authorization','req.headers.cookie','req.body','res.body','res.headers["set-cookie"]']},trustProxy:false});
@@ -56,7 +59,7 @@ export async function buildApp(deps: AppDependencies={}) {
   app.setNotFoundHandler((_request,reply)=>reply.code(404).send({error:{code:'NOT_FOUND',message:'Endpoint not found'}}));
   app.addHook('preValidation',async request=>{
     // Identity numbers may only enter the isolated quote request, never chat or persisted project data.
-    const isQuote=request.method==='POST'&&/^\/api\/projects\/[^/]+\/home-insurance\/quote$/.test(request.url);
+    const isQuote=request.method==='POST'&&/^\/api\/projects\/[^/]+\/(?:home-insurance\/quote|protection\/car\/quote)$/.test(request.url);
     const body=isQuote&&request.body&&typeof request.body==='object'?Object.fromEntries(Object.entries(request.body).filter(([key])=>key!=='personalIdentityNumber')):request.body;
     if(containsFinnishIdentityNumber(body))throw new AppError('SENSITIVE_INPUT','Enter identity numbers only in the dedicated If quote field. They cannot be saved in your project or sent to the assistant.',400);
   });
@@ -67,6 +70,12 @@ export async function buildApp(deps: AppDependencies={}) {
   });
   app.get('/api/projects/:projectId',async request=>({project:await service.get(ProjectParams.parse(request.params).projectId)}));
   app.get('/api/projects/:projectId/home-insurance',async request=>service.homeInsurance(ProjectParams.parse(request.params).projectId,ifInsurance));
+  app.get('/api/protection/capabilities',async()=>carInsurance.capabilities());
+  app.patch('/api/projects/:projectId/protection',async request=>({project:await service.protectionUpdate(ProjectParams.parse(request.params).projectId,ProtectionUpdateSchema.parse(request.body))}));
+  app.patch('/api/projects/:projectId/protection/car/draft',async request=>({project:await service.carDraft(ProjectParams.parse(request.params).projectId,CarInsuranceDraftSchema.partial().strict().parse(request.body))}));
+  app.post('/api/projects/:projectId/protection/car/quote',{config:{rateLimit:{max:5,timeWindow:'1 minute'}}},async(request,reply)=>{reply.header('Cache-Control','no-store');return {project:await service.carQuote(ProjectParams.parse(request.params).projectId,CarQuoteRequestSchema.parse(request.body),carInsurance)};});
+  app.post('/api/projects/:projectId/protection/car/expense',async request=>({project:await service.carExpense(ProjectParams.parse(request.params).projectId,ProtectionBudgetRequestSchema.parse(request.body))}));
+  app.delete('/api/projects/:projectId/protection/car/expense',async request=>({project:await service.removeCarExpense(ProjectParams.parse(request.params).projectId)}));
   app.patch('/api/projects/:projectId/home-insurance/details',async request=>({project:await service.saveInsuranceDetails(ProjectParams.parse(request.params).projectId,HomeInsuranceDraftSchema.parse(request.body))}));
   app.post('/api/projects/:projectId/home-insurance/quote',{config:{rateLimit:{max:5,timeWindow:'1 minute'}}},async(request,reply)=>{
     reply.header('Cache-Control','no-store');

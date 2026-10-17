@@ -3,6 +3,7 @@ import type {
   CreateProjectInput, CreateProjectResponse, HealthResponse, LifeProject, ProjectPatch, ResearchInput,
   ResearchResult, ScenariosResponse, SellerMessageInput, SellerMessageResponse, WorkspacePatch, WorkspaceResponse,
   HomeInsuranceDraft, HomeInsuranceResponseSchema, IfQuoteRequest, AddIfExpenseRequest,
+  ProtectionUpdate, CarInsuranceDraft, CarQuoteRequest, ProtectionBudgetRequest, ProtectionCapabilities,
 } from '@contracts';
 import type { z } from 'zod';
 import type { DataSource } from '@/stores/settings';
@@ -23,6 +24,12 @@ export interface LifeSimApi {
   patchWorkspace(id: string, patch: WorkspacePatch): Promise<WorkspaceResponse>;
   sellerMessage(id: string, request: SellerMessageInput): Promise<SellerMessageResponse>;
   confirmAction(id: string, actionId: string, body: ConfirmActionInput): Promise<LifeProject>;
+  protectionCapabilities():Promise<ProtectionCapabilities>;
+  updateProtection(id:string,body:ProtectionUpdate):Promise<LifeProject>;
+  saveCarInsuranceDraft(id:string,draft:Partial<CarInsuranceDraft>):Promise<LifeProject>;
+  requestCarInsuranceQuote(id:string,body:CarQuoteRequest):Promise<LifeProject>;
+  addCarInsuranceExpense(id:string,body:ProtectionBudgetRequest):Promise<LifeProject>;
+  removeCarInsuranceExpense(id:string):Promise<LifeProject>;
   homeInsurance(id:string):Promise<z.infer<typeof HomeInsuranceResponseSchema>>;
   saveInsuranceDetails(id:string,details:HomeInsuranceDraft):Promise<LifeProject>;
   requestInsuranceQuote(id:string,body:IfQuoteRequest):Promise<LifeProject>;

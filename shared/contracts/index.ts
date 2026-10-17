@@ -1,12 +1,15 @@
 import { z } from 'zod';
 import { HomeInsuranceStateSchema } from './home-insurance.js';
 export * from './home-insurance.js';
+export * from './car-insurance.js';
+import { ProtectionStateSchema, VehiclePlanningSchema, ProtectionCommandArgumentsSchema } from './protection.js';
+export * from './protection.js';
 
 /** Contract v1. All monetary fields ending in Minor are integer euro cents.
  * ResearchRequest.maxPrice is the sole major-unit input, e.g. 250 = €250.
  * All objects are declarative data; arbitrary code/HTML/config keys are rejected.
  */
-export const CONTRACT_VERSION = '1.3.0';
+export const CONTRACT_VERSION = '1.4.0';
 export const ScenarioTypeSchema = z.enum(['moving','travel','car_purchase','home_furnishing','student_life','other']);
 export type ScenarioType = z.infer<typeof ScenarioTypeSchema>;
 export const IdSchema = z.string().uuid();
@@ -54,6 +57,7 @@ export const ResearchResultSchema = z.object({ id: IdSchema, category: CategoryI
 export const TaskInputSchema = ProjectTaskSchema.pick({title:true, category:true, dueDate:true, notes:true});
 export const AllocationInputSchema = z.object({ categories: z.array(z.object({ id: CategoryIdSchema, title: z.string().min(1).max(80), allocatedMinor: MinorSchema }).strict()).min(1).max(20), emergencyReserveMinor: MinorSchema }).strict();
 export const ActionArguments = {
+  protection_action: ProtectionCommandArgumentsSchema,
   propose_budget_allocation: AllocationInputSchema,
   research_products: ResearchRequestSchema,
   research_services: ResearchRequestSchema,
@@ -65,6 +69,7 @@ export const ActionArguments = {
   draft_seller_message: z.object({ offerId: IdSchema, language: z.enum(['en', 'fi']).default('en') }).strict(),
 };
 export const AgentCommandSchema = z.discriminatedUnion('type', [
+  z.object({type:z.literal('protection_action'),arguments:ProtectionCommandArgumentsSchema}).strict(),
   z.object({type:z.literal('propose_budget_allocation'), arguments:ActionArguments.propose_budget_allocation}).strict(),
   z.object({type:z.literal('research_products'), arguments:ActionArguments.research_products}).strict(),
   z.object({type:z.literal('research_services'), arguments:ActionArguments.research_services}).strict(),
@@ -76,14 +81,14 @@ export const AgentCommandSchema = z.discriminatedUnion('type', [
   z.object({type:z.literal('draft_seller_message'), arguments:ActionArguments.draft_seller_message}).strict(),
 ]);
 export const AgentActionSchema = z.object({ id: IdSchema, command: AgentCommandSchema, status: z.enum(['proposed', 'applied', 'rejected', 'failed']), requiresConfirmation: z.boolean(), explanation: z.string().max(2000), result: z.string().max(4000).nullable(), createdAt: TimestampSchema }).strict();
-export const PreferencesSchema = z.object({ moveDate: z.string().date().nullable(), origin: z.string().max(200).nullable(), householdSize: z.number().int().min(1).max(30).nullable(), deliveryRequired: z.boolean().nullable(), allowUsed: z.boolean().nullable(), priorities: z.array(z.string().max(200)).max(20), notes: z.string().max(4000), startDate: z.string().date().nullable().optional(), endDate: z.string().date().nullable().optional(), durationDays: z.number().int().min(1).max(366).nullable().optional(), travelers: z.number().int().min(1).max(30).nullable().optional(), ownsFurniture: z.boolean().nullable().optional(), ownedItems: z.array(z.string().max(80)).max(50).optional(), vehicleType: z.string().max(100).nullable().optional(), useCase: z.string().max(300).nullable().optional() }).strict();
+export const PreferencesSchema = z.object({ vehicle:VehiclePlanningSchema.optional(), monthlyBudgetMinor:MinorSchema.optional(), moveDate: z.string().date().nullable(), origin: z.string().max(200).nullable(), householdSize: z.number().int().min(1).max(30).nullable(), deliveryRequired: z.boolean().nullable(), allowUsed: z.boolean().nullable(), priorities: z.array(z.string().max(200)).max(20), notes: z.string().max(4000), startDate: z.string().date().nullable().optional(), endDate: z.string().date().nullable().optional(), durationDays: z.number().int().min(1).max(366).nullable().optional(), travelers: z.number().int().min(1).max(30).nullable().optional(), ownsFurniture: z.boolean().nullable().optional(), ownedItems: z.array(z.string().max(80)).max(50).optional(), vehicleType: z.string().max(100).nullable().optional(), useCase: z.string().max(300).nullable().optional() }).strict();
 export const ClarificationFieldSchema = z.enum(['context','budget','destination','origin','startDate','endDate','durationDays','travelers','moveDate','householdSize','ownsFurniture','ownedItems','vehicleType','useCase']);
 export const ClarificationSchema = z.object({id:IdSchema,field:ClarificationFieldSchema,question:z.string().min(1).max(500),status:z.enum(['pending','answered','dismissed','superseded']),createdAt:TimestampSchema,updatedAt:TimestampSchema,context:z.object({scenarioType:ScenarioTypeSchema,request:z.string().max(2000)}).strict(),answer:z.string().max(2000).nullable(),attempts:z.number().int().min(1).max(3)}).strict();
 export const ConversationSchema = z.object({id:IdSchema,activeRequest:z.string().max(2000).nullable(),turns:z.array(z.object({id:IdSchema,role:z.enum(['user','assistant']),content:z.string().max(4000),createdAt:TimestampSchema}).strict()).max(12),clarifications:z.array(ClarificationSchema).max(40)}).strict();
 export type ClarificationField = z.infer<typeof ClarificationFieldSchema>;
 export type Clarification = z.infer<typeof ClarificationSchema>;
 export type Conversation = z.infer<typeof ConversationSchema>;
-export const LifeProjectSchema = z.object({ id: IdSchema, revision: z.number().int().nonnegative(), title: z.string().min(1).max(120), scenarioType: ScenarioTypeSchema, location: z.string().max(200).nullable(), locale: z.enum(['en', 'fi']), originalMessage: TextSchema, status: z.enum(['planning', 'active', 'completed']), preferences: PreferencesSchema, assumptions: z.array(z.string()), confirmedFacts: z.array(z.string()), questions: z.array(z.string()), budget: BudgetSchema, cart: z.array(CartItemSchema).max(100), tasks: z.array(ProjectTaskSchema).max(200), workspace: WorkspaceSchema, researchResults: z.array(ResearchResultSchema).max(30), risks: z.array(RiskSchema), scenarios: z.array(SimulationScenarioSchema), actions: z.array(AgentActionSchema).max(200), homeInsurance: HomeInsuranceStateSchema.optional(), conversation: ConversationSchema.optional(), answeredQuestions: z.record(z.string().max(500),z.string().max(2000)).optional(), categoryReasons: z.array(z.object({id:CategoryIdSchema,reason:TextSchema}).strict()).optional(), recommendationDetails: z.array(z.object({title:TextSchema,explanation:TextSchema,priority:z.enum(['high','medium','low']),action:TextSchema,reason:TextSchema}).strict()).optional(), recommendations: z.array(z.string()), aiMode: z.enum(['openai', 'local']), createdAt: TimestampSchema, updatedAt: TimestampSchema }).strict();
+export const LifeProjectSchema = z.object({ id: IdSchema, revision: z.number().int().nonnegative(), title: z.string().min(1).max(120), scenarioType: ScenarioTypeSchema, location: z.string().max(200).nullable(), locale: z.enum(['en', 'fi']), originalMessage: TextSchema, status: z.enum(['planning', 'active', 'completed']), preferences: PreferencesSchema, assumptions: z.array(z.string()), confirmedFacts: z.array(z.string()), questions: z.array(z.string()), budget: BudgetSchema, cart: z.array(CartItemSchema).max(100), tasks: z.array(ProjectTaskSchema).max(200), workspace: WorkspaceSchema, researchResults: z.array(ResearchResultSchema).max(30), risks: z.array(RiskSchema), scenarios: z.array(SimulationScenarioSchema), actions: z.array(AgentActionSchema).max(200), protection:ProtectionStateSchema.optional(), homeInsurance: HomeInsuranceStateSchema.optional(), conversation: ConversationSchema.optional(), answeredQuestions: z.record(z.string().max(500),z.string().max(2000)).optional(), categoryReasons: z.array(z.object({id:CategoryIdSchema,reason:TextSchema}).strict()).optional(), recommendationDetails: z.array(z.object({title:TextSchema,explanation:TextSchema,priority:z.enum(['high','medium','low']),action:TextSchema,reason:TextSchema}).strict()).optional(), recommendations: z.array(z.string()), aiMode: z.enum(['openai', 'local']), createdAt: TimestampSchema, updatedAt: TimestampSchema }).strict();
 export const CreateProjectRequestSchema = z.object({message:TextSchema, locale:z.enum(['en','fi']).default('en')}).strict();
 export const CreateProjectResponseSchema = z.object({project:LifeProjectSchema, workspace:WorkspaceSchema, questions:z.array(z.string())}).strict();
 export const ProjectPatchSchema = z.object({title:z.string().min(1).max(120).optional(), location:z.string().min(1).max(200).optional(), status:z.enum(['planning','active','completed']).optional(), preferences:PreferencesSchema.partial().strict().optional(), answers:z.array(z.object({question:z.string().min(1).max(500),answer:TextSchema}).strict()).max(10).optional(), budget:z.object({totalMinor:MinorSchema.optional(), ...AllocationInputSchema.shape}).partial().strict().optional(), tasks:z.array(z.object({id:IdSchema,status:z.enum(['todo','in_progress','done'])}).strict()).max(200).optional(), expectedRevision:z.number().int().nonnegative().optional()}).strict();

@@ -1,5 +1,6 @@
 import {PreferencesSchema, ScenarioTypeSchema, TaskInputSchema, WidgetTypeSchema, type ScenarioType, type WorkspaceWidget} from '../../shared/contracts/index.js';
 import type {z} from 'zod';
+import { vehicleFacts } from './protection.js';
 
 type Preferences = z.infer<typeof PreferencesSchema>;
 type TaskInput = z.infer<typeof TaskInputSchema>;
@@ -52,6 +53,7 @@ export function parseExplicitBudget(message: string): number|null {
 }
 
 function scenario(message: string): ScenarioType {
+  if(vehicleFacts(message).vehicle.make)return 'car_purchase';
   if (/\b(?:buy|buying|purchase|purchasing|looking for|need)\b[^.!?\n]{0,50}\b(?:car|vehicle|van|suv)\b|\b(?:car|vehicle) purchase\b/i.test(message)) return 'car_purchase';
   if (/\b(?:travel(?:l?ing)?|trip|holiday|vacation|visit(?:ing)?|fly(?:ing)?|flight|hotel|nights? abroad)\b/i.test(message)
     || /\bgoing\s+(?:to\s+)?(?!to\b|buy\b|move\b|furnish\b|study\b|school\b|college\b|university\b|work\b|a\b|an\b|the\b)[\p{L}'-]+/iu.test(message)) return 'travel';

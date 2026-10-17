@@ -9,7 +9,7 @@ const EnvSchema = z.object({
   API_TOKEN: z.string().min(24).optional(), ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000'),
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(60000), RESEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(90000),
   LOG_LEVEL: z.enum(['silent','error','warn','info','debug']).default('info'),
-  IF_CLIENT_ID:z.string().min(1).optional(), IF_CLIENT_SECRET:z.string().min(1).optional(), IF_SUBSCRIPTION_KEY:z.string().min(1).optional(),
+  IF_CLIENT_ID:z.string().min(1).optional(), IF_CLIENT_SECRET:z.string().min(1).optional(), IF_SUBSCRIPTION_KEY:z.string().min(1).optional(), IF_PARTNER_ID:z.string().min(1).optional(),
   IF_ENVIRONMENT:z.enum(['sandbox','live']).default('sandbox'), IF_TIMEOUT_MS:z.coerce.number().int().min(100).max(15000).default(8000),
 });
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
@@ -23,6 +23,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const origins = e.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
   if (origins.some(s => { try { const u = new URL(s); return !['http:','https:'].includes(u.protocol) || u.origin !== s; } catch { return true; } })) throw new Error('ALLOWED_ORIGINS must contain exact HTTP(S) origins');
   return {host:e.HOST, port:e.PORT, apiKey:e.OPENAI_API_KEY, model:e.OPENAI_MODEL, aiMode, researchMode, storageMode:e.STORAGE_MODE, dataDir:path.resolve(e.DATA_DIR), apiToken:e.API_TOKEN, origins, aiTimeoutMs:e.AI_TIMEOUT_MS, researchTimeoutMs:e.RESEARCH_TIMEOUT_MS, logLevel:e.LOG_LEVEL,
-    ifInsurance:{clientId:e.IF_CLIENT_ID,clientSecret:e.IF_CLIENT_SECRET,subscriptionKey:e.IF_SUBSCRIPTION_KEY,environment:e.IF_ENVIRONMENT,timeoutMs:e.IF_TIMEOUT_MS}};
+    ifInsurance:{clientId:e.IF_CLIENT_ID,clientSecret:e.IF_CLIENT_SECRET,subscriptionKey:e.IF_SUBSCRIPTION_KEY,partnerId:e.IF_PARTNER_ID,environment:e.IF_ENVIRONMENT,timeoutMs:e.IF_TIMEOUT_MS}};
 }
 export type Config = ReturnType<typeof loadConfig>;

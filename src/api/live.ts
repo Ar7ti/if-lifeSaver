@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import {
   CartResponseSchema, CreateProjectResponseSchema, ErrorResponseSchema, HealthResponseSchema, ProjectResponseSchema,
   ResearchResultSchema, ScenariosResponseSchema, SellerMessageResponseSchema, WorkspaceResponseSchema, AssistantResponseSchema,
-  HomeInsuranceResponseSchema,
+  HomeInsuranceResponseSchema, ProtectionCapabilitiesSchema,
 } from '@contracts';
 import { ApiError, type LifeSimApi } from './types';
 
@@ -60,6 +60,12 @@ export function createLiveApi(getToken: () => string): LifeSimApi {
 
   return {
     source: 'live',
+    protectionCapabilities:()=>request('/protection/capabilities',ProtectionCapabilitiesSchema),
+    updateProtection:async(id,body)=>(await request(`${p(id)}/protection`,ProjectResponseSchema,{method:'PATCH',body})).project,
+    saveCarInsuranceDraft:async(id,body)=>(await request(`${p(id)}/protection/car/draft`,ProjectResponseSchema,{method:'PATCH',body})).project,
+    requestCarInsuranceQuote:async(id,body)=>(await request(`${p(id)}/protection/car/quote`,ProjectResponseSchema,{method:'POST',body,timeout:60000})).project,
+    addCarInsuranceExpense:async(id,body)=>(await request(`${p(id)}/protection/car/expense`,ProjectResponseSchema,{method:'POST',body})).project,
+    removeCarInsuranceExpense:async id=>(await request(`${p(id)}/protection/car/expense`,ProjectResponseSchema,{method:'DELETE'})).project,
     homeInsurance:id=>request(`${p(id)}/home-insurance`,HomeInsuranceResponseSchema),
     saveInsuranceDetails:async(id,body)=>(await request(`${p(id)}/home-insurance/details`,ProjectResponseSchema,{method:'PATCH',body})).project,
     requestInsuranceQuote:async(id,body)=>(await request(`${p(id)}/home-insurance/quote`,ProjectResponseSchema,{method:'POST',body,timeout:60000})).project,

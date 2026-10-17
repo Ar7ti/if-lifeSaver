@@ -76,3 +76,10 @@ No OpenAI model, key location, or provider configuration changed. Ambiguous lang
 ## Contract 1.3.0 — Moving-only If home insurance
 
 See [IF_HOME_INSURANCE.md](IF_HOME_INSURANCE.md) for the verified Finnish API endpoints, credentials, new routes, privacy boundary and recurring budget semantics. Additive `LifeProject.homeInsurance` and `Budget.recurringProposedMinor`; existing widget types and assistant payloads are unchanged. The new `HomeInsuranceSection` uses the existing live/mock adapters. Without approved If credentials it explicitly shows unavailable and accepts only safe home details; it never supplies a demo If price. Do not add `recurringProposedMinor` to `proposedMinor`: it is already included.
+
+
+## Contract 1.4.0 — If Smart Protection Engine
+
+See [SMART_PROTECTION.md](SMART_PROTECTION.md) for the architecture, exact Finnish Car OpenAPI, environment, route table, demo and integration steps. Additive `LifeProject.protection`, structured `preferences.vehicle` and `preferences.monthlyBudgetMinor`. Home state/form/routes are preserved and projected into the overview. `ProtectionSection` is the contextual workspace entry point; `/app/protection` uses the same project query cache. The new `protection_action` assistant command only opens/reviews saved state and never requests prices or sends identity data. Car demo quotes are explicitly fictional and use the same persistence/budget flow as returned If prices. Use the local backend (API data in Settings); the old frontend-only mock adapter remains a separate moving demo.
+
+The reused `server/src/if-car-insurance.ts` remains the only real Finnish Car HTTP provider. `server/src/car-insurance.ts` adapts it for Smart Protection. Do not render the older transient Car price panel alongside the new Protection car workflow when integrating the main checkout's in-progress work. Preserve unrelated Travel/research changes. Main's legacy price endpoint should be treated as a compatibility endpoint; Smart Protection UI and chat use canonical project state and `/protection/car/*` routes.

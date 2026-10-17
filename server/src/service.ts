@@ -6,6 +6,9 @@ import type { SearchProvider } from './research.js';
 import { allocateBudgetForPlan, recalculateBudget, simulateScenarios, analyzeRisks } from './finance.js';
 import { createWorkspace, patchWorkspace } from './workspace.js';
 import { AppError, notFound } from './errors.js';
+import { reconcileProtection, relevantInsurance, updateProtection, carFingerprint, homeFingerprint, linkCarExpense, insuranceSummary, vehicleFacts } from './protection.js';
+import { demoCarPrices, CAR_DOCUMENTATION, type CarInsuranceProvider } from './car-insurance.js';
+import { CarProtectionQuoteSchema, type CarInsuranceDraft, type CarQuoteRequest, type ProtectionBudgetRequest, type ProtectionUpdate } from '../../shared/contracts/index.js';
 import { buildScenarioProfile } from './scenario-profile.js';
 import { classifyScope } from './scope-policy.js';
 import {conversation,appendTurn,extractFacts,groundedInterpretationFacts,pendingClarification,reconcileClarifications,resolveClarification,askClarification,fieldForQuestion,knownField,affirmative,negative,dismisses,normalizePlanningMessage,type Facts} from './conversation.js';
@@ -15,7 +18,8 @@ import { insuranceExpense, type IfInsuranceProvider } from './if-insurance.js';
 export class ProjectService {
   constructor(readonly repository: ProjectRepository, private planner: Planner, private search: SearchProvider) {}
   private derive(project: LifeProject, revision = project.revision + 1) {
-    project.budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense);
+    reconcileProtection(project);
+    project.budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense, project.protection?.car.budgetLink);
     project.scenarios = simulateScenarios({...project,revision});
     project.risks = analyzeRisks(project);
   }
@@ -39,6 +43,7 @@ export class ProjectService {
     const before=JSON.stringify({location:project.location,preferences:project.preferences});
     if(facts.location!==undefined)project.location=facts.location;
     if(facts.preferences)project.preferences={...project.preferences,...facts.preferences};
+    if(facts.preferences?.monthlyBudgetMinor!==undefined)project.confirmedFacts=[...project.confirmedFacts.filter(f=>!/monthly budget/i.test(f)),`User confirmed monthly budget: EUR ${(facts.preferences.monthlyBudgetMinor/100).toFixed(2)}.`].slice(-20);
     if(project.preferences.startDate&&project.preferences.endDate&&project.preferences.endDate<project.preferences.startDate)throw new AppError('VALIDATION_ERROR','Return date must be on or after departure');
     if(facts.budgetMinor!==undefined) {
       if(!project.budget.confirmed) {
@@ -81,6 +86,13 @@ export class ProjectService {
     if(stated.location)plan.location=stated.location;
     const explicitPrefs=Object.fromEntries(Object.entries(stated.preferences).filter(([,value])=>value!==null&&value!==undefined&&value!==''&&(!Array.isArray(value)||value.length>0)));
     const profile = buildScenarioProfile({message:input.message,scenarioType:plan.scenarioType,preferences:{...plan.preferences,...explicitPrefs},location:plan.location,totalMinor:plan.budgetMinor??undefined});
+    if(plan.scenarioType==='car_purchase') {
+      const extracted=vehicleFacts(input.message);
+      if(extracted.vehicle.purchasePriceMinor!==undefined){if(plan.budgetMinor!==extracted.vehicle.purchasePriceMinor)plan.allocation=null;plan.budgetMinor=extracted.vehicle.purchasePriceMinor;}
+      else if(extracted.monthlyBudgetMinor!==undefined&&!/\b(?:total|purchase|car)\s+budget\b/i.test(input.message)){plan.budgetMinor=null;plan.allocation=null;}
+      Object.assign(profile.preferences,{vehicle:extracted.vehicle,...(extracted.monthlyBudgetMinor!==undefined?{monthlyBudgetMinor:extracted.monthlyBudgetMinor}:{})});
+      if(extracted.monthlyBudgetMinor!==undefined){plan.confirmedFacts=plan.confirmedFacts.filter(f=>!/budget/i.test(f));plan.confirmedFacts.push(`User stated monthly budget: EUR ${(extracted.monthlyBudgetMinor/100).toFixed(2)}.`);if(extracted.vehicle.purchasePriceMinor!==undefined)plan.confirmedFacts.push(`User stated vehicle purchase price: EUR ${(extracted.vehicle.purchasePriceMinor/100).toFixed(2)}.`);}
+    }
     const now = new Date().toISOString();
     let budget = allocateBudgetForPlan(plan.budgetMinor ?? 0,profile.categories,10,plan.budgetMinor !== null);
     if (plan.allocation && plan.budgetMinor !== null && plan.allocation.categories.every(c=>profile.categories.some(p=>p.id===c.id))) {
@@ -97,7 +109,24 @@ export class ProjectService {
     this.derive(project,0);
     return this.repository.create(LifeProjectSchema.parse(project));
   }
-  get(id: string) { return this.repository.get(id); }
+  async get(id: string) { const project=await this.repository.get(id);reconcileProtection(project);return project; }
+  protectionUpdate(id:string,input:ProtectionUpdate){return this.repository.update(id,p=>{updateProtection(p,input);this.derive(p);});}
+  carDraft(id:string,draft:Partial<CarInsuranceDraft>){return this.repository.update(id,p=>{if(p.scenarioType!=='car_purchase')throw new AppError('PROTECTION_NOT_RELEVANT','Car pricing requires a car workspace',422);reconcileProtection(p);p.protection!.car.draft={...p.protection!.car.draft,...draft};this.derive(p);});}
+  async carQuote(id:string,input:CarQuoteRequest,provider:CarInsuranceProvider){
+    const snapshot=await this.get(id);if(snapshot.scenarioType!=='car_purchase')throw new AppError('PROTECTION_NOT_RELEVANT','Car pricing requires a car workspace',422);
+    const context=carFingerprint(snapshot,input.draft);
+    // Save nonsensitive answers first, so provider failures never discard them.
+    await this.repository.update(id,p=>{reconcileProtection(p);p.protection!.car.draft=input.draft;this.derive(p);},snapshot.revision);
+    try {
+      const result=input.mode==='demo'?demoCarPrices(input.demoOutcome):await provider.prices(input.draft,input.personalIdentityNumber!);
+      const quote=CarProtectionQuoteSchema.parse({id:randomUUID(),workspaceId:id,insuranceType:'car',provider:result.sourceMode==='demo'?'Demo':'If',sourceMode:result.sourceMode,status:'available',sourceUrl:result.sourceMode==='demo'?null:CAR_DOCUMENTATION,inputFingerprint:context,createdAt:new Date().toISOString(),validUntil:null,options:result.options,terms:result.terms??[],warnings:result.warnings});
+      if(input.personalIdentityNumber&&JSON.stringify(quote).toUpperCase().includes(input.personalIdentityNumber.toUpperCase()))throw new AppError('IF_RESPONSE_INVALID','Provider returned unexpected personal information',502);
+      return await this.repository.update(id,p=>{reconcileProtection(p);if(carFingerprint(p,p.protection!.car.draft)!==context)throw new AppError('CONFLICT','Vehicle or insurance details changed while pricing. Review and request again.',409);p.protection!.car.quotes=[...p.protection!.car.quotes,quote].slice(-10);const rec=p.protection!.recommendations.find(r=>r.insuranceType==='car');if(rec)rec.status='in_progress';this.derive(p);});
+    }catch(error){await this.repository.update(id,p=>{reconcileProtection(p);const rec=p.protection!.recommendations.find(r=>r.insuranceType==='car');if(rec&&!p.protection!.car.quotes.length)rec.status='quote_unavailable';});throw error;}
+  }
+  carExpense(id:string,input:ProtectionBudgetRequest){return this.repository.update(id,p=>{if(p.scenarioType!=='car_purchase')throw new AppError('PROTECTION_NOT_RELEVANT','Car insurance requires a car workspace',422);const link=linkCarExpense(p,input);p.protection!.car.budgetLink=link;this.derive(p);});}
+  removeCarExpense(id:string){return this.repository.update(id,p=>{reconcileProtection(p);p.protection!.car.budgetLink=null;this.derive(p);});}
+
   private requireMoving(project:LifeProject) {
     if(project.scenarioType!=='moving')throw new AppError('IF_SCENARIO_UNSUPPORTED','Home insurance quotes are available in moving projects only',422);
   }
@@ -117,16 +146,18 @@ export class ProjectService {
     if(snapshot.homeInsurance?.expense)throw new AppError('IF_PLAN_CONFLICT','Remove the proposed insurance expense before requesting a replacement quote',409);
     if(input.details.startDate<new Date().toISOString().slice(0,10))throw new AppError('VALIDATION_ERROR','The requested insurance start date must be today or later');
     const quote=IfQuoteSchema.parse(await provider.quote(input.details,input.personalIdentityNumber));
+    quote.inputFingerprint=homeFingerprint(snapshot,input.details);
     if(JSON.stringify(quote).includes(input.personalIdentityNumber))throw new AppError('IF_RESPONSE_INVALID','If returned unexpected personal information; the quote was not saved',502);
     return this.repository.update(id,p=>{this.requireMoving(p);
       if(p.revision!==snapshot.revision)throw new AppError('CONFLICT','Your plan changed while requesting the quote. Review it and try again.',409);
       if(p.homeInsurance?.expense)throw new AppError('IF_PLAN_CONFLICT','Remove the proposed insurance expense before requesting a replacement quote',409);
-      p.homeInsurance={details:input.details,quote,expense:null};this.derive(p);
+      p.homeInsurance={details:input.details,quote,expense:null};reconcileProtection(p);const rec=p.protection!.recommendations.find(r=>r.insuranceType==='home');if(rec)rec.status='in_progress';this.derive(p);
     });
   }
   addInsuranceExpense(id:string,input:AddIfExpenseRequest) {
     return this.repository.update(id,p=>{this.requireMoving(p);const state=p.homeInsurance;
       if(!state?.quote||state.quote.id!==input.quoteId)throw new AppError('IF_QUOTE_MISSING','Request a current quote before adding it to your plan',409);
+      if(state.quote.inputFingerprint&&state.quote.inputFingerprint!==homeFingerprint(p,state.details))throw new AppError('QUOTE_STALE','Home details changed; request a new quote.',409);
       if(state.expense)throw new AppError('IF_ALREADY_PROPOSED','This insurance quote is already in your plan',409);
       state.expense=insuranceExpense(state.quote,input.premiumIndex,input.planningMonths);this.derive(p);
     });
@@ -232,14 +263,15 @@ export class ProjectService {
     const requestedGoal=buildScenarioProfile({message:request.message});
     if(requestedGoal.scenarioType!=='other'&&requestedGoal.scenarioType!==initial.scenarioType&&/\b(?:i want to|i am|i'm|new project|start (?:a|another))\b/i.test(request.message)&&initial.scenarioType!=='other')return {reply:`That sounds like a separate ${requestedGoal.scenarioType.replace('_',' ')} project. Start a new project for it so your ${initial.scenarioType.replace('_',' ')} details stay together.`,proposedActions:[],workspacePatch:null};
     const pending=pendingClarification(initial);
-    let facts=extractFacts(initial,request.message,pending);
+    const planningFacts=(p:LifeProject,f:Facts)=>{if(p.scenarioType==='car_purchase'){const explicit=vehicleFacts(request.message);if(explicit.monthlyBudgetMinor!==undefined){delete f.budgetMinor;f.preferences={...f.preferences,monthlyBudgetMinor:explicit.monthlyBudgetMinor};}if(explicit.vehicle.make)f.preferences={...f.preferences,vehicle:{...p.preferences.vehicle,...explicit.vehicle}};}return f;};
+    let facts=planningFacts(initial,extractFacts(initial,request.message,pending));
     let hasFacts=Object.keys(facts).length>0;
     let resumed:string|undefined;
     let dismissed=false;
     // Save explicit user facts before a model call. Later provider errors cannot discard them.
     let project=await this.repository.update(id,p=>{
       this.repairInitialFacts(p);
-      facts=extractFacts(p,request.message,pending??pendingClarification(p));hasFacts=Object.keys(facts).length>0;
+      facts=planningFacts(p,extractFacts(p,request.message,pending??pendingClarification(p)));hasFacts=Object.keys(facts).length>0;
       const state=conversation(p);
       appendTurn(p,'user',request.message);
       if(pending&&dismisses(request.message)){const entry=state.clarifications.find(c=>c.id===pending.id)!;resolveClarification(p,entry,'dismissed',request.message);dismissed=true;}
@@ -272,6 +304,11 @@ export class ProjectService {
       const workspace=commands.find(c=>c.type==='update_workspace');
       return {reply,proposedActions:actions,workspacePatch:workspace?.type==='update_workspace'?workspace.arguments:null};
     };
+    if(/\b(?:insurance|protect(?:ion|ed)?|insured|cover(?:age|ed)?|vakuutus)\b/i.test(request.message)){
+      const product=relevantInsurance(project);
+      if(product){const operation=/overview|all (?:my )?(?:insurance|protection)/i.test(request.message)?'overview':/afford|budget|impact|cost.*plan/i.test(request.message)?'budget_impact':/saved|current quote/i.test(request.message)?'saved_quote':/how much|price|cost|quote|options|reopen|open/i.test(request.message)?'open_quote':'review';
+        return finish(insuranceSummary(project),[{type:'protection_action',arguments:{operation,product}}],['Open the shared protection workflow. No identity details are sent and no quote is requested by this action.']);}
+    }
     if(dismissed)return finish('Understood. I have kept your saved project details. Tell me the next step you want to work on.');
     if(scope.reply&&scope.classification!=='AMBIGUOUS'&&!hasFacts&&!affirmative(request.message))return finish(scope.reply);
     if(scope.classification==='AMBIGUOUS'&&!hasFacts&&!resumed&&!affirmative(request.message)&&this.planner.interpret) {
@@ -299,6 +336,11 @@ export class ProjectService {
   }
   private async applyCommand(project: LifeProject, command: AgentCommand):Promise<string> {
     switch(command.type) {
+      case 'protection_action': {
+        if(command.arguments.product!==relevantInsurance(project))throw new AppError('PROTECTION_NOT_RELEVANT','The protection action does not match this workspace',422);
+        if(command.arguments.operation==='open_quote'||command.arguments.operation==='review')updateProtection(project,{product:command.arguments.product,status:'in_progress'});
+        return insuranceSummary(project);
+      }
       case 'propose_budget_allocation': {
         project.budget = {...project.budget,...command.arguments,categories:command.arguments.categories.map(c=>({...c,committedMinor:0,proposedMinor:0})),confirmed:true};
         recalculateBudget(project.budget,project.cart);

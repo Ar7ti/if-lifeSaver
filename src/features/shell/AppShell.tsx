@@ -1,6 +1,6 @@
 import { isEditableKeyboardEvent } from '@/lib/keyboard';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { CheckSquare, ChevronUp, FolderClosed, Home, LayoutGrid, PanelLeftClose, PanelLeftOpen, Plus, Settings as SettingsIcon, ShoppingBag, Sparkles, type LucideIcon } from 'lucide-react';
+import { CheckSquare, ChevronUp, FolderClosed, Home, LayoutGrid, PanelLeftClose, PanelLeftOpen, Plus, Settings as SettingsIcon, ShoppingBag, Sparkles, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/format';
@@ -31,6 +31,7 @@ function useNavGroups(): { primary: NavItem[]; workspace: NavItem[] } {
   const primary: NavItem[] = [
     { to: '/app', label: 'Home', icon: Home, isActive: p => p === '/app' },
     { to: '/app/projects', label: 'My projects', short: 'Projects', icon: FolderClosed, isActive: p => p === '/app/projects' },
+    { to: '/app/protection', label:'My Protection', short:'Protection', icon:ShieldCheck, isActive:p=>p==='/app/protection' },
   ];
   // Workspace shortcuts only appear when there is a workspace to open: no dead links.
   const workspace: NavItem[] = recent
@@ -233,6 +234,7 @@ function MobileNav() {
     primary[0]!,
     { to: '/app/new', label: 'New', icon: Plus, isActive: p => p === '/app/new' },
     primary[1]!,
+    primary[2]!,
     ...(workspace[0] ? [workspace[0]] : []),
   ];
   return (
