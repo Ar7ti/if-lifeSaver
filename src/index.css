@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/source-serif-4/400.css';
+
+/* Life Simulator design tokens, from DESIGN.md (Notion style reference).
+ * Contrast notes: #757575 (stone) only passes AA on white, so muted text on the
+ * canvas uses graphite. #0075de passes on white but not on sky tint or canvas,
+ * so blue *text* uses blue-ink; #0075de stays the fill for the one primary action. */
+@theme {
+  --color-canvas: #f6f5f4;
+  --color-surface: #ffffff;
+  --color-ink: #000000;
+  --color-charcoal: #111111;
+  --color-graphite: #615d59;
+  --color-stone: #757575;
+  --color-slate: #696969;
+
+  --color-blue: #0075de;
+  --color-blue-hover: #0068c6;
+  --color-blue-ink: #005bb5;
+  --color-sky-tint: #e6f3fe;
+  --color-sky-tint-hover: #d6eafc;
+  --color-signal-blue: #097fe8;
+  --color-sky-wash: #62aef0;
+  --color-midnight: #02093a;
+
+  --color-marigold: #ffb110;
+  --color-peach: #f6d5b8;
+  --color-coral: #f64932;
+  --color-saffron: #e89d01;
+  --color-mocha: #b18164;
+
+  /* Status pairs (text on tint), each checked at 4.5:1 or better. */
+  --color-danger-ink: #b4281a;
+  --color-danger-tint: #fdeceb;
+  --color-warn-ink: #8a5a00;
+  --color-warn-tint: #fff4dc;
+  --color-ok-ink: #16653c;
+  --color-ok-tint: #e8f5ee;
+  --color-ok-fill: #2a9d62;
+  /* Danger count on the midnight island (8:1 on #02093a). */
+  --color-danger-on-dark: #ff9c8f;
+
+  --color-hairline: rgb(0 0 0 / 0.08);
+  --color-hairline-strong: rgb(0 0 0 / 0.14);
+  --color-hover: rgb(0 0 0 / 0.04);
+  --color-pressed: rgb(0 0 0 / 0.07);
+
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.33;
+  --text-caption--letter-spacing: 0.01em;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.43;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5;
+  --text-subheading: 1.25rem;
+  --text-subheading--line-height: 1.2;
+  --text-heading-sm: 1.375rem;
+  --text-heading-sm--line-height: 1.27;
+  --text-heading-sm--letter-spacing: -0.011em;
+  --text-heading: 2.5rem;
+  --text-heading--line-height: 1.1;
+  --text-heading--letter-spacing: -0.03em;
+  --text-display-sm: 3.375rem;
+  --text-display-sm--line-height: 1.04;
+  --text-display-sm--letter-spacing: -0.035em;
+  --text-display: 4.5rem;
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.028em;
+
+  --radius-small: 4px;
+  --radius-button: 8px;
+  --radius-card: 12px;
+
+  --shadow-nav: 0px 0.7px 1.462px 0px rgb(0 0 0 / 0.015), 0px 3px 9px 0px rgb(0 0 0 / 0.03);
+  --shadow-mockup: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-float: 0px 8px 28px rgba(0, 0, 0, 0.12), 0px 0px 0px 1px rgba(0, 0, 0, 0.06);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Keeps focused elements clear of the sticky mobile header and bottom nav. */
+    scroll-padding-top: 4.5rem;
+    scroll-padding-bottom: 5rem;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings: 'lnum';
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--color-sky-tint);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button, [role='button'], summary {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.18) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Flat pulse: the system has no gradients, even for loading placeholders. */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.skeleton {
+  background: rgb(0 0 0 / 0.06);
+  animation: pulse-soft 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
