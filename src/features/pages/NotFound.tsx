@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { buttonClass } from '@/components/ui/Button';
 
 export function NotFound() {
   return (
@@ -7,7 +8,7 @@ export function NotFound() {
         <p className="text-caption font-medium text-graphite">404</p>
         <h1 className="mt-2 text-heading font-semibold">This page doesn&rsquo;t exist</h1>
         <p className="mt-2 text-body text-graphite">The link may be old or mistyped.</p>
-        <Link to="/" className="mt-6 inline-flex h-9 items-center rounded-button bg-blue px-[15px] text-body-sm font-medium text-white hover:bg-blue-hover">
+        <Link to="/" className={buttonClass('primary', 'md', 'mt-6')}>
           Go to Life Simulator
         </Link>
       </div>

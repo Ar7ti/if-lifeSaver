@@ -14,10 +14,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<Variant, string> = {
   // The one filled chromatic button. Use once per view.
-  primary: 'bg-blue text-white hover:bg-blue-hover active:bg-blue-hover disabled:bg-blue/45',
-  ghost: 'bg-sky-tint text-blue-ink hover:bg-sky-tint-hover disabled:opacity-50',
+  // The one filled action per view: an ink pill (Reference A).
+  primary: 'bg-ink text-white hover:bg-ink-hover disabled:bg-ink/35',
+  ghost: 'bg-fill text-ink hover:bg-fill-hover disabled:opacity-50',
   text: 'bg-transparent text-ink/90 hover:bg-hover active:bg-pressed disabled:text-ink/40',
-  outline: 'bg-surface text-ink/90 border border-hairline-strong hover:bg-hover disabled:text-ink/40',
+  outline: 'bg-surface text-ink/90 shadow-[0_0_0_1px_rgb(0_0_0/0.1)] hover:bg-hover disabled:text-ink/40',
   danger: 'bg-transparent text-danger-ink hover:bg-danger-tint disabled:opacity-50',
 };
 
@@ -29,6 +30,18 @@ const sizes: Record<Size, string> = {
   'icon-sm': 'size-8 justify-center',
 };
 
+// Colors ease over 200ms; the press scale is quicker (150ms) and never applies when disabled.
+const base = [
+  'inline-flex shrink-0 items-center whitespace-nowrap rounded-button font-medium select-none',
+  'transition-[color,background-color,border-color,scale] ease-out [transition-duration:200ms,200ms,200ms,150ms] enabled:active:scale-[0.96]',
+  '[&_svg]:size-4 [&_svg]:shrink-0',
+];
+
+/** Button styling for elements that must stay links (navigation), so they match <Button>. */
+export function buttonClass(variant: Variant = 'text', size: Size = 'md', className?: string) {
+  return cn(base, variants[variant], sizes[size], className);
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = 'text', size = 'md', loading, icon, className, children, disabled, type = 'button', ...rest },
   ref,
@@ -39,15 +52,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(
-        'inline-flex shrink-0 items-center whitespace-nowrap rounded-button font-medium select-none',
-        // Colors ease over 200ms; the press scale is quicker (150ms) and never applies when disabled.
-        'transition-[color,background-color,border-color,scale] ease-out [transition-duration:200ms,200ms,200ms,150ms] enabled:active:scale-[0.96]',
-        '[&_svg]:size-4 [&_svg]:shrink-0',
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      className={buttonClass(variant, size, className)}
       {...rest}
     >
       {loading ? <Loader2 className="animate-spin" aria-hidden /> : icon}

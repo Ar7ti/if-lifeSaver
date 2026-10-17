@@ -4,6 +4,7 @@ import { useProjects } from '@/stores/projects';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { EmptyState } from '@/components/ui/States';
+import { buttonClass } from '@/components/ui/Button';
 import { PageContainer, PageHeader } from './PageHeader';
 import { ProjectCard } from './ProjectCard';
 
@@ -20,7 +21,7 @@ export function MyProjects() {
         title="My projects"
         description={source === 'mock' ? 'Demo projects saved in this browser.' : 'Projects created in this browser. They are stored by the Life Simulator service.'}
         actions={
-          <Link to="/app/new" className="inline-flex h-9 items-center gap-2 rounded-button bg-blue px-[15px] text-body-sm font-medium text-white hover:bg-blue-hover">
+          <Link to="/app/new" className={buttonClass('primary')}>
             <Plus className="size-4" aria-hidden /> New life project
           </Link>
         }

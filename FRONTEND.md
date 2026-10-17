@@ -58,3 +58,14 @@ npm run dev                     # frontend on http://localhost:5173, /api proxie
 - Dark mode, drag-and-drop layout and a service worker (P2). A web manifest is included.
 - RTL, which the contract's locales (`en`, `fi`) don't need.
 - A Finnish UI translation: copy is English-only, while seller drafts support FI.
+
+## Visual design (2026-10-17 redesign)
+
+References: `design-references/dashBoard.png` (Reference A, workspace: framed panel, borderless 20px cards, grey inner rows, ink-black pill actions, regular-weight headings) and `design-references/Sidebar.webp` (Reference B, navigation: flat sidebar, thin monochrome icons, Recents list, profile row). Custom 3D illustrations from `Icons/` are served from `public/illustrations/` (384px PNGs) and used as scenario marks, quick starts, project thumbnails and the assistant mascot; navigation stays monochrome. Emoji are native glyphs (no bundled emoji font) used as widget and checklist-section markers, always `aria-hidden` next to a text label.
+
+## For Codex (backend coordination)
+
+1. **Cart lines outside budget envelopes read as over budget.** A cart line whose `category` matches no budget category creates a €0 envelope, so any price shows "over". The frontend now files searches under a matching envelope (beds → `furniture`), but an offer researched under another category still lands in a €0 envelope. Suggest mapping research categories to envelopes server-side, or letting `AddCartItemRequest` carry a budget category.
+2. **Questions are plain strings.** The UI infers input types from wording. A typed shape such as `{ id, text, kind: 'date'|'number'|'text'|'single'|'multi', options?, field? }` plus an answer route would allow multiple choice and exact field mapping.
+3. **No priority, scenario-choice or risk-status fields.** Task stars, the chosen scenario and the furniture class are browser-local.
+4. **Live research occasionally fails upstream** with "Research returned an incomplete or invalid response" (seen once; the identical retry succeeded in 19 s).

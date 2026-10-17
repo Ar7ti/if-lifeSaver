@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ListChecks, Star } from 'lucide-react';
+import { Check, ChevronDown, ListChecks, Star } from 'lucide-react';
 import type { ProjectTask } from '@contracts';
 import { useWorkspace } from '@/features/workspace/context';
 import { useUi } from '@/stores/ui';
@@ -9,30 +9,33 @@ import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useTaskStatus } from './useTaskStatus';
 
-type SectionId = 'before' | 'purchases' | 'services' | 'final';
-const SECTIONS: { id: SectionId; title: string }[] = [
-  { id: 'before', title: 'Before moving' },
-  { id: 'purchases', title: 'Important purchases' },
-  { id: 'services', title: 'Services to arrange' },
-  { id: 'final', title: 'Final tasks' },
+type SectionId = 'prep' | 'furniture' | 'services' | 'home' | 'final';
+const SECTIONS: { id: SectionId; emoji: string; title: string }[] = [
+  { id: 'prep', emoji: '📦', title: 'Preparation' },
+  { id: 'furniture', emoji: '🛏️', title: 'Furniture' },
+  { id: 'services', emoji: '🚚', title: 'Moving services' },
+  { id: 'home', emoji: '🏠', title: 'New home' },
+  { id: 'final', emoji: '✅', title: 'Final tasks' },
 ];
 
 /** Tasks carry only a free category, so sections come from category and title keywords. */
 function sectionOf(t: ProjectTask): SectionId {
   const text = `${t.category} ${t.title}`.toLowerCase();
-  if (/moving day|key|handover|hand over|unpack|settle|final|clean the old|move in/.test(text)) return 'final';
-  if (/furniture|appliance|essential|bed|sofa|desk|fridge|buy|purchase|shop/.test(text)) return 'purchases';
-  if (/service|transport|mover|moving company|van|utilit|electric|internet|broadband|insur|clean|storage|quote/.test(text)) return 'services';
-  return 'before';
+  if (/moving day|handover|hand over|unpack|settle in|final|clean the old|move in/.test(text)) return 'final';
+  if (/furniture|appliance|essential|bed|sofa|desk|fridge|buy|purchase|shop/.test(text)) return 'furniture';
+  if (/utilit|electric|internet|broadband|insur|address|posti|dvv|lease|rent|key|registration|home/.test(text)) return 'home';
+  if (/service|transport|mover|moving company|van|clean|storage|quote/.test(text)) return 'services';
+  return 'prep';
 }
 
 function TaskRow({ task, starred, onToggle, onStar }: { task: ProjectTask; starred: boolean; onToggle: (done: boolean) => void; onStar: () => void }) {
   const done = task.status === 'done';
+  const [open, setOpen] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const overdue = !done && task.dueDate !== null && task.dueDate < today;
   return (
     <motion.li layout="position" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, marginTop: 0 }} transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
-      <div className={cn('group flex items-start gap-3 rounded-[10px] px-3 py-2.5 transition-colors duration-150 hover:bg-hover', done && 'opacity-60')}>
+      <div className={cn('group flex items-start gap-3 rounded-[12px] px-3 py-2.5 transition-colors duration-150 hover:bg-canvas', done && 'opacity-55')}>
         <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
           <span className="relative mt-0.5 grid size-5 shrink-0 place-items-center">
             <input
@@ -47,9 +50,18 @@ function TaskRow({ task, starred, onToggle, onStar }: { task: ProjectTask; starr
           </span>
           <span className="min-w-0 flex-1">
             <span className={cn('block text-[15px] leading-snug text-ink transition-colors duration-200', done && 'text-graphite line-through decoration-ink/30')}>{task.title}</span>
-            {task.notes && !done && <span className="mt-0.5 block text-caption text-graphite">{task.notes}</span>}
           </span>
         </label>
+        {task.notes && !done && (
+          <button
+            onClick={() => setOpen(o => !o)}
+            aria-expanded={open}
+            aria-label={open ? `Hide details for ${task.title}` : `Show details for ${task.title}`}
+            className="grid size-8 shrink-0 place-items-center rounded-button text-graphite transition-colors duration-150 hover:bg-hover hover:text-ink"
+          >
+            <ChevronDown className={cn('size-4 transition-transform duration-200', open && 'rotate-180')} aria-hidden />
+          </button>
+        )}
         <div className="flex shrink-0 items-center gap-1.5">
           {task.status === 'in_progress' && <span className="rounded-full bg-sky-tint px-2 py-0.5 text-caption font-medium text-blue-ink">In progress</span>}
           {task.dueDate && (
@@ -74,6 +86,7 @@ function TaskRow({ task, starred, onToggle, onStar }: { task: ProjectTask; starr
           )}
         </div>
       </div>
+      {open && task.notes && <p className="-mt-1 pr-3 pb-2 pl-11 text-caption text-graphite">{task.notes}</p>}
     </motion.li>
   );
 }
@@ -133,7 +146,12 @@ export function TaskList() {
         return (
           <div key={section.id}>
             <div className="mb-1 flex items-center justify-between gap-3 px-3">
-              <h3 className="text-caption font-semibold tracking-[0.04em] text-graphite uppercase">{section.title}</h3>
+              <h3 className="flex items-center gap-2 text-body-sm font-medium text-ink">
+                <span className="emoji text-[15px]" aria-hidden>
+                  {section.emoji}
+                </span>
+                {section.title}
+              </h3>
               <span className="text-caption text-graphite tabular">
                 {closed.length}/{section.tasks.length}
               </span>

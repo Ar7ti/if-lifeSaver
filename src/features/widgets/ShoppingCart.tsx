@@ -16,9 +16,34 @@ import { ManualItemDialog } from './research/ManualItemDialog';
 const priceTone = { verified: 'ok', estimated: 'warn', demo: 'warn' } as const;
 const priceText = { verified: 'Verified', estimated: 'Estimate', demo: 'Demo' } as const;
 
+/** Emoji for a budget category, used when a cart line has no listing photo. */
+export function categoryEmoji(category: string) {
+  const c = category.toLowerCase();
+  if (/bed|mattress/.test(c)) return '🛏️';
+  if (/sofa|couch|chair|furniture|desk|table/.test(c)) return '🛋️';
+  if (/mov|van|transport|truck/.test(c)) return '🚚';
+  if (/box|pack/.test(c)) return '📦';
+  if (/fridge|appliance|washer|oven/.test(c)) return '🧊';
+  if (/clean/.test(c)) return '🧽';
+  if (/home|rent|house|apartment/.test(c)) return '🏠';
+  return '🛒';
+}
+
+function CartThumb({ imageUrl, category }: { imageUrl: string | null; category: string }) {
+  const [failed, setFailed] = useState(false);
+  if (imageUrl && !failed)
+    return <img src={imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="size-11 shrink-0 rounded-[10px] bg-canvas object-cover outline outline-1 -outline-offset-1 outline-black/10" />;
+  return (
+    <span className="emoji grid size-11 shrink-0 place-items-center rounded-[10px] bg-canvas text-[20px]" aria-hidden>
+      {categoryEmoji(category)}
+    </span>
+  );
+}
+
 export function ShoppingCart() {
   const { project, writer } = useWorkspace();
   const { cart, budget } = project;
+  const offerImages = new Map(project.researchResults.flatMap(r => r.offers).map(o => [o.id, o.imageUrl]));
   const [manualOpen, setManualOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -83,6 +108,7 @@ export function ShoppingCart() {
           return (
             <li key={item.id} className={cn('flex flex-col gap-2 py-3 first:pt-0 transition-opacity duration-200', busy === item.id && 'opacity-60')}>
               <div className="flex items-start gap-3">
+                <CartThumb imageUrl={item.offerId ? (offerImages.get(item.offerId) ?? null) : null} category={item.category} />
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-body-sm font-medium" title={item.title}>
                     {item.title}

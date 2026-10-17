@@ -2,19 +2,21 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import { AlertOctagon, CalendarDays, ChevronRight, CircleHelp, MapPin, PenLine, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, PenLine, Sparkles } from 'lucide-react';
 import type { LifeProject } from '@contracts';
 import { Money } from '@/components/ui/Money';
-import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { ErrorState } from '@/components/ui/States';
-import { formatDate, pluralize } from '@/lib/format';
+import { formatDate, formatMoney, pluralize } from '@/lib/format';
+import { useUi } from '@/stores/ui';
 import { toast } from '@/stores/toast';
 import { cn } from '@/lib/cn';
 import { useWorkspace } from './context';
+import { scenarioIllustration, scrollToSection } from './scroll';
+import { openQuestions } from './QuestionsBlock';
 
 type Tri = 'yes' | 'no' | 'unsure';
 const toTri = (v: boolean | null): Tri => (v === null ? 'unsure' : v ? 'yes' : 'no');
@@ -99,112 +101,200 @@ function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-function ProgressRing({ pct }: { pct: number }) {
-  const r = 15;
-  const c = 2 * Math.PI * r;
+function Chip({ children, onClick, label }: { children: React.ReactNode; onClick?: () => void; label?: string }) {
+  const cls = 'inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink/80 shadow-[0_0_0_1px_rgb(0_0_0/0.08)]';
+  return onClick ? (
+    <button onClick={onClick} aria-label={label} className={cn(cls, 'transition-colors duration-150 hover:bg-hover')}>
+      {children}
+    </button>
+  ) : (
+    <span className={cls}>{children}</span>
+  );
+}
+
+function Emoji({ children }: { children: string }) {
   return (
-    <svg viewBox="0 0 36 36" className="size-9 -rotate-90" aria-hidden>
-      <circle cx="18" cy="18" r={r} fill="none" stroke="rgb(0 0 0 / 0.08)" strokeWidth="3.5" />
-      <circle cx="18" cy="18" r={r} fill="none" stroke="var(--color-blue)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} className="transition-[stroke-dasharray] duration-500" />
+    <span className="emoji" aria-hidden>
+      {children}
+    </span>
+  );
+}
+
+function CardAction({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <Button size="sm" variant="primary" onClick={onClick} icon={<ArrowRight />} className="flex-row-reverse">
+      {children}
+    </Button>
+  );
+}
+
+function Ring({ pct }: { pct: number }) {
+  const c = 2 * Math.PI * 15;
+  return (
+    <svg viewBox="0 0 36 36" className="size-12 -rotate-90" aria-hidden>
+      <circle cx="18" cy="18" r="15" fill="none" stroke="rgb(0 0 0 / 0.07)" strokeWidth="3.5" />
+      <circle cx="18" cy="18" r="15" fill="none" stroke="var(--color-blue)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} className="transition-[stroke-dasharray] duration-500" />
     </svg>
   );
 }
 
-function Stat({ label, children, tone }: { label: string; children: React.ReactNode; tone?: 'danger' }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-caption text-graphite">{label}</dt>
-      <dd className={cn('mt-0.5 text-[22px] leading-tight font-semibold tracking-[-0.5px]', tone === 'danger' && 'text-danger-ink')}>{children}</dd>
-    </div>
-  );
+interface Attention {
+  key: string;
+  emoji: string;
+  title: string;
+  detail: string;
+  target: string;
 }
 
 export function ProjectOverview({ project }: { project: LifeProject }) {
+  const { ask } = useWorkspace();
   const [editing, setEditing] = useState(false);
+  const answered = useUi(s => s.answered[project.id]);
   const b = project.budget;
   const done = project.tasks.filter(t => t.status === 'done').length;
   const pct = project.tasks.length ? Math.round((done / project.tasks.length) * 100) : 0;
+  const nextTask = project.tasks.find(t => t.status !== 'done');
   const openRisks = project.risks.filter(r => r.status === 'open');
-  const high = openRisks.filter(r => r.severity === 'high').length;
   const date = formatDate(project.preferences.moveDate);
+  const spentPct = b.totalMinor ? Math.min(100, (b.committedMinor / b.totalMinor) * 100) : 0;
+  const questionCount = openQuestions(project, answered).length;
+
+  const attention: Attention[] = [];
+  if (questionCount > 0) attention.push({ key: 'q', emoji: '💬', title: questionCount === 1 ? '1 question for you' : `${questionCount} questions for you`, detail: 'Answer to sharpen your plan', target: 'questions' });
+  for (const r of openRisks.filter(r => r.severity === 'high').slice(0, 2)) attention.push({ key: r.id, emoji: '🛡️', title: r.title, detail: r.preventiveAction, target: 'w-risk_guardian' });
+  const unknownDelivery = project.cart.filter(i => i.deliveryCostMinor === null).length;
+  if (unknownDelivery > 0) attention.push({ key: 'd', emoji: '🚚', title: unknownDelivery === 1 ? 'Delivery cost unknown' : `${unknownDelivery} delivery costs unknown`, detail: 'Confirm with the seller', target: 'w-shopping_cart' });
 
   return (
-    <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} aria-labelledby="project-title" className="mb-8">
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1 text-body-sm text-graphite">
-        <Link to="/app/projects" className="rounded hover:text-ink">
-          My projects
-        </Link>
-        <ChevronRight className="size-3.5" aria-hidden />
-        <span className="truncate text-ink/80" aria-current="page">
-          {project.title}
-        </span>
-      </nav>
-
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <h1 id="project-title" className="text-[30px] leading-[1.1] font-semibold tracking-[-0.9px] sm:text-[36px] sm:tracking-[-1.1px]">
+    <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} aria-labelledby="project-title" className="mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-body-sm text-graphite">
+          <Link to="/app/projects" className="rounded hover:text-ink">
+            My projects
+          </Link>
+          <span aria-hidden>/</span>
+          <span className="truncate text-ink" aria-current="page">
             {project.title}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-body-sm text-graphite">
-            <Pill tone="peach">{project.scenarioType === 'moving' ? 'Moving' : 'Life project'}</Pill>
-            {project.location && (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="size-4" aria-hidden /> {project.location}
-              </span>
-            )}
-            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 rounded hover:text-ink">
-              <CalendarDays className="size-4" aria-hidden /> {date ?? 'Add move date'}
-            </button>
-            {project.preferences.householdSize && (
-              <span className="flex items-center gap-1.5">
-                <Users className="size-4" aria-hidden /> {pluralize(project.preferences.householdSize, 'person', 'people')}
-              </span>
-            )}
-            {project.aiMode === 'local' && <Pill tone="neutral" title="The AI planner was not available; a simpler rule-based planner prepared this plan.">Basic planner</Pill>}
-          </div>
+          </span>
+        </nav>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" icon={<PenLine />} onClick={() => setEditing(true)}>
+            Edit details
+          </Button>
+          <Button variant="primary" size="sm" icon={<Sparkles />} onClick={() => ask()}>
+            Ask assistant
+          </Button>
         </div>
-        <Button variant="text" size="sm" icon={<PenLine />} onClick={() => setEditing(true)} className="text-graphite">
-          Edit details
-        </Button>
       </div>
 
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
-        <dl className="grid grid-cols-2 gap-x-10 gap-y-4 sm:flex sm:flex-wrap">
-          <Stat label="Budget">{b.totalMinor ? <Money minor={b.totalMinor} /> : <span className="text-graphite">Not set</span>}</Stat>
-          <Stat label="Spent in plan">
-            <Money minor={b.committedMinor} />
-          </Stat>
-          <Stat label="Remaining" tone={b.remainingMinor < 0 ? 'danger' : undefined}>
-            <Money minor={b.remainingMinor} />
-          </Stat>
-          <div className="relative min-h-9 pl-12">
-            <dt className="text-caption text-graphite">Progress</dt>
-            <dd className="text-body-sm font-semibold tabular">
-              {done}/{project.tasks.length} tasks
-            </dd>
-            <dd className="absolute top-0 left-0">
-              <ProgressRing pct={pct} />
-            </dd>
+      <div className="flex items-center gap-4">
+        <img src={scenarioIllustration(project.scenarioType, project.title)} alt="" width="64" height="64" className="size-14 shrink-0 object-contain sm:size-16" aria-hidden />
+        <div className="min-w-0">
+          <h1 id="project-title" className="text-[30px] leading-[1.1] font-medium tracking-[-0.9px] sm:text-[40px] sm:tracking-[-1.3px]">
+            {project.title}
+          </h1>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <Chip>
+              <Emoji>{project.scenarioType === 'moving' ? '📦' : '✨'}</Emoji> {project.scenarioType === 'moving' ? 'Moving' : 'Life project'}
+            </Chip>
+            {project.location && (
+              <Chip>
+                <Emoji>📍</Emoji> {project.location}
+              </Chip>
+            )}
+            <Chip onClick={() => setEditing(true)} label={date ? `Move date ${date}, edit` : 'Add move date'}>
+              <Emoji>📅</Emoji> {date ?? 'Add date'}
+            </Chip>
+            {project.preferences.householdSize && (
+              <Chip>
+                <Emoji>👥</Emoji> {pluralize(project.preferences.householdSize, 'person', 'people')}
+              </Chip>
+            )}
+            {project.aiMode === 'local' && <Chip>Basic planner</Chip>}
           </div>
-        </dl>
-        {(openRisks.length > 0 || project.questions.length > 0) && (
-          <ul className="flex flex-wrap gap-2" aria-label="Status">
-            {project.questions.length > 0 && (
-              <li>
-                <a href="#questions-heading" className="inline-flex items-center gap-1.5 rounded-full bg-sky-tint px-3 py-1 text-caption font-medium text-blue-ink hover:bg-sky-tint-hover">
-                  <CircleHelp className="size-3.5" aria-hidden /> {pluralize(project.questions.length, 'open question')}
-                </a>
-              </li>
-            )}
-            {openRisks.length > 0 && (
-              <li>
-                <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-caption font-medium', high ? 'bg-danger-tint text-danger-ink' : 'bg-warn-tint text-warn-ink')}>
-                  <AlertOctagon className="size-3.5" aria-hidden /> {pluralize(openRisks.length, 'thing')} to check{high ? ` · ${high} urgent` : ''}
-                </span>
-              </li>
-            )}
-          </ul>
-        )}
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="card flex flex-col gap-4 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-body-sm font-medium">
+              <Emoji>💸</Emoji> Budget
+            </p>
+            <Chip>{b.totalMinor ? formatMoney(b.totalMinor) : 'Not set'} total</Chip>
+          </div>
+          <div>
+            <p className={cn('text-[30px] leading-none font-medium tracking-[-0.8px]', b.remainingMinor < 0 && 'text-danger-ink')}>
+              <Money minor={b.remainingMinor} />
+            </p>
+            <p className="mt-1.5 text-body-sm text-graphite">{b.remainingMinor < 0 ? 'over budget' : 'left to plan with'}</p>
+          </div>
+          <div className="mt-auto flex items-end justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-1.5 overflow-hidden rounded-full bg-ink/[0.07]">
+                <div className="h-full rounded-full bg-blue transition-[width] duration-500" style={{ width: `${spentPct}%` }} />
+              </div>
+              <p className="mt-1.5 text-caption text-graphite tabular">{formatMoney(b.committedMinor)} spent in plan</p>
+            </div>
+            <CardAction onClick={() => scrollToSection('w-budget')}>Budget</CardAction>
+          </div>
+        </div>
+
+        <div className="card flex flex-col gap-4 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-body-sm font-medium">
+              <Emoji>✅</Emoji> Checklist
+            </p>
+            <Chip>
+              {done}/{project.tasks.length} done
+            </Chip>
+          </div>
+          <div className="flex items-center gap-3">
+            <Ring pct={pct} />
+            <div className="min-w-0">
+              <p className="text-[30px] leading-none font-medium tracking-[-0.8px] tabular">{pct}%</p>
+              <p className="mt-1.5 text-body-sm text-graphite">complete</p>
+            </div>
+          </div>
+          <div className="mt-auto flex items-end justify-between gap-3">
+            <p className="min-w-0 text-caption text-graphite">
+              {nextTask ? (
+                <>
+                  Next: <span className="text-ink/85">{nextTask.title}</span>
+                </>
+              ) : (
+                'Everything is done'
+              )}
+            </p>
+            <CardAction onClick={() => scrollToSection('w-task_list')}>Tasks</CardAction>
+          </div>
+        </div>
+
+        <div className="card flex flex-col gap-1 p-2 md:col-span-2 xl:col-span-1">
+          <p className="flex items-center gap-2 px-3 pt-3 pb-1 text-body-sm font-medium">
+            <Emoji>🔔</Emoji> Needs attention
+          </p>
+          {attention.length === 0 ? (
+            <p className="px-3 pb-3 text-body-sm text-graphite">All clear. Nothing urgent right now ✨</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {attention.slice(0, 3).map(a => (
+                <li key={a.key}>
+                  <button onClick={() => (a.target === 'questions' ? scrollToSection('questions') : scrollToSection(a.target))} className="group flex w-full items-center gap-3 rounded-[14px] p-2.5 text-left transition-colors duration-150 hover:bg-canvas">
+                    <span className="emoji grid size-10 shrink-0 place-items-center rounded-[12px] bg-canvas text-[18px] transition-colors duration-150 group-hover:bg-surface" aria-hidden>
+                      {a.emoji}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-body-sm font-medium text-ink">{a.title}</span>
+                      <span className="block truncate text-caption text-graphite">{a.detail}</span>
+                    </span>
+                    <ArrowUpRight className="size-4 shrink-0 text-graphite transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {editing && <DetailsDialog open={editing} onClose={() => setEditing(false)} />}

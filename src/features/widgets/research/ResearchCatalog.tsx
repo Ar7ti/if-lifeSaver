@@ -40,6 +40,27 @@ function toSlug(text: string) {
   return s;
 }
 
+/**
+ * Files a search under the budget envelope it belongs to (a bed under Furniture), so the
+ * offers it returns count against that envelope instead of a new, empty one.
+ */
+const ENVELOPE_GROUPS: [RegExp, RegExp][] = [
+  [/bed|sofa|couch|desk|table|chair|wardrobe|shel|mattress|dresser|drawer|furniture/, /furnit/],
+  [/fridge|freezer|washer|washing|oven|microwave|dishwasher|appliance|vacuum|kettle/, /applian/],
+  [/towel|kitchen|lamp|curtain|bedding|essential|cutlery|pan|pot|plate/, /essential/],
+  [/mov|van|truck|box|transport|removal/, /mov|transport/],
+  [/clean|insur|internet|broadband|electric|service/, /service/],
+];
+function envelopeFor(text: string, categories: { id: string; title: string }[]) {
+  const t = text.toLowerCase();
+  for (const [query, envelope] of ENVELOPE_GROUPS) {
+    if (!query.test(t)) continue;
+    const hit = categories.find(c => envelope.test(c.id) || envelope.test(c.title.toLowerCase()));
+    if (hit) return hit.id;
+  }
+  return null;
+}
+
 const PRODUCT_PREFS = ['Used is fine', 'New only', 'Delivery needed', 'Local pickup', 'Compact size'];
 const SERVICE_PREFS = ['Fixed price', 'Weekend availability', 'Includes packing', 'Insurance included'];
 const SERVICE_STARTERS = ['Moving company', 'Van rental', 'Moving boxes', 'Cleaning service'];
@@ -95,7 +116,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const research = useMutation({
     mutationFn: async (input: { text: string; max: number | undefined; prefs: string[] }) =>
       writer.api.research(project.id, {
-        category: toSlug(input.text),
+        category: envelopeFor(input.text, project.budget.categories) ?? toSlug(input.text),
         kind,
         maxPrice: input.max,
         preferences: [`Looking for: ${input.text}`.slice(0, 200), ...input.prefs],

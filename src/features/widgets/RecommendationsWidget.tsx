@@ -2,14 +2,23 @@ import { useState } from 'react';
 import { ArrowRight, Lightbulb } from 'lucide-react';
 import { useWorkspace } from '@/features/workspace/context';
 import { EmptyState } from '@/components/ui/States';
+import { Button } from '@/components/ui/Button';
 import { pluralize } from '@/lib/format';
 
 const VISIBLE = 3;
 
-/** First sentence only: the full text goes to the assistant when the person acts on it. */
-function headline(text: string) {
-  const first = text.split(/(?<=[.!?])\s+/)[0] ?? text;
-  return first.replace(/[.]$/, '');
+/**
+ * Splits a recommendation into a short title and a one-sentence explanation, using only its
+ * own words: a second sentence, or the clause after a connective such as "before" or "so".
+ */
+function split(text: string): { title: string; detail: string | null } {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const first = (sentences[0] ?? text).replace(/[.]$/, '');
+  if (sentences.length > 1) return { title: first, detail: sentences.slice(1).join(' ') };
+  const m = /^(.{18,}?)\s(before|so that|so|until|rather than|because|while|to avoid|and then)\s(.+)$/i.exec(first);
+  if (!m) return { title: first, detail: null };
+  const rest = `${m[2]} ${m[3]}`;
+  return { title: m[1]!, detail: `${rest.charAt(0).toUpperCase()}${rest.slice(1)}.` };
 }
 
 export function RecommendationsWidget() {
@@ -29,26 +38,29 @@ export function RecommendationsWidget() {
   return (
     <div className="flex flex-col gap-4">
       {recs.length > 0 && (
-        <ol className="flex flex-col gap-1">
-          {shown.map((r, i) => (
-            <li key={r}>
-              <button
-                onClick={() => ask(`Help me with this: ${r}`)}
-                className="group flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left transition-colors duration-150 hover:bg-hover"
-              >
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-sky-tint text-caption font-semibold text-blue-ink tabular" aria-hidden>
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1 text-[15px] leading-snug text-ink">{headline(r)}</span>
-                <span className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-caption font-medium text-blue-ink transition-colors duration-150 group-hover:bg-sky-tint">
-                  Do this <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden />
-                </span>
-              </button>
-            </li>
-          ))}
+        <ol className="flex flex-col gap-2">
+          {shown.map((r, i) => {
+            const { title, detail } = split(r);
+            return (
+              <li key={r} className="flex flex-col gap-3 rounded-[16px] bg-canvas p-3.5 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-surface text-body-sm font-medium tabular shadow-[0_0_0_1px_rgb(0_0_0/0.05)]" aria-hidden>
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[15px] leading-snug font-medium text-ink">{title}</p>
+                    {detail && <p className="mt-0.5 text-body-sm text-graphite">{detail}</p>}
+                  </div>
+                </div>
+                <Button size="sm" variant="primary" icon={<ArrowRight />} onClick={() => ask(`Help me with this: ${r}`)} className="flex-row-reverse self-start sm:self-center" aria-label={`Start: ${title}`}>
+                  Start
+                </Button>
+              </li>
+            );
+          })}
         </ol>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         {recs.length > VISIBLE ? (
           <button onClick={() => setExpanded(v => !v)} aria-expanded={expanded} className="text-body-sm font-medium text-graphite hover:text-ink">
             {expanded ? 'Show fewer' : `Show ${pluralize(recs.length - VISIBLE, 'more step')}`}

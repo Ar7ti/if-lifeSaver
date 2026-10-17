@@ -36,15 +36,15 @@ export function WidgetFrame({ id, title, icon, meta, actions, children, controls
 
   return (
     <section aria-labelledby={headingId} className={cn('group/frame card flex min-w-0 flex-col', className)}>
-      <header className={cn('flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-5 sm:px-7', controls.collapsed ? 'pb-5' : 'pb-1')}>
-        <h2 id={headingId} className="-ml-1.5 flex min-w-0 flex-1 text-[17px] font-semibold tracking-[-0.2px]">
+      <header className={cn('flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-5 sm:px-6', controls.collapsed ? 'pb-5' : 'pb-1')}>
+        <h2 id={headingId} className="-ml-1.5 flex min-w-0 flex-1 text-[20px] font-medium tracking-[-0.4px]">
           <button
             onClick={controls.onToggleCollapse}
             aria-expanded={!controls.collapsed}
             aria-controls={bodyId}
             className="group flex min-w-0 items-center gap-2 rounded-button py-1 pr-2 pl-1.5 text-left hover:bg-hover"
           >
-            <span className="shrink-0 text-ink/45 [&_svg]:size-[18px]" aria-hidden>
+            <span className="emoji shrink-0 text-[19px]" aria-hidden>
               {icon}
             </span>
             <span className="min-w-0 truncate" title={title}>
@@ -80,7 +80,7 @@ export function WidgetFrame({ id, title, icon, meta, actions, children, controls
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-5 pt-3 pb-6 sm:px-7 sm:pb-7">{children}</div>
+            <div className="px-5 pt-3 pb-6 sm:px-6">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

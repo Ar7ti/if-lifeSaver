@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Check, CircleHelp, RotateCcw } from 'lucide-react';
+import { ArrowRight, Check, RotateCcw } from 'lucide-react';
 import type { LifeProject, ProjectPatch } from '@contracts';
 import { useUi } from '@/stores/ui';
 import { toast } from '@/stores/toast';
@@ -139,13 +139,20 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
   };
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <p className="text-caption font-medium text-graphite tabular">
-        Question {index + 1} of {total}
-      </p>
-      <h3 className="text-[19px] leading-snug font-semibold tracking-[-0.2px] text-ink" id={`qa-title-${index}`}>
-        {question}
-      </h3>
+    <form onSubmit={submit} noValidate className="flex flex-col gap-4 rounded-[16px] bg-canvas p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-surface text-body-sm font-medium tabular shadow-[0_0_0_1px_rgb(0_0_0/0.05)]" aria-hidden>
+          {index + 1}
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-[18px] leading-snug font-medium tracking-[-0.2px] text-ink" id={`qa-title-${index}`}>
+            {question}
+          </h3>
+          <p className="mt-0.5 text-caption text-graphite tabular">
+            Question {index + 1} of {total}
+          </p>
+        </div>
+      </div>
 
       {kinds.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -223,6 +230,16 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
   );
 }
 
+/** Questions still waiting for an answer: not answered here and not covered by known details. */
+export function openQuestions(project: LifeProject, answered: Record<string, string> | undefined) {
+  const prefs = project.preferences;
+  return project.questions.filter(q => {
+    const kinds = detect(q);
+    const covered = kinds.length > 0 && kinds.every(k => prefs[k] !== null && prefs[k] !== '');
+    return answered?.[q] === undefined && !covered;
+  });
+}
+
 /** "Questions for you": the planner's open questions, answered one at a time, inline. */
 export function QuestionsBlock() {
   const { project } = useWorkspace();
@@ -233,15 +250,10 @@ export function QuestionsBlock() {
   const [interacted, setInteracted] = useState(false);
 
   // A question whose recognized details are all already in the plan needs no new answer.
-  const prefs = project.preferences;
-  const covered = (q: string) => {
-    const kinds = detect(q);
-    return kinds.length > 0 && kinds.every(k => prefs[k] !== null && prefs[k] !== '');
-  };
-  const open = project.questions.filter(q => answered?.[q] === undefined && !covered(q));
+  const open = openQuestions(project, answered);
   const queue = [...open.filter(q => !skipped.includes(q)), ...open.filter(q => skipped.includes(q))];
   const current = queue[0];
-  const fromDetails = project.questions.filter(q => answered?.[q] === undefined && covered(q)).map(q => [q, 'Already in your plan details'] as [string, string]);
+  const fromDetails = project.questions.filter(q => answered?.[q] === undefined && !open.includes(q)).map(q => [q, 'Already in your plan details'] as [string, string]);
   const doneEntries = [...Object.entries(answered ?? {}).filter(([, a]) => a), ...fromDetails];
   const total = open.length + doneEntries.length;
   const doneCount = total - open.length;
@@ -249,10 +261,12 @@ export function QuestionsBlock() {
   if (!current && doneEntries.length === 0) return null;
 
   return (
-    <section aria-labelledby="questions-heading" className="mb-8 overflow-hidden rounded-card bg-surface ring-1 ring-hairline">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-3.5 sm:px-6">
-        <h2 id="questions-heading" className="flex items-center gap-2 text-body font-semibold">
-          <CircleHelp className="size-4 text-blue-ink" aria-hidden />
+    <section id="questions" aria-labelledby="questions-heading" className="card mb-6 scroll-mt-24 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+        <h2 id="questions-heading" className="flex items-center gap-2.5 text-[20px] font-medium tracking-[-0.4px]">
+          <span className="emoji text-[19px]" aria-hidden>
+            💬
+          </span>
           Questions for you
         </h2>
         {total > 0 && (
@@ -269,7 +283,7 @@ export function QuestionsBlock() {
         )}
       </div>
 
-      <div className="px-5 py-5 sm:px-6">
+      <div className="px-5 pt-4 pb-5 sm:px-6 sm:pb-6">
         <AnimatePresence mode="wait" initial={false}>
           {current ? (
             <motion.div key={current} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}>

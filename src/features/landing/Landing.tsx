@@ -6,6 +6,7 @@ import { Composer, type ComposerHandle } from '@/features/create/Composer';
 import { ExampleCards } from '@/features/create/ExampleCards';
 import { EXAMPLES } from '@/features/create/examples';
 import { Logo } from '@/features/shell/Logo';
+import { buttonClass } from '@/components/ui/Button';
 import { DataSourceBanner } from '@/features/shell/DataSourceBanner';
 import { WorkspacePreview } from './WorkspacePreview';
 
@@ -32,7 +33,7 @@ function Nav() {
             </a>
           ))}
         </nav>
-        <Link to="/app" className="inline-flex h-9 items-center rounded-button bg-sky-tint px-[15px] text-body-sm font-medium text-blue-ink transition-colors duration-200 hover:bg-sky-tint-hover">
+        <Link to="/app" className={buttonClass('ghost')}>
           Open app
         </Link>
       </div>
@@ -191,7 +192,7 @@ export function Landing() {
             <h2 className="mt-4 text-[36px] leading-[1.08] font-semibold tracking-[-1.2px] sm:text-[48px] sm:tracking-[-1.7px]">What are you planning next?</h2>
             <Link
               to="/app/new"
-              className="mt-8 inline-flex h-12 items-center gap-2 rounded-button bg-sky-tint px-5 text-body font-medium text-blue-ink transition-colors duration-200 hover:bg-sky-tint-hover"
+              className={buttonClass('primary', 'lg', 'mt-8')}
             >
               Start a new life project <ArrowRight className="size-4" aria-hidden />
             </Link>

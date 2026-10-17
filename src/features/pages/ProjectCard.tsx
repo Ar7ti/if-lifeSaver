@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { scenarioIllustration } from '@/features/workspace/scroll';
 import { MapPin, Trash2 } from 'lucide-react';
 import type { ProjectSummary } from '@/stores/projects';
 import { formatMoney, relativeTime } from '@/lib/format';
@@ -9,11 +10,12 @@ import { Button } from '@/components/ui/Button';
 export function ProjectCard({ project, onForget }: { project: ProjectSummary; onForget?: () => void }) {
   const pct = project.tasksTotal ? Math.round((project.tasksDone / project.tasksTotal) * 100) : 0;
   return (
-    <div className="group relative flex flex-col gap-4 rounded-card border border-hairline bg-surface p-5 transition-colors duration-200 hover:border-hairline-strong">
+    <div className="card group relative flex flex-col gap-4 p-5 transition-shadow duration-200 hover:shadow-[0_0_0_1px_rgb(0_0_0/0.08),0_4px_14px_rgb(0_0_0/0.05)]">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="text-body font-semibold">
-            <Link to={`/app/p/${project.id}`} className="after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-blue">
+        <img src={scenarioIllustration('moving', project.title)} alt="" width="44" height="44" className="size-11 shrink-0 object-contain" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-body font-medium">
+            <Link to={`/app/p/${project.id}`} className="after:absolute after:inset-0 after:rounded-[20px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-blue">
               {project.title}
             </Link>
           </h3>

@@ -58,6 +58,9 @@ export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
   const parsed = useMemo(() => WorkspaceSchema.safeParse(project.workspace), [project.workspace]);
   const ordered = useMemo(() => (parsed.success ? [...parsed.data.widgets].sort(byPosition) : []), [parsed]);
   const visible = ordered.filter(w => w.visible);
+  // Anchor targets for sidebar shortcuts (#tasks, #shopping): the first widget of each type.
+  const firstOfType = new Map<string, string>();
+  for (const w of visible) if (!firstOfType.has(w.type)) firstOfType.set(w.type, w.id);
   const hidden = ordered.filter(w => !w.visible);
 
   if (!parsed.success) return <ErrorState error={new ApiError('CONTRACT_MISMATCH', 'Invalid workspace', 0)} />;
@@ -116,16 +119,17 @@ export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
               return (
                 <motion.div
                   key={w.id}
+                  id={firstOfType.get(w.type) === w.id ? `w-${w.type}` : undefined}
                   layout={reduce ? false : 'position'}
                   initial={fresh && !reduce ? { opacity: 0, y: 28, scale: 0.97 } : false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 210, damping: 26, delay: fresh ? 0.12 + i * 0.07 : 0 }}
-                  className={cn('min-w-0', s === 12 ? '@4xl:col-span-12' : '@4xl:col-span-6')}
+                  className={cn('min-w-0 scroll-mt-24', s === 12 ? '@4xl:col-span-12' : '@4xl:col-span-6')}
                 >
                   <WidgetFrame
                     id={w.id}
                     title={w.title}
-                    icon={def.icon}
+                    icon={def.emoji}
                     controls={{
                       collapsed: Boolean(collapsed?.[w.id]),
                       onToggleCollapse: () => toggleCollapsed(project.id, w.id),
@@ -173,8 +177,8 @@ export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
             const vi = visible.findIndex(v => v.id === w.id);
             return (
               <li key={w.id} className="flex items-center gap-3 py-2.5">
-                <span className="grid size-8 shrink-0 place-items-center rounded-[7px] bg-canvas text-ink/75 [&_svg]:size-4" aria-hidden>
-                  {REGISTRY[w.type].icon}
+                <span className="emoji grid size-8 shrink-0 place-items-center rounded-[9px] bg-canvas text-[17px]" aria-hidden>
+                  {REGISTRY[w.type].emoji}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className={cn('truncate text-body-sm font-medium', !w.visible && 'text-graphite')} title={w.title}>

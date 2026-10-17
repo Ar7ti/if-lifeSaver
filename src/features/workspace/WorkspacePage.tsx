@@ -12,6 +12,7 @@ import { AssistantPanel } from '@/features/assistant/AssistantPanel';
 import { WorkspaceContext, type WorkspaceContextValue } from './context';
 import { ProjectOverview } from './ProjectOverview';
 import { QuestionsBlock } from './QuestionsBlock';
+import { scrollToSection } from './scroll';
 import { WorkspaceGrid } from './WorkspaceGrid';
 
 function useIsDesktop() {
@@ -85,6 +86,18 @@ export function WorkspacePage() {
     [isDesktop, projectId, setAssistantOpen, setDraft, requestFocus],
   );
 
+  // Sidebar shortcuts: #tasks and #shopping scroll to their widget, #assistant opens the assistant.
+  const hasData = Boolean(query.data);
+  useEffect(() => {
+    if (!hasData || !location.hash) return;
+    if (location.hash === '#assistant') {
+      ask();
+      return;
+    }
+    const target = ({ '#tasks': 'w-task_list', '#shopping': 'w-shopping_cart' } as Record<string, string>)[location.hash];
+    if (target) requestAnimationFrame(() => scrollToSection(target));
+  }, [location.hash, hasData]);
+
   const ctx = useMemo<WorkspaceContextValue | null>(() => (query.data ? { project: query.data, writer, ask } : null), [query.data, writer, ask]);
 
   useEffect(() => {
@@ -148,7 +161,7 @@ export function WorkspacePage() {
           transition={{ type: 'spring', stiffness: 400, damping: 26, delay: fresh ? 0.8 : 0 }}
           onClick={() => ask()}
           aria-label="Ask assistant"
-          className="fixed right-4 bottom-20 z-30 flex size-12 items-center justify-center gap-2 rounded-full bg-midnight text-body-sm font-medium text-white shadow-float transition-transform duration-200 hover:scale-[1.03] active:scale-[0.96] sm:w-auto sm:pr-5 sm:pl-4 md:right-6 md:bottom-6"
+          className="fixed right-4 bottom-20 z-30 flex size-12 items-center justify-center gap-2 rounded-full bg-ink text-body-sm font-medium text-white shadow-float transition-transform duration-200 hover:scale-[1.03] active:scale-[0.96] sm:w-auto sm:pr-5 sm:pl-4 md:hidden"
         >
           <Sparkles className="size-4 text-marigold" aria-hidden /> <span className="max-sm:sr-only">Ask assistant</span>
         </motion.button>

@@ -8,6 +8,12 @@
  * so blue *text* uses blue-ink; #0075de stays the fill for the one primary action. */
 @theme {
   --color-canvas: #f6f5f4;
+  /* Behind the framed app panel (Reference A): one step darker than the canvas. */
+  --color-backdrop: #edecea;
+  /* Secondary pill fill and its hover (Reference A toolbar buttons). */
+  --color-fill: #efeeec;
+  --color-fill-hover: #e6e5e2;
+  --color-ink-hover: #2b2b2b;
   --color-surface: #ffffff;
   --color-ink: #000000;
   --color-charcoal: #111111;
@@ -82,8 +88,11 @@
   --text-display--letter-spacing: -0.028em;
 
   --radius-small: 4px;
-  --radius-button: 8px;
-  --radius-card: 12px;
+  --radius-button: 10px;
+  /* Inner surfaces (rows, tiles, offer cards). */
+  --radius-card: 14px;
+  /* Top-level white cards and the app panel. */
+  --radius-panel: 20px;
 
   --shadow-nav: 0px 0.7px 1.462px 0px rgb(0 0 0 / 0.015), 0px 3px 9px 0px rgb(0 0 0 / 0.03);
   --shadow-mockup: 0px 4px 12px rgba(0, 0, 0, 0.1);
@@ -131,14 +140,23 @@
   }
 }
 
+/* Native platform emoji (Apple Color Emoji on Apple devices). No emoji font is bundled. */
+@utility emoji {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-style: normal;
+  line-height: 1;
+}
+
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }
 
 @utility card {
   background: var(--color-surface);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-card);
+  /* Transparent border keeps an edge in forced-colors mode, where shadows disappear. */
+  border: 1px solid transparent;
+  border-radius: var(--radius-panel);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.035), 0 1px 2px rgb(0 0 0 / 0.03);
 }
 
 @utility scrollbar-thin {

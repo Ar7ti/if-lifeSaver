@@ -11,6 +11,8 @@ import { RecommendationsWidget } from '@/features/widgets/RecommendationsWidget'
 import { TaskList } from '@/features/widgets/TaskList';
 
 export interface WidgetDefinition {
+  /** Friendly marker shown in the widget header (native emoji). */
+  emoji: string;
   label: string;
   icon: ReactNode;
   Component: ComponentType<{ widget: WorkspaceWidget }>;
@@ -23,13 +25,13 @@ export interface WidgetDefinition {
  * declarative config; it can never introduce code, markup or a component outside this map.
  */
 export const REGISTRY: Record<WorkspaceWidget['type'], WidgetDefinition> = {
-  budget: { label: 'Budget', icon: <Wallet />, Component: BudgetWidget, minSpan: 6 },
-  product_catalog: { label: 'Furniture', icon: <Store />, Component: ({ widget }) => <ResearchCatalog kind="product" widget={widget} />, minSpan: 12 },
-  shopping_cart: { label: 'Planning cart', icon: <ShoppingBag />, Component: ShoppingCart, minSpan: 6 },
-  service_finder: { label: 'Service finder', icon: <Truck />, Component: ({ widget }) => <ResearchCatalog kind="service" widget={widget} />, minSpan: 12 },
-  scenario_comparison: { label: 'Scenario simulator', icon: <Gauge />, Component: ScenarioSimulator, minSpan: 12 },
-  risk_guardian: { label: 'Life Risk Guardian', icon: <ShieldCheck />, Component: RiskGuardian, minSpan: 6 },
-  timeline: { label: 'Timeline', icon: <CalendarClock />, Component: ActionTimeline, minSpan: 6 },
-  recommendations: { label: 'Next steps', icon: <Lightbulb />, Component: RecommendationsWidget, minSpan: 6 },
-  task_list: { label: 'Checklist', icon: <ListChecks />, Component: TaskList, minSpan: 6 },
+  budget: { emoji: '💸', label: 'Budget', icon: <Wallet />, Component: BudgetWidget, minSpan: 6 },
+  product_catalog: { emoji: '🛋️', label: 'Furniture', icon: <Store />, Component: ({ widget }) => <ResearchCatalog kind="product" widget={widget} />, minSpan: 12 },
+  shopping_cart: { emoji: '🛒', label: 'Planning cart', icon: <ShoppingBag />, Component: ShoppingCart, minSpan: 6 },
+  service_finder: { emoji: '🚚', label: 'Service finder', icon: <Truck />, Component: ({ widget }) => <ResearchCatalog kind="service" widget={widget} />, minSpan: 12 },
+  scenario_comparison: { emoji: '⚖️', label: 'Scenario simulator', icon: <Gauge />, Component: ScenarioSimulator, minSpan: 12 },
+  risk_guardian: { emoji: '🛡️', label: 'Life Risk Guardian', icon: <ShieldCheck />, Component: RiskGuardian, minSpan: 6 },
+  timeline: { emoji: '📅', label: 'Timeline', icon: <CalendarClock />, Component: ActionTimeline, minSpan: 6 },
+  recommendations: { emoji: '💡', label: 'Next steps', icon: <Lightbulb />, Component: RecommendationsWidget, minSpan: 6 },
+  task_list: { emoji: '✅', label: 'Checklist', icon: <ListChecks />, Component: TaskList, minSpan: 6 },
 };
