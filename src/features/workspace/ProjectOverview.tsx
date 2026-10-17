@@ -11,7 +11,6 @@ import { Field, Input } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { ErrorState } from '@/components/ui/States';
 import { formatDate, formatMoney, pluralize } from '@/lib/format';
-import { useUi } from '@/stores/ui';
 import { toast } from '@/stores/toast';
 import { cn } from '@/lib/cn';
 import { useWorkspace } from './context';
@@ -169,7 +168,6 @@ interface Attention {
 export function ProjectOverview({ project }: { project: LifeProject }) {
   const { ask } = useWorkspace();
   const [editing, setEditing] = useState(false);
-  const answered = useUi(s => s.answered[project.id]);
   const b = project.budget;
   const done = project.tasks.filter(t => t.status === 'done').length;
   const pct = project.tasks.length ? Math.round((done / project.tasks.length) * 100) : 0;
@@ -177,7 +175,7 @@ export function ProjectOverview({ project }: { project: LifeProject }) {
   const openRisks = project.risks.filter(r => r.status === 'open');
   const date = formatDate(project.scenarioType==='travel'?project.preferences.startDate:project.preferences.moveDate);
   const spentPct = b.totalMinor ? Math.min(100, (b.committedMinor / b.totalMinor) * 100) : 0;
-  const questionCount = openQuestions(project, answered).length;
+  const questionCount = openQuestions(project).length;
 
   const attention: Attention[] = [];
   if (questionCount > 0) attention.push({ key: 'q', emoji: '💬', title: questionCount === 1 ? '1 question for you' : `${questionCount} questions for you`, detail: 'Answer to sharpen your plan', target: 'questions' });

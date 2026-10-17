@@ -30,7 +30,8 @@ test('chat typing, navigation keys, newline, undo and IME stay local',async({pag
  await page.keyboard.type('A long planning message 123 with spaces.');
  await expect(chat).toHaveValue('A long planning message 123 with spaces.');
  await page.keyboard.press('ArrowLeft');await page.keyboard.press('Backspace');await expect(chat).toHaveValue('A long planning message 123 with space.');
- await page.keyboard.press('End');await page.keyboard.press('Shift+Enter');await page.keyboard.type('Second line');
+ // macOS maps End to "scroll to end of document"; end-of-line is Cmd+Right there.
+ await page.keyboard.press(process.platform==='darwin'?'Meta+ArrowRight':'End');await page.keyboard.press('Shift+Enter');await page.keyboard.type('Second line');
  await expect(chat).toHaveValue(/\nSecond line$/);expect(writes).toEqual([]);
  await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type('replacement');await page.keyboard.press('ControlOrMeta+Z');
  await expect(chat).not.toHaveValue('replacement');

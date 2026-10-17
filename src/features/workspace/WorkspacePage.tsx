@@ -143,7 +143,7 @@ export function WorkspacePage() {
               animate={{ width: 380, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="sticky top-0 h-dvh shrink-0 overflow-hidden border-l border-hairline"
+              className="sticky top-2 h-[calc(100dvh-1rem)] shrink-0 overflow-hidden rounded-r-[24px] border-l border-hairline"
               aria-label="Assistant"
             >
               <div className="h-full w-[380px]">

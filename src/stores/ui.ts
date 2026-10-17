@@ -13,13 +13,10 @@ interface UiState {
   collapsed: Record<string, Record<string, boolean>>;
   /** The scenario a person chose to plan around. The API has no field for this, so it stays local. */
   chosenScenario: Record<string, ScenarioId>;
-  /** Questions answered in this browser, keyed by question text. The API has no answer route. */
-  answered: Record<string, Record<string, string>>;
   furnitureClass: Record<string, FurnitureClass>;
   /** Tasks a person starred as priority. The API has no priority field, so this stays local. */
   starred: Record<string, string[]>;
   toggleSidebar: () => void;
-  markAnswered: (projectId: string, question: string, answer: string) => void;
   setFurnitureClass: (projectId: string, value: FurnitureClass) => void;
   toggleStar: (projectId: string, taskId: string) => void;
   setAssistantOpen: (open: boolean) => void;
@@ -34,11 +31,8 @@ export const useUi = create<UiState>()(
       assistantOpen: false,
       collapsed: {},
       chosenScenario: {},
-      answered: {},
       furnitureClass: {},
       starred: {},
-      markAnswered: (projectId, question, answer) =>
-        set(s => ({ answered: { ...s.answered, [projectId]: { ...(s.answered[projectId] ?? {}), [question]: answer } } })),
       setFurnitureClass: (projectId, value) => set(s => ({ furnitureClass: { ...s.furnitureClass, [projectId]: value } })),
       toggleStar: (projectId, taskId) =>
         set(s => {

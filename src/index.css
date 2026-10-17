@@ -104,10 +104,17 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    /* Keeps focused elements clear of the sticky mobile header and bottom nav. */
-    scroll-padding-top: 4.5rem;
-    scroll-padding-bottom: 5rem;
     text-rendering: optimizeLegibility;
+  }
+  /* Keeps focused elements clear of the fixed mobile header and bottom nav. Phone widths
+   * only: on desktop the docked assistant is a sticky full-height panel, and page-level
+   * bottom padding made the browser scroll the page on every keystroke to "reveal" a caret
+   * that never moves (sticky), so the page ran away while typing. */
+  @media (max-width: 767px) {
+    html {
+      scroll-padding-top: 4.5rem;
+      scroll-padding-bottom: 5rem;
+    }
   }
   body {
     @apply bg-canvas text-ink font-sans antialiased;

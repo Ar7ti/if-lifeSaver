@@ -3,7 +3,6 @@ import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Check, RotateCcw } from 'lucide-react';
 import type { LifeProject, ProjectPatch } from '@contracts';
-import { useUi } from '@/stores/ui';
 import { toast } from '@/stores/toast';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Field';
@@ -100,9 +99,14 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
   const [error, setError] = useState<string | null>(null);
   const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
-  // Focus follows the person only after they answered or skipped, never on page load.
+  // Focus follows the person only after they answered or skipped here, never on page load,
+  // and never while they are typing somewhere else (e.g. the assistant answered this question).
   useEffect(() => {
-    if (autoFocus) first.current?.focus({ preventScroll: true });
+    if (!autoFocus) return;
+    const active = document.activeElement;
+    const block = document.getElementById('questions');
+    if (active && active !== document.body && !block?.contains(active)) return;
+    first.current?.focus({ preventScroll: true });
   }, [question, autoFocus]);
 
   const save = useMutation({
@@ -339,40 +343,27 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
   );
 }
 
-/** Questions still waiting for an answer: not answered here and not covered by known details. */
-export function openQuestions(project: LifeProject, answered: Record<string, string> | undefined) {
-  const prefs = project.preferences;
-  const saved = project.answeredQuestions ?? answered ?? {};
-  const hasValue = (kind: Kind) => {
-    if (kind === 'location') return Boolean(project.location?.trim());
-    if (kind === 'budget') return project.budget.confirmed;
-    const value = prefs[kind];
-    return value !== undefined && value !== null && value !== '' && (!Array.isArray(value) || value.length > 0);
-  };
-  return project.questions.filter(q => {
-    const kinds = detect(q, project.scenarioType);
-    const covered = kinds.length > 0 && kinds.every(hasValue);
-    return !saved[q] && !covered;
-  });
+/**
+ * Questions still waiting for an answer, as the server reports them. The server owns
+ * reconciliation (known facts, chat answers), so the browser keeps no answer state of its own.
+ */
+export function openQuestions(project: LifeProject) {
+  const saved = project.answeredQuestions ?? {};
+  return project.questions.filter(q => !saved[q]);
 }
 
 /** "Questions for you": the planner's open questions, answered one at a time, inline. */
 export function QuestionsBlock() {
   const { project } = useWorkspace();
-  const answered = useUi(s => s.answered[project.id]);
-  const markAnswered = useUi(s => s.markAnswered);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const [interacted, setInteracted] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
 
-  // A question whose recognized details are all already in the plan needs no new answer.
-  const open = openQuestions(project, answered);
+  const open = openQuestions(project);
   const queue = [...open.filter(q => !skipped.includes(q)), ...open.filter(q => skipped.includes(q))];
   const current = editingQuestion ?? queue[0];
-  const savedAnswers = { ...(answered ?? {}), ...(project.answeredQuestions ?? {}) };
-  const fromDetails = project.questions.filter(q => !savedAnswers[q] && !open.includes(q)).map(q => [q, 'Already in your plan details'] as [string, string]);
-  const doneEntries = [...Object.entries(savedAnswers).filter(([q, a]) => a && !open.includes(q)), ...fromDetails];
+  const doneEntries = Object.entries(project.answeredQuestions ?? {}).filter(([q, a]) => a && !open.includes(q));
   const total = open.length + doneEntries.length;
   const doneCount = total - open.length;
 
@@ -410,10 +401,9 @@ export function QuestionsBlock() {
                 index={doneCount}
                 total={total}
                 autoFocus={interacted}
-                onDone={summary => {
+                onDone={() => {
                   setInteracted(true);
                   setEditingQuestion(null);
-                  markAnswered(project.id, current, summary || 'Answered');
                   toast.success('Answer saved', 'Your plan has been updated.');
                 }}
                 onSkip={() => {

@@ -67,7 +67,16 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
     push(project.id, { role: 'user', text: message });
     setDraft(project.id, '');
     send.mutate(message);
+    // Sending with the mouse leaves focus on the Send button, which is disabled while the
+    // request runs; the browser then drops focus to the page and further keystrokes scroll
+    // or activate page controls. Keep the person typing in the composer.
+    input.current?.focus({ preventScroll: true });
   }
+
+  // Turns saved on the server before this browser session's first message (e.g. after a reload).
+  // Everything from this session renders from the live thread, so nothing appears twice.
+  const sessionStart = thread[0] ? Date.parse(thread[0].at) - 2000 : Infinity;
+  const history = (project.conversation?.turns ?? []).filter(t => Date.parse(t.createdAt) < sessionStart);
 
   // Proposals from earlier sessions that still wait for a decision.
   const inThread = new Set(thread.flatMap(m => m.actions?.map(a => a.id) ?? []));
@@ -84,7 +93,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
         {onClose && <Button size="icon-sm" variant="text" aria-label="Close assistant" icon={<X />} onClick={onClose} />}
       </header>
 
-      <div ref={scroller} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4" aria-live="polite">
+      <div ref={scroller} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4" role="log" aria-label="Conversation">
         {waiting.length > 0 && (
           <section aria-label="Waiting for your review" className="mb-4">
             <p className="mb-2 text-caption font-medium text-graphite">Waiting for your review</p>
@@ -96,7 +105,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
           </section>
         )}
 
-        {thread.length === 0 && waiting.length === 0 && (
+        {thread.length === 0 && history.length === 0 && waiting.length === 0 && (
           <div className="flex flex-col gap-3">
             <p className="text-body-sm text-graphite">Ask for changes in your own words. I&rsquo;ll suggest specific actions, and nothing changes until you apply it.</p>
             <ul className="flex flex-col gap-1.5">
@@ -112,8 +121,17 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
         )}
 
         <ol className="flex flex-col gap-3">
+          {history.map(t => (
+            <li key={t.id} data-role={t.role} className={cn('flex flex-col gap-2', t.role === 'user' && 'items-end')}>
+              {t.role === 'user' ? (
+                <p className="max-w-[85%] rounded-[12px] rounded-br-[4px] bg-sky-tint px-3 py-2 text-body-sm break-words text-ink">{t.content}</p>
+              ) : (
+                <p className="text-body-sm break-words whitespace-pre-line text-ink/90">{t.content}</p>
+              )}
+            </li>
+          ))}
           {thread.map(m => (
-            <li key={m.id} className={cn('flex flex-col gap-2', m.role === 'user' && 'items-end')}>
+            <li key={m.id} data-role={m.role} className={cn('flex flex-col gap-2', m.role === 'user' && 'items-end')}>
               {m.role === 'user' ? (
                 <p className="max-w-[85%] rounded-[12px] rounded-br-[4px] bg-sky-tint px-3 py-2 text-body-sm break-words text-ink">{m.text}</p>
               ) : m.role === 'error' ? (
