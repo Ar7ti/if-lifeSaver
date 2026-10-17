@@ -58,7 +58,7 @@ The live provider uses OpenAI's hosted web search and a second structured extrac
 
 Official implementation references: [Responses Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses) and [hosted web search](https://developers.openai.com/api/docs/guides/tools-web-search).
 
-`npm run check:live` is a separate, opt-in external integration smoke check. It needs credentials and consumes API credits. Automated tests make no live network requests. API access/model availability and actual live market results must be checked on the demo account before the event.
+`npm run check:live` is a separate, opt-in external integration smoke check. It needs credentials and consumes API credits. With the backend running in live mode, `npm run check:api-live` tests real HTTP project creation, research, cart arithmetic, scenarios, risks, seller drafts and assistant confirmation. It leaves a test project in storage and writes `data/live-test-report.json`. An empty live market search is reported as inconclusive rather than counted as an end-to-end pass. Both live commands consume API credits. Automated tests make no live network requests. API access/model availability and actual live market results must be checked on the demo account before the event.
 
 ## Reliability and security
 

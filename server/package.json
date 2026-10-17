@@ -3,14 +3,17 @@
   "private": true,
   "type": "module",
   "version": "1.0.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "start": "tsx --env-file-if-exists=.env src/index.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "check:live": "tsx --env-file-if-exists=.env scripts/check-live.ts"
+    "check:live": "tsx --env-file-if-exists=.env scripts/check-live.ts",
+    "check:api-live": "tsx --env-file-if-exists=.env scripts/check-api-live.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
@@ -20,5 +23,9 @@
     "openai": "^6.0.0",
     "zod": "^3.25.0"
   },
-  "devDependencies": { "@types/node": "^24.0.0", "tsx": "^4.20.0", "typescript": "^5.9.0" }
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
 }
