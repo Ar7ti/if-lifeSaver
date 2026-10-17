@@ -1,0 +1,9 @@
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	# Client-side routes (/app/p/...) load index.html.
+	try_files {path} /index.html
+	file_server
+}

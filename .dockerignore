@@ -1,0 +1,19 @@
+# Never upload secrets, local data or build output
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+server/data/
+node_modules/
+**/node_modules/
+dist/
+server/dist/
+test-results/
+playwright-report/
+Icons/
+design-references/
+.DS_Store
+**/.DS_Store
+.git/
