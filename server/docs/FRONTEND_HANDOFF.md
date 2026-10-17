@@ -38,7 +38,7 @@ Workspace patches use existing widget IDs, e.g. `{widgets:[{id,visible:false}]}`
 
 Assistant actions are audited proposals. Confirm an action through the confirm endpoint to apply it; rejected proposals remain in history. Confirming budget/cart/workspace proposals checks current project constraints. No route purchases, sends a message, pays or books. Seller messages are drafts with a source link handoff.
 
-Errors: `{error:{code,message,details?}}`, e.g. VALIDATION_ERROR (400), NOT_FOUND (404), CONFLICT (409), RATE_LIMITED (429), AI_UNAVAILABLE / RESEARCH_UNAVAILABLE (503), UPSTREAM_TIMEOUT (504). Unknown fields are rejected. The API limits body sizes, request rates and AI action counts. Show research loading and errors; allow at least 50 seconds for a live research request.
+Errors: `{error:{code,message,details?}}`, e.g. VALIDATION_ERROR (400), NOT_FOUND (404), CONFLICT (409), RATE_LIMITED (429), AI_UNAVAILABLE / RESEARCH_UNAVAILABLE (503), UPSTREAM_TIMEOUT (504). Unknown fields are rejected. The API limits body sizes, request rates and AI action counts. Show research loading and errors; allow at least 100 seconds for a live research request.
 
 Local use is a single-user demo. Production needs identity and per-user project authorization; optional API_TOKEN is a shared deployment access token, sent as `Authorization: Bearer ...` and never an OpenAI secret.
 

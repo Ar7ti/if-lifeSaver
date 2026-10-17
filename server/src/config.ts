@@ -3,11 +3,11 @@ import path from 'node:path';
 
 const EnvSchema = z.object({
   HOST: z.string().default('127.0.0.1'), PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-  OPENAI_API_KEY: z.string().min(1).optional(), OPENAI_MODEL: z.string().min(1).default('gpt-4.1-mini'),
+  OPENAI_API_KEY: z.string().min(1).optional(), OPENAI_MODEL: z.string().min(1).default('gpt-6.1-sol'),
   AI_MODE: z.enum(['openai','local']).optional(), RESEARCH_MODE: z.enum(['live','demo','unavailable']).optional(),
   STORAGE_MODE: z.enum(['local','memory']).default('local'), DATA_DIR: z.string().default('data'),
   API_TOKEN: z.string().min(24).optional(), ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000'),
-  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000), RESEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(45000),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(60000), RESEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(90000),
   LOG_LEVEL: z.enum(['silent','error','warn','info','debug']).default('info'),
 });
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {

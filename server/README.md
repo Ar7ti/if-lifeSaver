@@ -31,15 +31,15 @@ Use the returned project ID for research, cart, scenario, risk and workspace req
 |---|---|---|
 | HOST / PORT | 127.0.0.1 / 3001 | Listen address; shared API token required outside loopback |
 | OPENAI_API_KEY | absent | Server-only OpenAI credentials |
-| OPENAI_MODEL | gpt-4.1-mini | Configurable Responses model; availability depends on account |
+| OPENAI_MODEL | gpt-6.1-sol | Planning and research model; availability depends on account |
 | AI_MODE | openai with key, otherwise local | Structured model planning or deterministic local template/parser |
 | RESEARCH_MODE | live with key, otherwise unavailable | live, unavailable, or explicitly fictional demo offers |
 | STORAGE_MODE | local | Atomic local JSON files or memory |
 | DATA_DIR | data | Directory relative to the server process working directory |
 | API_TOKEN | absent | Optional shared deployment token, minimum 24 characters |
 | ALLOWED_ORIGINS | localhost:5173, 127.0.0.1:5173, localhost:3000 HTTP origins | Exact comma-separated browser origins |
-| AI_TIMEOUT_MS | 30000 | Model deadline |
-| RESEARCH_TIMEOUT_MS | 45000 | Combined research deadline |
+| AI_TIMEOUT_MS | 60000 | Model deadline |
+| RESEARCH_TIMEOUT_MS | 90000 | Combined research deadline |
 | LOG_LEVEL | info | silent, error, warn, info, debug |
 
 No external credentials are needed for local project planning, cart CRUD, budget calculations, scenarios, risks, workspace edits and seller draft templates. Without search configuration the research response has `status: "unavailable"`, no offers and a reason. To explore the offline flow set `RESEARCH_MODE=demo`: offers are explicitly fictional, contain no real seller links and must never be represented as current market data. Local AI mode is an honest limited parser; it asks questions for missing fields and uses provisional planning allocations.
