@@ -1,6 +1,6 @@
-# Backend contract handoff — v1
+# Backend contract handoff — v1.1
 
-Source of truth: `shared/contracts/index.ts`. Backend runs separately on `http://127.0.0.1:3001`; configure the frontend dev proxy to forward `/api` there, or use an explicit API base URL. The backend owns no `src/` or `public/` files and uses its own `server/package.json`.
+Source of truth: `shared/contracts/index.ts`. Backend runs separately on `http://127.0.0.1:3001`; configure the frontend dev proxy to forward `/api` there, or use an explicit API base URL. The backend uses its own `server/package.json`. Targeted input, dialog, and contextual integration fixes in `src/` are documented below; visual design remains frontend-owned.
 
 Install: `npm --prefix shared/contracts install && npm --prefix server install`.
 Run: `cd server && npm run dev`. Server environment belongs in `server/.env` (copy `server/.env.example`). Local planning, budgets, carts, scenarios, risks and file persistence run without credentials. Research is unavailable unless enabled with OpenAI credentials or `RESEARCH_MODE=demo`.
@@ -42,6 +42,22 @@ Errors: `{error:{code,message,details?}}`, e.g. VALIDATION_ERROR (400), NOT_FOUN
 
 Local use is a single-user demo. Production needs identity and per-user project authorization; optional API_TOKEN is a shared deployment access token, sent as `Authorization: Bearer ...` and never an OpenAI secret.
 
-TypeScript input helpers `CreateProjectInput`, `ResearchInput`, `AddCartItemInput`, and `SellerMessageInput` allow omitted fields that have server defaults. The `*Request` types describe normalized values after schema parsing. Moving projects always include all nine supported widgets; AI suggestions determine their initial order. Local simulation uses provisional allocation estimates until real offers exist. Fictional demo offers are excluded from automatic scenario selection; demo cart choices are included as explicitly estimated planning costs.
+TypeScript input helpers `CreateProjectInput`, `ResearchInput`, `AddCartItemInput`, and `SellerMessageInput` allow omitted fields that have server defaults. The `*Request` types describe normalized values after schema parsing. Projects include only relevant supported widgets. Do not assume a fixed count or a moving scenario. Local simulation uses provisional allocation estimates until real offers exist. Fictional demo offers are excluded from automatic scenario selection; demo cart choices are included as explicitly estimated planning costs.
 
-Live testing note: synchronous GPT-6 calls use low reasoning effort. Unknown delivery/new-or-used preferences remain null and generate clarification questions; model guesses do not become hard search filters. Users can explicitly confirm these preferences through PATCH project. The backend socket timeout now accommodates the full bounded provider deadline.
+Live testing note: synchronous GPT-6 calls use low reasoning effort. Unknown delivery/new-or-used preferences remain null; questions prioritize essential scenario constraints; model guesses do not become hard search filters. Users can explicitly confirm these preferences through PATCH project. The backend socket timeout now accommodates the full bounded provider deadline.
+
+## Contextual planning update (1.1.0)
+
+`scenarioType` supports `moving`, `travel`, `car_purchase`, `home_furnishing`, `student_life`, and `other`. Added optional preference fields: `startDate`, `endDate`, `durationDays`, `travelers`, `ownsFurniture`, `ownedItems`, `vehicleType`, `useCase`. Existing persisted projects remain valid. Do not render moving labels for other scenarios.
+
+Projects may include `categoryReasons`, `recommendationDetails` (title, explanation, priority, action, reason), and `answeredQuestions` (question → answer). Existing `recommendations: string[]` is retained. PATCH accepts `answers: [{question,answer}]`; questions must be current or previously answered. Send structured preference/budget/location changes alongside the answer. Saved answers survive reload/restart and enter compact AI context. Up to three essential open questions are returned at a time; further questions may appear as constraints are answered.
+
+Assistant scope is checked server-side before model calls: practical goals and contextual follow-ups are allowed, unrelated tutorials redirect, ambiguous input asks for clarification. Project creation can return `OUT_OF_SCOPE` or `SCOPE_CLARIFICATION` (422). General programming tutorials are outside scope; course research and university budgets remain supported. Every proposed action still needs explicit confirmation.
+
+Scenario profiles determine categories, weighted cent-based allocations, questions, checklist and widget subset. Owned beds/desks do not create mandatory repurchase categories. Travel search uses route, dates, duration and travelers; car research uses vehicle description and intended use. Research requests should preserve the specific category (`bed_frame`, `vehicle`, `accommodation`), rather than replacing it with a broad budget envelope. Matching financial groups are handled by the server. Source summary prices remain estimated; national delivery is not proof of address coverage.
+
+Targeted frontend changes: shared keyboard guards ignore native/ARIA editable controls and composition; composer/chat only submit non-composing Enter (Shift+Enter remains native). Dialogs portal to document.body with a scrollable body and fixed header/footer; Details uses a larger desktop width and mobile viewport height. Existing visual styling is preserved. Details, question forms, research starters, checklist headings, assistant suggestions and timeline date labels now use scenario context. Optional structured recommendations render through existing card styling.
+
+Browser regressions: `npm run test:ui` at repository root (first install: `npx playwright install chromium`). Playwright starts isolated local API/demo research on 3002 and Vite on 5174, or reuses those test servers. It never uses the OpenAI key. `npm --prefix server test` covers mocked external integrations and persistence. Opt-in `cd server && npm run check:context-live` checks the three acceptance scenarios against the running live backend, consumes credits, and writes `data/context-live-test-report.json`.
+
+The frontend-only mock adapter remains a labelled fixed moving demo. Contextual no-key/offline planning uses the real local backend (`AI_MODE=local`, `RESEARCH_MODE=demo`), which is also the browser workflow test target. Keep Settings on the API data source to use contextual scenarios.

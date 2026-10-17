@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BudgetSchema, RiskSchema, SimulationScenarioSchema, type Budget, type CartItem, type LifeProject, type Offer, type ResearchResult } from '../../shared/contracts/index.js';
 import { AppError } from '../src/errors.js';
-import { allocateBudget, recalculateBudget, simulateScenarios, analyzeRisks } from '../src/finance.js';
+import { allocateBudget, allocateBudgetForPlan, recalculateBudget, simulateScenarios, analyzeRisks } from '../src/finance.js';
 
 const timestamp = '2026-10-17T10:00:00.000Z';
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -82,7 +82,7 @@ test('unknown categories and delivery remain visible; overspending is represente
   assert.equal(result.allocatedMinor, 8_000);
   assert.equal(result.remainingMinor, -1_000);
   assert.equal(result.availableMinor, -2_000);
-  assert.match(result.warnings.join(' '), /Delivery cost unknown/);
+  assert.match(result.warnings.join(' '), /Additional line charge unknown/);
   assert.match(result.warnings.join(' '), /exceeds the total/);
   BudgetSchema.parse(result);
 });
@@ -414,4 +414,359 @@ test('unknown budgets do not claim affordability, and a zero reserve is an evide
   const risk=analyzeRisks(noReserve).find(r=>r.id==='budget:no-reserve');
   assert.ok(risk);
   assert.match(risk.evidence.join(' '),/reserve: 0 cents/);
+});
+
+test('plan allocations normalize arbitrary weights exactly and apportion cents by largest remainder', () => {
+  const definitions = [{ id: 'transport', title: 'Transport', weight: 0.1 }, { id: 'accommodation', title: 'Accommodation', weight: 0.2 }, { id: 'food', title: 'Food', weight: 0.3 }];
+  const result = allocateBudgetForPlan(101, definitions, 10, true);
+  assert.deepEqual(result.categories.map(category => category.allocatedMinor), [15, 30, 46]);
+  assert.equal(result.emergencyReserveMinor, 10);
+  assert.equal(result.confirmed, true);
+  assert.deepEqual(result, allocateBudgetForPlan(101, definitions.map(category => ({ ...category, weight: category.weight * 10 })), 10, true));
+  const before = structuredClone(definitions);
+  for (const total of [...Array.from({ length: 101 }, (_, index) => index), 1_000_000_000]) {
+    for (const reserve of [0, 0.01, 12.5, 33.33333333333333, 100]) {
+      const allocated = allocateBudgetForPlan(total, definitions, reserve);
+      BudgetSchema.parse(allocated);
+      assert.equal(allocated.allocatedMinor + allocated.emergencyReserveMinor, total);
+      assert.equal(allocated.availableMinor, total - allocated.emergencyReserveMinor);
+      assert.deepEqual(allocated, allocateBudgetForPlan(total, definitions, reserve));
+    }
+  }
+  assert.deepEqual(definitions, before);
+  const tie = allocateBudgetForPlan(1, [{ id: 'first', title: 'First', weight: 1 }, { id: 'second', title: 'Second', weight: 1 }], 0);
+  assert.deepEqual(tie.categories.map(category => category.allocatedMinor), [1, 0]);
+});
+
+test('plan weights support scientific notation and extreme positive values without monetary overflow', () => {
+  const definitions = [{ id: 'large', title: 'Large', weight: Number.MAX_VALUE }, { id: 'small', title: 'Small', weight: Number.MIN_VALUE }];
+  const result = allocateBudgetForPlan(1_000_000_000, definitions, 1e-7);
+  BudgetSchema.parse(result);
+  assert.equal(result.allocatedMinor + result.emergencyReserveMinor, 1_000_000_000);
+  assert.equal(result.emergencyReserveMinor, 1);
+  assert.equal(result.categories[1]!.allocatedMinor, 0);
+  const allReserve = allocateBudgetForPlan(101, definitions, 100);
+  assert.equal(allReserve.allocatedMinor, 0);
+  assert.equal(allReserve.emergencyReserveMinor, 101);
+});
+
+test('plan allocator rejects invalid totals, categories, duplicate IDs, weights and reserve percentages', () => {
+  const valid = [{ id: 'travel', title: 'Travel', weight: 1 }];
+  for (const total of [-1, 1.01, Infinity, 1_000_000_001]) assert.throws(() => allocateBudgetForPlan(total, valid), AppError);
+  for (const weight of [0, -1, NaN, Infinity, -Infinity]) assert.throws(() => allocateBudgetForPlan(100, [{ ...valid[0]!, weight }]), AppError);
+  for (const reserve of [-1, 100.01, NaN, Infinity]) assert.throws(() => allocateBudgetForPlan(100, valid, reserve), AppError);
+  assert.throws(() => allocateBudgetForPlan(100, []), AppError);
+  assert.throws(() => allocateBudgetForPlan(100, [valid[0]!, valid[0]!]), AppError);
+  assert.throws(() => allocateBudgetForPlan(100, [{ ...valid[0]!, id: 'Invalid category' }]), AppError);
+  assert.throws(() => allocateBudgetForPlan(100, [{ ...valid[0]!, title: '' }]), AppError);
+  assert.throws(() => allocateBudgetForPlan(100, Array.from({ length: 21 }, (_, index) => ({ id: `category_${index}`, title: 'Category', weight: 1 }))), AppError);
+});
+
+test('travel scenarios use only actual travel allocations and group hotel and flight offers into those envelopes', () => {
+  const flight = offer({ id: uuid(21), category: 'flights', kind: 'service', condition: 'not_applicable', priceMinor: 2_000 });
+  const hotel = offer({ id: uuid(22), category: 'hotel', kind: 'service', condition: 'not_applicable', priceMinor: 3_000 });
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { transport: 3_000, accommodation: 4_000, food: 1_000 }), researchResults: [research([flight], { category: 'flights' }), research([hotel], { id: uuid(41), category: 'hotel' }), research([offer()], { id: uuid(42) }), research([offer({ id: uuid(23), category: 'moving' })], { id: uuid(43), category: 'moving' })] });
+  for (const scenario of simulateScenarios(state)) {
+    assert.equal(scenario.estimatedTotalMinor, 6_200);
+    assert.deepEqual(scenario.selectedOfferIds, [flight.id, hotel.id]);
+    assert.equal(scenario.missingData.length, 1);
+    assert.match(scenario.missingData[0]!, /^food: allocation-based planning estimate of 1000 cents/);
+    assert.doesNotMatch(scenario.missingData.join(' '), /moving|furniture/);
+  }
+  state.cart = [cart({ category: 'flights', offerId: flight.id, quantity: 2, unitPriceMinor: 1_001, deliveryCostMinor: 99 })];
+  const recalculated = recalculateBudget(state.budget, state.cart);
+  assert.equal(recalculated.categories.find(category => category.id === 'transport')!.committedMinor, 2_101);
+  assert.equal(recalculated.categories.length, 3);
+  assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 6_201);
+});
+
+test('travel and car contexts cannot reintroduce legacy moving and furniture planning estimates', () => {
+  for (const scenarioType of ['travel', 'car_purchase'] as const) {
+    const state = project({ scenarioType, budget: budget(10_000, { moving: 2_000, furniture: 4_000, food: 1_000 }) });
+    const scenario = simulateScenarios(state)[0]!;
+    assert.equal(scenario.estimatedTotalMinor, 1_000);
+    assert.doesNotMatch(scenario.missingData.join(' '), /moving|furniture/);
+    // Explicit user choices remain authoritative even when outside the contextual template.
+    state.cart = [cart({ category: 'furniture', unitPriceMinor: 601 })];
+    assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 1_601);
+    assert.deepEqual(simulateScenarios(state)[0]!.lockedCartItemIds, [uuid(1)]);
+  }
+});
+
+test('moving with owned furniture skips automatic replacement offers and furniture estimates, preserving selected cart choices', () => {
+  const state = project({ scenarioType: 'moving', budget: budget(10_000, { furniture: 5_000, moving: 3_000 }), researchResults: [research([offer({ category: 'beds' })], { category: 'beds' })] });
+  state.preferences.ownsFurniture = true;
+  state.preferences.ownedItems = ['double bed', 'sofa'];
+  for (const scenario of simulateScenarios(state)) {
+    assert.equal(scenario.estimatedTotalMinor, 3_000);
+    assert.deepEqual(scenario.selectedOfferIds, []);
+    assert.equal(scenario.missingData.length, 1);
+    assert.match(scenario.missingData[0]!, /^moving:/);
+    assert.match(scenario.tradeOffs.join(' '), /recorded owned items/);
+  }
+  state.cart = [cart({ category: 'beds', offerId: uuid(20), unitPriceMinor: 601 })];
+  for (const scenario of simulateScenarios(state)) {
+    assert.equal(scenario.estimatedTotalMinor, 3_601);
+    assert.deepEqual(scenario.lockedCartItemIds, [uuid(1)]);
+    assert.deepEqual(scenario.selectedOfferIds, [uuid(20)]);
+  }
+  assert.equal(state.budget.categories[0]!.allocatedMinor, 5_000);
+});
+
+test('specific owned items do not suppress other furniture groups or duplicate their allocation', () => {
+  const bed = offer({ id: uuid(21), category: 'beds', priceMinor: 2_000 });
+  const sofa = offer({ id: uuid(22), category: 'sofas', priceMinor: 3_000 });
+  const state = project({ scenarioType: 'home_furnishing', researchResults: [research([bed, sofa])] });
+  state.preferences.ownedItems = ['Double bed'];
+  for (const scenario of simulateScenarios(state)) {
+    assert.deepEqual(scenario.selectedOfferIds, [sofa.id]);
+    assert.equal(scenario.estimatedTotalMinor, 3_100);
+    assert.equal(scenario.missingData.length, 0);
+  }
+  state.researchResults[0]!.offers = [bed];
+  assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 0);
+  state.preferences.ownedItems = ['bedroom lamp'];
+  assert.deepEqual(simulateScenarios(state)[0]!.selectedOfferIds, [bed.id]);
+});
+
+test('car scenarios use vehicle and ownership allocations without adding a second vehicle purchase', () => {
+  const vehicle = offer({ category: 'cars', priceMinor: 5_000, condition: 'used' });
+  const state = project({ scenarioType: 'car_purchase', budget: budget(10_000, { vehicle: 7_000, ownership_costs: 2_000 }), researchResults: [research([vehicle], { category: 'cars' })] });
+  for (const scenario of simulateScenarios(state)) {
+    assert.equal(scenario.estimatedTotalMinor, 7_100);
+    assert.deepEqual(scenario.selectedOfferIds, [vehicle.id]);
+    assert.equal(scenario.missingData.length, 1);
+    assert.match(scenario.missingData[0]!, /^ownership_costs:/);
+    assert.doesNotMatch(scenario.missingData.join(' '), /furniture|moving/);
+  }
+  state.cart = [cart({ category: 'cars', offerId: vehicle.id, unitPriceMinor: 5_000 })];
+  assert.equal(recalculateBudget(state.budget, state.cart).categories.find(category => category.id === 'vehicle')!.committedMinor, 5_000);
+  assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 7_000);
+});
+
+test('travel risks cite incomplete dates and origin but never invent document requirements or moving issues', () => {
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { transport: 4_000, accommodation: 4_000 }) });
+  const risks = analyzeRisks(state);
+  assert.deepEqual(risks.map(risk => risk.id), ['travel:dates', 'travel:origin']);
+  risks.forEach(risk => RiskSchema.parse(risk));
+  state.preferences.startDate = '2026-11-01';
+  state.preferences.durationDays = 5;
+  state.preferences.origin = 'Helsinki';
+  assert.deepEqual(analyzeRisks(state), []);
+  state.preferences.endDate = '2026-10-01';
+  assert(analyzeRisks(state).some(risk => risk.id === 'travel:date-order'));
+});
+
+test('travel document risk requires an actual outstanding task or recorded concern and preserves only unchanged evidence status', () => {
+  const state = project({ scenarioType: 'travel' });
+  state.tasks = [{ id: uuid(50), title: 'Check passport validity', category: 'documents', status: 'todo', dueDate: null, origin: 'user', notes: 'Before departure' }];
+  const documentRisk = analyzeRisks(state).find(risk => risk.id === 'travel:documents')!;
+  assert.match(documentRisk.evidence.join(' '), /Check passport validity/);
+  assert.doesNotMatch(documentRisk.explanation, /visa is required/);
+  state.risks = [{ ...documentRisk, status: 'acknowledged' }];
+  assert.equal(analyzeRisks(state).find(risk => risk.id === documentRisk.id)!.status, 'acknowledged');
+  state.tasks[0]!.status = 'in_progress';
+  assert.equal(analyzeRisks(state).find(risk => risk.id === documentRisk.id)!.status, 'open');
+  state.tasks[0]!.status = 'done';
+  assert(!analyzeRisks(state).some(risk => risk.id === documentRisk.id));
+  state.preferences.notes = 'My passport expired last week.';
+  assert.match(analyzeRisks(state).find(risk => risk.id === documentRisk.id)!.evidence.join(' '), /passport expired/);
+});
+
+test('car inspection and ownership-cost risks require recorded vehicle evidence and disappear when gaps are addressed', () => {
+  const unrelated = project({ scenarioType: 'car_purchase' });
+  assert(!analyzeRisks(unrelated).some(risk => risk.id.startsWith('car:') || risk.id.startsWith('moving:')));
+  const state = project({ scenarioType: 'car_purchase', budget: budget(10_000, { vehicle: 8_000 }), researchResults: [research([offer({ category: 'cars', condition: 'used' })], { category: 'cars' })] });
+  const risks = analyzeRisks(state);
+  assert(risks.some(risk => risk.id === 'car:inspection'));
+  const ownership = risks.find(risk => risk.id === 'car:ownership-costs')!;
+  assert.match(ownership.evidence.join(' '), /vehicle=8000 cents/);
+  assert.doesNotMatch(ownership.explanation, /\d+%|probability/);
+  risks.forEach(risk => RiskSchema.parse(risk));
+  state.tasks = [{ id: uuid(50), title: 'Vehicle inspection review', category: 'inspection', status: 'done', dueDate: null, origin: 'user', notes: '' }];
+  state.budget = budget(10_000, { vehicle: 7_000, ownership_costs: 1_000 });
+  assert(!analyzeRisks(state).some(risk => risk.id.startsWith('car:')));
+  state.tasks = [];
+  state.researchResults[0]!.offers[0]!.condition = 'new';
+  assert(!analyzeRisks(state).some(risk => risk.id === 'car:inspection'));
+});
+
+test('scenario-specific risk prompts never leak into other contextual project types', () => {
+  for (const scenarioType of ['home_furnishing', 'student_life', 'other'] as const) {
+    const state = project({ scenarioType });
+    assert(!analyzeRisks(state).some(risk => /^(moving|travel|car):/.test(risk.id)));
+  }
+});
+
+test('travel alternatives share their actual budget envelopes instead of buying hotel plus hostel or flight plus rail', () => {
+  const hotel = offer({ id: uuid(21), category: 'hotel', kind: 'service', condition: 'not_applicable', priceMinor: 3_000, score: 90 });
+  const hostel = offer({ id: uuid(22), category: 'hostels', kind: 'service', condition: 'not_applicable', priceMinor: 2_000, score: 40 });
+  const flight = offer({ id: uuid(23), category: 'flights', kind: 'service', condition: 'not_applicable', priceMinor: 2_000, score: 90 });
+  const rail = offer({ id: uuid(24), category: 'rail', kind: 'service', condition: 'not_applicable', priceMinor: 1_000, score: 40 });
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { transport: 4_000, accommodation: 4_000 }), researchResults: [research([hotel, hostel], { category: 'accommodation' }), research([flight, rail], { category: 'transport', id: uuid(41) })] });
+  const scenarios = simulateScenarios(state);
+  assert.deepEqual(scenarios[0]!.selectedOfferIds, [rail.id, hostel.id]);
+  assert.equal(scenarios[0]!.estimatedTotalMinor, 3_200);
+  assert.deepEqual(scenarios[1]!.selectedOfferIds, [flight.id, hotel.id]);
+  assert.equal(scenarios[1]!.estimatedTotalMinor, 5_200);
+  state.cart = [cart({ category: 'hotel', offerId: hotel.id, unitPriceMinor: 3_000 })];
+  const locked = simulateScenarios(state)[0]!;
+  assert.deepEqual(locked.selectedOfferIds, [hotel.id, rail.id]);
+  assert.equal(locked.estimatedTotalMinor, 4_100);
+});
+
+test('a selected hotel has service fee and quote-term reviews, never a shipping risk or zero invented fees', () => {
+  const hotel = offer({ category: 'hotel', kind: 'service', title: 'Recorded Rome hotel', condition: 'not_applicable', priceMinor: 2_001, delivery: { available: false, costMinor: null, details: 'Not a shipped item' } });
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { accommodation: 8_000 }), researchResults: [research([hotel], { category: 'hotel' })], cart: [cart({ offerId: hotel.id, category: 'hotel', title: hotel.title, quantity: 2, unitPriceMinor: 2_001, deliveryCostMinor: null })] });
+  state.preferences.startDate = '2027-05-02';
+  state.preferences.endDate = '2027-05-06';
+  state.preferences.origin = 'Helsinki';
+  const before = structuredClone(state);
+  const risks = analyzeRisks(state);
+  assert(!risks.some(risk => risk.category === 'delivery' || risk.category === 'transport'));
+  assert(risks.some(risk => risk.id === `cart:service-fees:${uuid(1)}`));
+  assert(risks.some(risk => risk.id === `offer:service-fees:${hotel.id}`));
+  assert(risks.some(risk => risk.id === `offer:terms:${hotel.id}`));
+  assert.doesNotMatch(JSON.stringify(risks), /delivery|shipping|pickup/i);
+  for (const scenario of simulateScenarios(state)) {
+    assert.equal(scenario.estimatedTotalMinor, 4_002);
+    assert.equal(scenario.verifiedCostMinor, 4_002);
+    assert.equal(scenario.estimatedCostMinor, 0);
+    assert.deepEqual(scenario.lockedCartItemIds, [uuid(1)]);
+    assert.deepEqual(scenario.selectedOfferIds, [hotel.id]);
+    assert.match(scenario.missingData.join(' '), /service total fees need confirmation/);
+    assert.match(scenario.missingData.join(' '), /exclude any unpriced extras/);
+    assert.doesNotMatch([...scenario.missingData, ...scenario.risks, ...scenario.tradeOffs].join(' '), /delivery|shipping|pickup/i);
+    SimulationScenarioSchema.parse(scenario);
+  }
+  const recalculated = recalculateBudget(state.budget, state.cart);
+  assert.equal(recalculated.committedMinor, 4_002);
+  assert.equal(recalculated.availableMinor, 4_998);
+  assert.doesNotMatch(recalculated.warnings.join(' '), /delivery|shipping/i);
+  risks.forEach(risk => RiskSchema.parse(risk));
+  assert.deepEqual(state, before, 'Null additional charges remain null; no fee or verification is fabricated');
+});
+
+test('manual travel service estimates use their service budget group, while a linked physical product overrides that inference', () => {
+  for (const category of ['accommodation', 'hotel', 'transport', 'return_flights']) {
+    const envelope = ['transport', 'return_flights'].includes(category) ? 'transport' : 'accommodation';
+    const state = project({ scenarioType: 'travel', budget: budget(10_000, { [envelope]: 8_000 }), cart: [cart({ category, unitPriceMinor: 1_001, deliveryCostMinor: null, priceStatus: 'estimated', sourceUrl: null })] });
+    const risks = analyzeRisks(state);
+    const fees = risks.find(risk => risk.id === `cart:service-fees:${uuid(1)}`)!;
+    assert(fees);
+    assert.match(fees.evidence.join(' '), /Manual line in service budget group/);
+    assert(!risks.some(risk => risk.category === 'delivery'));
+    const scenario = simulateScenarios(state)[0]!;
+    assert.equal(scenario.estimatedTotalMinor, 1_001);
+    assert.equal(scenario.verifiedCostMinor, 0);
+    assert.equal(scenario.estimatedCostMinor, 1_001);
+    assert.doesNotMatch([...scenario.missingData, ...scenario.risks, ...scenario.tradeOffs].join(' '), /delivery|shipping|pickup/i);
+  }
+  const physical = offer({ category: 'accommodation', kind: 'product', delivery: { available: null, costMinor: null, details: '' } });
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { accommodation: 8_000 }), cart: [cart({ offerId: physical.id, category: 'accommodation', deliveryCostMinor: null })], researchResults: [research([physical], { category: 'accommodation' })] });
+  assert(analyzeRisks(state).some(risk => risk.id === `cart:delivery:${uuid(1)}`));
+  assert(!analyzeRisks(state).some(risk => risk.id === `cart:service-fees:${uuid(1)}`));
+  assert.match(simulateScenarios(state)[0]!.missingData.join(' '), /delivery cost unknown/);
+});
+
+test('service kind survives stale or superseded research, even when its cart category is not a known service category', () => {
+  const service = offer({ category: 'general', kind: 'service', condition: 'not_applicable', delivery: { available: null, costMinor: null, details: '' } });
+  const state = project({ budget: budget(10_000, { general: 8_000 }), cart: [cart({ offerId: service.id, category: 'general', deliveryCostMinor: null })], researchResults: [research([service], { category: 'general', warnings: ['Project constraints changed after this search.'] }), research([], { id: uuid(41), category: 'general', searchedAt: '2027-01-01T00:00:00.000Z' })] });
+  const fees = analyzeRisks(state).find(risk => risk.id === `cart:service-fees:${uuid(1)}`)!;
+  assert.match(fees.evidence.join(' '), /kind: service/);
+  assert(!analyzeRisks(state).some(risk => risk.id === `cart:delivery:${uuid(1)}`));
+  assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 1_000);
+});
+
+test('service scenario research does not require shipping, and unpriced extras remain explicitly excluded', () => {
+  const service = offer({ category: 'hotel', kind: 'service', condition: 'not_applicable', delivery: { available: null, costMinor: null, details: '' } });
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { accommodation: 8_000 }), researchResults: [research([service], { category: 'hotel' })] });
+  // Physical-product delivery requirements must not exclude a hotel quote.
+  state.preferences.deliveryRequired = true;
+  for (const scenario of simulateScenarios(state)) {
+    assert.deepEqual(scenario.selectedOfferIds, [service.id]);
+    assert.equal(scenario.estimatedTotalMinor, 2_000);
+    assert.equal(scenario.verifiedCostMinor, 2_000);
+    assert.equal(scenario.estimatedCostMinor, 0);
+    assert.match(scenario.missingData.join(' '), /taxes and additional fees/);
+    assert.doesNotMatch([...scenario.missingData, ...scenario.risks, ...scenario.tradeOffs].join(' '), /delivery|shipping|pickup/i);
+  }
+});
+
+test('known extra service charges remain estimated and are charged once per selected line', () => {
+  const service = offer({ category: 'hotel', kind: 'service', condition: 'not_applicable' });
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { accommodation: 8_000 }), cart: [cart({ offerId: service.id, category: 'hotel', quantity: 2, unitPriceMinor: 101, deliveryCostMinor: 99 })], researchResults: [research([service], { category: 'hotel' })] });
+  const scenario = simulateScenarios(state)[0]!;
+  assert.equal(scenario.estimatedTotalMinor, 301);
+  assert.equal(scenario.verifiedCostMinor, 202);
+  assert.equal(scenario.estimatedCostMinor, 99);
+  assert.match(scenario.tradeOffs.join(' '), /additional service charges are estimates/);
+  assert.doesNotMatch(scenario.tradeOffs.join(' '), /shipping|delivery/i);
+});
+
+test('moving services retain quote scope and cancellation review without an irrelevant shipping request', () => {
+  const moving = offer({ category: 'moving_company', kind: 'service', condition: 'not_applicable', title: 'Recorded moving company', description: 'Transport and labor for the recorded inventory.', delivery: { available: false, costMinor: null, details: '' } });
+  const state = project({ scenarioType: 'moving', budget: budget(10_000, { moving: 8_000 }), cart: [cart({ offerId: moving.id, category: 'moving_company', deliveryCostMinor: null })], researchResults: [research([moving], { category: 'moving_company' })] });
+  const risks = analyzeRisks(state);
+  assert(!risks.some(risk => risk.id === 'moving:arrangement'));
+  assert(!risks.some(risk => risk.category === 'delivery'));
+  const terms = risks.find(risk => risk.id === `offer:terms:${moving.id}`)!;
+  assert.match(terms.evidence.join(' '), /Transport and labor/);
+  assert.match(terms.preventiveAction, /scope, inclusions, payment and cancellation/);
+  assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 1_000);
+});
+
+test('service fee review statuses survive unchanged evidence and reopen when cart amounts change', () => {
+  const state = project({ scenarioType: 'travel', budget: budget(10_000, { accommodation: 8_000 }), cart: [cart({ category: 'hotel', deliveryCostMinor: null })] });
+  const initial = analyzeRisks(state).find(risk => risk.id === `cart:service-fees:${uuid(1)}`)!;
+  state.risks = [{ ...initial, status: 'resolved' }];
+  assert.equal(analyzeRisks(state).find(risk => risk.id === initial.id)!.status, 'resolved');
+  state.cart[0]!.quantity = 2;
+  assert.equal(analyzeRisks(state).find(risk => risk.id === initial.id)!.status, 'open');
+});
+
+test('selected descriptive search slugs spend their financial envelope without buying the allocation again', () => {
+  for (const [category, parent, scenarioType] of [
+    ['bed_frame', 'furniture', 'home_furnishing'],
+    ['reliable_used_car', 'vehicle', 'car_purchase'],
+    ['return_flights', 'transport', 'travel'],
+    ['moving_company', 'moving', 'moving'],
+  ] as const) {
+    const state = project({ scenarioType, budget: budget(10_000, { [parent]: 8_000 }), cart: [cart({ category, quantity: 2, unitPriceMinor: 101, deliveryCostMinor: 99 })] });
+    const calculated = recalculateBudget(state.budget, state.cart);
+    assert.equal(calculated.categories.length, 1, category);
+    assert.equal(calculated.categories[0]!.id, parent);
+    assert.equal(calculated.categories[0]!.committedMinor, 301);
+    for (const scenario of simulateScenarios(state)) {
+      assert.equal(scenario.estimatedTotalMinor, 301, category);
+      assert.deepEqual(scenario.lockedCartItemIds, [uuid(1)]);
+      assert(!scenario.missingData.some(data => data.startsWith(`${parent}:`)));
+    }
+  }
+});
+
+test('descriptive bed and sofa groups remain separate, and furniture delivery spends only its service envelope', () => {
+  const bed = offer({ id: uuid(21), category: 'bed_frame', priceMinor: 2_000 });
+  const sofa = offer({ id: uuid(22), category: 'compact_sofa', priceMinor: 3_000 });
+  const state = project({ scenarioType: 'home_furnishing', researchResults: [research([bed, sofa])], cart: [cart({ category: 'bed_frame', offerId: bed.id, unitPriceMinor: 501 })] });
+  const scenario = simulateScenarios(state)[0]!;
+  assert.deepEqual(scenario.selectedOfferIds, [bed.id, sofa.id]);
+  assert.equal(scenario.estimatedTotalMinor, 3_601);
+  const delivery = project({ scenarioType: 'home_furnishing', budget: budget(10_000, { furniture: 6_000, delivery: 2_000 }), cart: [cart({ category: 'furniture_delivery', unitPriceMinor: 601 })] });
+  const calculated = recalculateBudget(delivery.budget, delivery.cart);
+  assert.equal(calculated.categories.find(category => category.id === 'delivery')!.committedMinor, 601);
+  assert.equal(calculated.categories.find(category => category.id === 'furniture')!.committedMinor, 0);
+  assert.equal(simulateScenarios(delivery)[0]!.estimatedTotalMinor, 6_601);
+});
+
+test('toy cars and accessories do not consume a real vehicle or furniture purchase allocation', () => {
+  for (const category of ['toy_car', 'car_parts', 'car_floor_mats', 'vehicle_rental']) {
+    const state = project({ scenarioType: 'car_purchase', budget: budget(10_000, { vehicle: 8_000 }), cart: [cart({ category, unitPriceMinor: 101 })] });
+    const calculated = recalculateBudget(state.budget, state.cart);
+    assert.equal(calculated.categories.find(category => category.id === 'vehicle')!.committedMinor, 0, category);
+    assert.equal(calculated.categories.find(item => item.id === category)!.committedMinor, 101);
+    assert.equal(simulateScenarios(state)[0]!.estimatedTotalMinor, 8_101);
+  }
+  const linen = project({ budget: budget(), cart: [cart({ category: 'bed_linen', unitPriceMinor: 101 })] });
+  assert.equal(recalculateBudget(linen.budget, linen.cart).categories.find(category => category.id === 'furniture')!.committedMinor, 0);
 });

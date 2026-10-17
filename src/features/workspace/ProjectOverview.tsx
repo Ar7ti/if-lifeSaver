@@ -25,9 +25,16 @@ const fromTri = (v: Tri) => (v === 'unsure' ? null : v === 'yes');
 function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { project, writer } = useWorkspace();
   const p = project.preferences;
-  const [moveDate, setMoveDate] = useState(p.moveDate ?? '');
+  const moving = project.scenarioType === 'moving';
+  const travel = project.scenarioType === 'travel';
+  const purchasing = ['moving','home_furnishing','car_purchase'].includes(project.scenarioType);
+  const [moveDate, setMoveDate] = useState((travel ? p.startDate : p.moveDate) ?? '');
+  const [endDate, setEndDate] = useState(p.endDate ?? '');
+  const [duration, setDuration] = useState(p.durationDays ? String(p.durationDays) : '');
+  const [vehicleType, setVehicleType] = useState(p.vehicleType ?? '');
+  const [useCase, setUseCase] = useState(p.useCase ?? '');
   const [origin, setOrigin] = useState(p.origin ?? '');
-  const [household, setHousehold] = useState(p.householdSize ? String(p.householdSize) : '');
+  const [household, setHousehold] = useState((travel ? p.travelers : p.householdSize) ? String(travel ? p.travelers : p.householdSize) : '');
   const [delivery, setDelivery] = useState<Tri>(toTri(p.deliveryRequired));
   const [used, setUsed] = useState<Tri>(toTri(p.allowUsed));
   const [location, setLocation] = useState(project.location ?? '');
@@ -35,7 +42,10 @@ function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const constraintsChange = fromTri(delivery) !== p.deliveryRequired || fromTri(used) !== p.allowUsed || (location.trim() || null) !== project.location;
   const hasResearch = project.researchResults.length > 0;
   const size = household.trim() ? Number(household) : null;
-  const valid = size === null || (Number.isInteger(size) && size >= 1 && size <= 30);
+  const peopleValid = size === null || (Number.isInteger(size) && size >= 1 && size <= 30);
+  const durationValid = !duration || (Number.isInteger(Number(duration)) && Number(duration)>=1 && Number(duration)<=366);
+  const datesValid = !travel || !moveDate || !endDate || endDate>=moveDate;
+  const valid = peopleValid && (!travel || (durationValid && datesValid));
 
   const save = useMutation({
     mutationFn: () =>
@@ -43,9 +53,9 @@ function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }
         expectedRevision: project.revision,
         ...(location.trim() && location.trim() !== project.location ? { location: location.trim() } : {}),
         preferences: {
-          moveDate: moveDate || null,
+          ...(travel ? {startDate:moveDate||null,endDate:endDate||null,durationDays:duration?Number(duration):null,travelers:size} : {moveDate:moveDate||null,householdSize:size}),
+          ...(project.scenarioType==='car_purchase'?{vehicleType:vehicleType.trim()||null,useCase:useCase.trim()||null}:{}),
           origin: origin.trim() || null,
-          householdSize: size,
           deliveryRequired: fromTri(delivery),
           allowUsed: fromTri(used),
         },
@@ -62,6 +72,8 @@ function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }
     <Dialog
       open={open}
       onClose={onClose}
+      wide
+      className="h-dvh max-h-dvh rounded-none sm:h-[min(40rem,calc(100dvh-3rem))] sm:w-[min(48rem,calc(100vw-3rem))] sm:rounded-card"
       title="Plan details"
       description="The more you confirm, the fewer guesses the plan has to make."
       footer={
@@ -76,20 +88,28 @@ function DetailsDialog({ open, onClose }: { open: boolean; onClose: () => void }
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Destination">{props => <Input {...props} value={location} maxLength={200} onChange={e => setLocation(e.target.value)} placeholder="City, country" />}</Field>
-        <Field label={project.scenarioType === 'moving' ? 'Move date' : 'Target date'}>{props => <Input {...props} type="date" value={moveDate} onChange={e => setMoveDate(e.target.value)} />}</Field>
-        <Field label="Moving from">{props => <Input {...props} value={origin} maxLength={200} onChange={e => setOrigin(e.target.value)} placeholder="Current city" />}</Field>
-        <Field label="People moving" hint={valid ? undefined : 'Use a whole number from 1 to 30.'}>
-          {props => <Input {...props} type="number" min={1} max={30} value={household} onChange={e => setHousehold(e.target.value)} aria-invalid={!valid} />}
-        </Field>
-        <div className="flex flex-col gap-1.5">
+        <Field label={project.scenarioType==='car_purchase'?'Search location':'Destination'}>{props => <Input {...props} value={location} maxLength={200} onChange={e => setLocation(e.target.value)} placeholder="City, country" />}</Field>
+        <Field label={moving ? 'Move date' : travel ? 'Departure date' : 'Target date'}>{props => <Input {...props} type="date" value={moveDate} onChange={e => setMoveDate(e.target.value)} />}</Field>
+        {(moving||travel)&&<Field label={travel?'Traveling from':'Moving from'}>{props => <Input {...props} value={origin} maxLength={200} onChange={e => setOrigin(e.target.value)} placeholder="Current city" />}</Field>}
+        {(moving||travel)&&<Field label={travel?'Travelers':'People moving'} hint={peopleValid ? undefined : 'Use a whole number from 1 to 30.'}>
+          {props => <Input {...props} type="number" min={1} max={30} value={household} onChange={e => setHousehold(e.target.value)} aria-invalid={!peopleValid} />}
+        </Field>}
+        {purchasing&&<div className="flex flex-col gap-1.5">
           <span className="text-body-sm font-medium" aria-hidden>Need items delivered?</span>
           <Segmented label="Need items delivered?" value={delivery} onChange={setDelivery} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unsure', label: 'Not sure' }]} className="self-start" />
-        </div>
-        <div className="flex flex-col gap-1.5">
+        </div>}
+        {purchasing&&<div className="flex flex-col gap-1.5">
           <span className="text-body-sm font-medium" aria-hidden>Second-hand OK?</span>
           <Segmented label="Second-hand OK?" value={used} onChange={setUsed} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unsure', label: 'Not sure' }]} className="self-start" />
-        </div>
+        </div>}
+        {travel&&<>
+          <Field label="Return date" hint={datesValid?undefined:'Return date must be on or after departure.'}>{props=><Input {...props} type="date" aria-invalid={!datesValid} value={endDate} onChange={e=>setEndDate(e.target.value)}/>}</Field>
+          <Field label="Trip duration (days)" hint={durationValid?undefined:'Use a whole number from 1 to 366.'}>{props=><Input {...props} type="number" min={1} max={366} aria-invalid={!durationValid} value={duration} onChange={e=>setDuration(e.target.value)}/>}</Field>
+        </>}
+        {project.scenarioType==='car_purchase'&&<>
+          <Field label="Vehicle type">{props=><Input {...props} value={vehicleType} onChange={e=>setVehicleType(e.target.value)} maxLength={100}/>}</Field>
+          <Field label="Primary use">{props=><Input {...props} value={useCase} onChange={e=>setUseCase(e.target.value)} maxLength={300}/>}</Field>
+        </>}
         {constraintsChange && hasResearch && (
           <p className="rounded-[10px] bg-warn-tint px-3 py-2 text-body-sm text-warn-ink sm:col-span-2" role="status">
             Changing the destination, delivery or second-hand preference marks earlier searches as out of date. You can search again afterwards.
@@ -155,7 +175,7 @@ export function ProjectOverview({ project }: { project: LifeProject }) {
   const pct = project.tasks.length ? Math.round((done / project.tasks.length) * 100) : 0;
   const nextTask = project.tasks.find(t => t.status !== 'done');
   const openRisks = project.risks.filter(r => r.status === 'open');
-  const date = formatDate(project.preferences.moveDate);
+  const date = formatDate(project.scenarioType==='travel'?project.preferences.startDate:project.preferences.moveDate);
   const spentPct = b.totalMinor ? Math.min(100, (b.committedMinor / b.totalMinor) * 100) : 0;
   const questionCount = openQuestions(project, answered).length;
 
@@ -195,14 +215,14 @@ export function ProjectOverview({ project }: { project: LifeProject }) {
           </h1>
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <Chip>
-              <Emoji>{project.scenarioType === 'moving' ? '📦' : '✨'}</Emoji> {project.scenarioType === 'moving' ? 'Moving' : 'Life project'}
+              <Emoji>{project.scenarioType === 'moving' ? '📦' : '✨'}</Emoji> {{moving:'Moving',travel:'Travel',car_purchase:'Car purchase',home_furnishing:'Home furnishing',student_life:'Student life',other:'Life project'}[project.scenarioType]}
             </Chip>
             {project.location && (
               <Chip>
                 <Emoji>📍</Emoji> {project.location}
               </Chip>
             )}
-            <Chip onClick={() => setEditing(true)} label={date ? `Move date ${date}, edit` : 'Add move date'}>
+            <Chip onClick={() => setEditing(true)} label={date ? `Date ${date}, edit` : 'Add project date'}>
               <Emoji>📅</Emoji> {date ?? 'Add date'}
             </Chip>
             {project.preferences.householdSize && (

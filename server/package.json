@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "check:live": "tsx --env-file-if-exists=.env scripts/check-live.ts",
-    "check:api-live": "tsx --env-file-if-exists=.env scripts/check-api-live.ts"
+    "check:api-live": "tsx --env-file-if-exists=.env scripts/check-api-live.ts",
+    "check:context-live": "tsx --env-file-if-exists=.env scripts/check-context-live.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",

@@ -12,15 +12,25 @@ import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useWorkspace } from './context';
 
-type Kind = 'moveDate' | 'origin' | 'householdSize' | 'deliveryRequired' | 'allowUsed';
+type Kind = 'moveDate' | 'origin' | 'householdSize' | 'deliveryRequired' | 'allowUsed' | 'location' | 'budget' | 'startDate' | 'endDate' | 'durationDays' | 'travelers' | 'vehicleType' | 'useCase' | 'ownsFurniture' | 'ownedItems';
 
 /** Recognizes which structured preference a planner question asks for, so it gets a fitting input. */
-function detect(question: string): Kind[] {
+function detect(question: string, scenario: LifeProject['scenarioType']): Kind[] {
   const q = question.toLowerCase();
   const kinds: Kind[] = [];
-  if (/(move|moving) date|exact date|when (are|do|will) you (move|moving)/.test(q)) kinds.push('moveDate');
-  if (/moving from|where .{0,20}from|current (city|address|home)/.test(q)) kinds.push('origin');
-  if (/how many people|household|people (are )?moving/.test(q)) kinds.push('householdSize');
+  if (scenario === 'moving' && /(move|moving) date|exact date|when (are|do|will) you (move|moving)/.test(q)) kinds.push('moveDate');
+  if (/moving from|travel(?:ing)? from|where .{0,20}from|current (city|address|home)|origin/.test(q)) kinds.push('origin');
+  if (scenario === 'moving' && /how many people|household|people (are )?moving/.test(q)) kinds.push('householdSize');
+  if (scenario === 'travel' && /when|start date|departure date|travel dates?/.test(q)) kinds.push('startDate');
+  if (scenario === 'travel' && /end date|return date|returning/.test(q)) kinds.push('endDate');
+  if (scenario === 'travel' && /how long|duration|how many days|how many nights/.test(q)) kinds.push('durationDays');
+  if (scenario === 'travel' && /how many people|travelers|travellers|people (are )?traveling/.test(q)) kinds.push('travelers');
+  if (/where (are you|will you|do you)|destination|which (city|country|place)/.test(q) && !/\bfrom\b/.test(q)) kinds.push('location');
+  if (/budget|how much (?:can|will|do) you spend|spending limit/.test(q)) kinds.push('budget');
+  if (scenario === 'car_purchase' && /kind of vehicle|type of (?:car|vehicle)|what (?:car|vehicle)/.test(q)) kinds.push('vehicleType');
+  if (scenario === 'car_purchase' && /how will you .*use|use (?:the|your) car|mainly use|use case/.test(q)) kinds.push('useCase');
+  if (/what (?:furniture|items) do you (?:already )?(?:own|have)|which .*already own/.test(q)) kinds.push('ownedItems');
+  if (/do you (?:already )?own (?:all |any )?furniture|own furniture/.test(q)) kinds.push('ownsFurniture');
   if (/deliver|movers/.test(q)) kinds.push('deliveryRequired');
   if (/\bused\b|second-hand|secondhand/.test(q)) kinds.push('allowUsed');
   return kinds;
@@ -32,6 +42,16 @@ const LABELS: Record<Kind, string> = {
   householdSize: 'People moving',
   deliveryRequired: 'Need delivery or movers?',
   allowUsed: 'Second-hand OK?',
+  location: 'Destination',
+  budget: 'Budget (€)',
+  startDate: 'Start date',
+  endDate: 'End date',
+  durationDays: 'Days',
+  travelers: 'Travelers',
+  vehicleType: 'Vehicle type',
+  useCase: 'Main use',
+  ownsFurniture: 'Already own furniture?',
+  ownedItems: 'Items you already own',
 };
 
 function YesNo({ label, value, onChange }: { label: string; value: boolean | null; onChange: (v: boolean) => void }) {
@@ -58,13 +78,23 @@ function YesNo({ label, value, onChange }: { label: string; value: boolean | nul
 
 function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { question: string; index: number; total: number; onDone: (summary: string) => void; onSkip: () => void; autoFocus: boolean }) {
   const { project, writer } = useWorkspace();
-  const kinds = useMemo(() => detect(question), [question]);
+  const kinds = useMemo(() => detect(question, project.scenarioType), [question, project.scenarioType]);
   const p = project.preferences;
   const [moveDate, setMoveDate] = useState(p.moveDate ?? '');
+  const [startDate, setStartDate] = useState(p.startDate ?? '');
+  const [endDate, setEndDate] = useState(p.endDate ?? '');
+  const [duration, setDuration] = useState(p.durationDays == null ? '' : String(p.durationDays));
+  const [travelers, setTravelers] = useState(p.travelers == null ? '' : String(p.travelers));
   const [origin, setOrigin] = useState(p.origin ?? '');
   const [people, setPeople] = useState(p.householdSize ? String(p.householdSize) : '');
+  const [location, setLocation] = useState(project.location ?? '');
+  const [budget, setBudget] = useState(project.budget.confirmed ? (project.budget.totalMinor / 100).toFixed(2) : '');
+  const [vehicleType, setVehicleType] = useState(p.vehicleType ?? '');
+  const [useCase, setUseCase] = useState(p.useCase ?? '');
+  const [ownsFurniture, setOwnsFurniture] = useState<boolean | null>(p.ownsFurniture ?? null);
+  const [ownedItems, setOwnedItems] = useState((p.ownedItems ?? []).join(', '));
   const [delivery, setDelivery] = useState<boolean | null>(p.deliveryRequired);
-  const [used, setUsed] = useState<boolean | null>(p.allowUsed);
+  const [used, setUsed] = useState<boolean | null>(p.allowUsed ?? null);
   const [text, setText] = useState('');
   const [showText, setShowText] = useState(kinds.length === 0);
   const [error, setError] = useState<string | null>(null);
@@ -79,14 +109,7 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
     mutationFn: (patch: ProjectPatch) => writer.api.patchProject(project.id, patch),
     onSuccess: (res: LifeProject, patch) => {
       writer.setProject(res);
-      const parts: string[] = [];
-      if (patch.preferences?.moveDate) parts.push(formatDate(patch.preferences.moveDate) ?? patch.preferences.moveDate);
-      if (patch.preferences?.origin) parts.push(`from ${patch.preferences.origin}`);
-      if (patch.preferences?.householdSize) parts.push(`${patch.preferences.householdSize} people`);
-      if (patch.preferences?.deliveryRequired != null) parts.push(patch.preferences.deliveryRequired ? 'delivery needed' : 'no delivery');
-      if (patch.preferences?.allowUsed != null) parts.push(patch.preferences.allowUsed ? 'second-hand OK' : 'new only');
-      if (text.trim()) parts.push(text.trim());
-      onDone(parts.join(' · '));
+      onDone(patch.answers?.[0]?.answer ?? 'Answered');
     },
     onError: writer.reloadOnConflict,
   });
@@ -94,39 +117,70 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
   function submit(e: FormEvent) {
     e.preventDefault();
     const prefs: NonNullable<ProjectPatch['preferences']> = {};
-    if (kinds.includes('moveDate') && moveDate) prefs.moveDate = moveDate;
-    if (kinds.includes('origin') && origin.trim()) prefs.origin = origin.trim();
+    const parts: string[] = [];
+    const dated = (value: string) => formatDate(value) ?? value;
+    if (kinds.includes('moveDate') && moveDate) { parts.push(dated(moveDate)); if (moveDate !== p.moveDate) prefs.moveDate = moveDate; }
+    if (kinds.includes('startDate') && startDate) { parts.push(`from ${dated(startDate)}`); if (startDate !== p.startDate) prefs.startDate = startDate; }
+    if (kinds.includes('endDate') && endDate) { parts.push(`until ${dated(endDate)}`); if (endDate !== p.endDate) prefs.endDate = endDate; }
+    if (kinds.includes('origin') && origin.trim()) { parts.push(`from ${origin.trim()}`); if (origin.trim() !== p.origin) prefs.origin = origin.trim(); }
+    if (kinds.includes('location') && location.trim()) parts.push(location.trim());
     if (kinds.includes('householdSize') && people.trim()) {
       const n = Number(people);
       if (!Number.isInteger(n) || n < 1 || n > 30) {
         setError('Enter the number of people as a whole number from 1 to 30.');
         return;
       }
-      prefs.householdSize = n;
+      parts.push(`${n} people`);
+      if (n !== p.householdSize) prefs.householdSize = n;
     }
-    if (kinds.includes('deliveryRequired') && delivery !== null && delivery !== p.deliveryRequired) prefs.deliveryRequired = delivery;
-    if (kinds.includes('allowUsed') && used !== null && used !== p.allowUsed) prefs.allowUsed = used;
+    for (const [kind, raw, max, label] of [
+      ['durationDays', duration, 366, 'days'], ['travelers', travelers, 30, 'travelers'],
+    ] as const) {
+      if (!kinds.includes(kind) || !raw.trim()) continue;
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1 || n > max) { setError(`Enter ${label} as a whole number from 1 to ${max}.`); return; }
+      parts.push(`${n} ${label}`);
+      if (n !== p[kind]) prefs[kind] = n;
+    }
+    if (kinds.includes('vehicleType') && vehicleType.trim()) { parts.push(vehicleType.trim()); if (vehicleType.trim() !== p.vehicleType) prefs.vehicleType = vehicleType.trim(); }
+    if (kinds.includes('useCase') && useCase.trim()) { parts.push(useCase.trim()); if (useCase.trim() !== p.useCase) prefs.useCase = useCase.trim(); }
+    if (kinds.includes('ownsFurniture') && ownsFurniture !== null) { parts.push(ownsFurniture ? 'already own furniture' : 'need furniture'); if (ownsFurniture !== p.ownsFurniture) prefs.ownsFurniture = ownsFurniture; }
+    if (kinds.includes('ownedItems') && ownedItems.trim()) {
+      const items = [...new Set(ownedItems.split(',').map(item => item.trim()).filter(Boolean))];
+      if (items.length > 50 || items.some(item => item.length > 80)) { setError('List up to 50 items, each under 80 characters.'); return; }
+      parts.push(`already own ${items.join(', ')}`);
+      if (JSON.stringify(items) !== JSON.stringify(p.ownedItems ?? [])) prefs.ownedItems = items;
+    }
+    if (kinds.includes('deliveryRequired') && delivery !== null) { parts.push(delivery ? 'delivery needed' : 'no delivery'); if (delivery !== p.deliveryRequired) prefs.deliveryRequired = delivery; }
+    if (kinds.includes('allowUsed') && used !== null) { parts.push(used ? 'second-hand OK' : 'new only'); if (used !== p.allowUsed) prefs.allowUsed = used; }
+    let totalMinor: number | undefined;
+    if (kinds.includes('budget') && budget.trim()) {
+      const amount = budget.trim().replace(',', '.');
+      if (!/^\d+(?:\.\d{1,2})?$/.test(amount)) { setError('Enter a euro amount with no more than two decimal places.'); return; }
+      const [euros, cents = ''] = amount.split('.');
+      totalMinor = Number(euros) * 100 + Number(cents.padEnd(2, '0'));
+      if (!Number.isSafeInteger(totalMinor) || totalMinor > 1_000_000_000) { setError('Enter a budget up to €10,000,000.'); return; }
+      parts.push(`€${(totalMinor / 100).toFixed(2)}`);
+    }
     const answer = text.trim();
     if (answer) {
-      // Free-text answers are kept in the plan notes, which the AI assistant reads.
       const entry = `Q: ${question}\nA: ${answer}`;
       prefs.notes = [p.notes, entry].filter(Boolean).join('\n\n').slice(-4000);
+      parts.push(answer);
     }
-    // Confirming a value the plan already has needs no request (and must not mark research stale).
-    const confirmsExisting =
-      (kinds.includes('deliveryRequired') && delivery !== null && delivery === p.deliveryRequired) ||
-      (kinds.includes('allowUsed') && used !== null && used === p.allowUsed);
-    if (Object.keys(prefs).length === 0 && confirmsExisting) {
-      onDone([delivery !== null && kinds.includes('deliveryRequired') ? (delivery ? 'delivery needed' : 'no delivery') : '', used !== null && kinds.includes('allowUsed') ? (used ? 'second-hand OK' : 'new only') : ''].filter(Boolean).join(' · '));
-      return;
-    }
-    if (Object.keys(prefs).length === 0) {
+    if (parts.length === 0) {
       setError(kinds.length ? 'Fill in at least one answer, or skip this question for now.' : 'Type your answer, or skip this question for now.');
       first.current?.focus();
       return;
     }
     setError(null);
-    save.mutate({ preferences: prefs, expectedRevision: project.revision });
+    save.mutate({
+      ...(Object.keys(prefs).length ? {preferences:prefs} : {}),
+      ...(kinds.includes('location') && location.trim() && location.trim() !== project.location ? {location:location.trim()} : {}),
+      ...(totalMinor !== undefined && (!project.budget.confirmed || totalMinor !== project.budget.totalMinor) ? {budget:{totalMinor}} : {}),
+      answers:[{question,answer:parts.join(' · ').slice(0,2000)}],
+      expectedRevision:project.revision,
+    });
   }
 
   const changesSearch = kinds.some(k => k === 'deliveryRequired' || k === 'allowUsed') && project.researchResults.length > 0;
@@ -164,12 +218,48 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
               <Input ref={focusRef()} id={fieldId('date')} type="date" value={moveDate} onChange={e => setMoveDate(e.target.value)} className="h-10" />
             </div>
           )}
+          {kinds.includes('startDate') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('startDate')} className="text-caption font-medium text-graphite">{LABELS.startDate}</label>
+              <Input ref={focusRef()} id={fieldId('startDate')} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-10" />
+            </div>
+          )}
+          {kinds.includes('endDate') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('endDate')} className="text-caption font-medium text-graphite">{LABELS.endDate}</label>
+              <Input ref={focusRef()} id={fieldId('endDate')} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-10" />
+            </div>
+          )}
+          {kinds.includes('durationDays') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('duration')} className="text-caption font-medium text-graphite">{LABELS.durationDays}</label>
+              <Input ref={focusRef()} id={fieldId('duration')} type="number" inputMode="numeric" min={1} max={366} value={duration} onChange={e => setDuration(e.target.value)} placeholder="e.g. 5" className="h-10" />
+            </div>
+          )}
+          {kinds.includes('travelers') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('travelers')} className="text-caption font-medium text-graphite">{LABELS.travelers}</label>
+              <Input ref={focusRef()} id={fieldId('travelers')} type="number" inputMode="numeric" min={1} max={30} value={travelers} onChange={e => setTravelers(e.target.value)} placeholder="e.g. 2" className="h-10" />
+            </div>
+          )}
           {kinds.includes('origin') && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor={fieldId('origin')} className="text-caption font-medium text-graphite">
                 {LABELS.origin}
               </label>
               <Input ref={focusRef()} id={fieldId('origin')} value={origin} maxLength={200} onChange={e => setOrigin(e.target.value)} placeholder="e.g. Helsinki" className="h-10" autoComplete="address-level2" />
+            </div>
+          )}
+          {kinds.includes('location') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('location')} className="text-caption font-medium text-graphite">{LABELS.location}</label>
+              <Input ref={focusRef()} id={fieldId('location')} value={location} maxLength={200} onChange={e => setLocation(e.target.value)} placeholder="e.g. Rome" className="h-10" autoComplete="address-level2" />
+            </div>
+          )}
+          {kinds.includes('budget') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('budget')} className="text-caption font-medium text-graphite">{LABELS.budget}</label>
+              <Input ref={focusRef()} id={fieldId('budget')} type="text" inputMode="decimal" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 900.00" className="h-10" />
             </div>
           )}
           {kinds.includes('householdSize') && (
@@ -182,6 +272,25 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
           )}
           {kinds.includes('deliveryRequired') && <YesNo label={LABELS.deliveryRequired} value={delivery} onChange={setDelivery} />}
           {kinds.includes('allowUsed') && <YesNo label={LABELS.allowUsed} value={used} onChange={setUsed} />}
+          {kinds.includes('vehicleType') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('vehicleType')} className="text-caption font-medium text-graphite">{LABELS.vehicleType}</label>
+              <Input ref={focusRef()} id={fieldId('vehicleType')} value={vehicleType} maxLength={100} onChange={e => setVehicleType(e.target.value)} placeholder="e.g. used family car" className="h-10" />
+            </div>
+          )}
+          {kinds.includes('useCase') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('useCase')} className="text-caption font-medium text-graphite">{LABELS.useCase}</label>
+              <Input ref={focusRef()} id={fieldId('useCase')} value={useCase} maxLength={300} onChange={e => setUseCase(e.target.value)} placeholder="e.g. commuting" className="h-10" />
+            </div>
+          )}
+          {kinds.includes('ownsFurniture') && <YesNo label={LABELS.ownsFurniture} value={ownsFurniture} onChange={setOwnsFurniture} />}
+          {kinds.includes('ownedItems') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={fieldId('ownedItems')} className="text-caption font-medium text-graphite">{LABELS.ownedItems}</label>
+              <Input ref={focusRef()} id={fieldId('ownedItems')} value={ownedItems} onChange={e => setOwnedItems(e.target.value)} placeholder="e.g. bed, desk" className="h-10" />
+            </div>
+          )}
         </div>
       )}
 
@@ -233,10 +342,17 @@ function QuestionForm({ question, index, total, onDone, onSkip, autoFocus }: { q
 /** Questions still waiting for an answer: not answered here and not covered by known details. */
 export function openQuestions(project: LifeProject, answered: Record<string, string> | undefined) {
   const prefs = project.preferences;
+  const saved = project.answeredQuestions ?? answered ?? {};
+  const hasValue = (kind: Kind) => {
+    if (kind === 'location') return Boolean(project.location?.trim());
+    if (kind === 'budget') return project.budget.confirmed;
+    const value = prefs[kind];
+    return value !== undefined && value !== null && value !== '' && (!Array.isArray(value) || value.length > 0);
+  };
   return project.questions.filter(q => {
-    const kinds = detect(q);
-    const covered = kinds.length > 0 && kinds.every(k => prefs[k] !== null && prefs[k] !== '');
-    return answered?.[q] === undefined && !covered;
+    const kinds = detect(q, project.scenarioType);
+    const covered = kinds.length > 0 && kinds.every(hasValue);
+    return !saved[q] && !covered;
   });
 }
 
@@ -248,13 +364,15 @@ export function QuestionsBlock() {
   const [skipped, setSkipped] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const [interacted, setInteracted] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
 
   // A question whose recognized details are all already in the plan needs no new answer.
   const open = openQuestions(project, answered);
   const queue = [...open.filter(q => !skipped.includes(q)), ...open.filter(q => skipped.includes(q))];
-  const current = queue[0];
-  const fromDetails = project.questions.filter(q => answered?.[q] === undefined && !open.includes(q)).map(q => [q, 'Already in your plan details'] as [string, string]);
-  const doneEntries = [...Object.entries(answered ?? {}).filter(([, a]) => a), ...fromDetails];
+  const current = editingQuestion ?? queue[0];
+  const savedAnswers = { ...(answered ?? {}), ...(project.answeredQuestions ?? {}) };
+  const fromDetails = project.questions.filter(q => !savedAnswers[q] && !open.includes(q)).map(q => [q, 'Already in your plan details'] as [string, string]);
+  const doneEntries = [...Object.entries(savedAnswers).filter(([q, a]) => a && !open.includes(q)), ...fromDetails];
   const total = open.length + doneEntries.length;
   const doneCount = total - open.length;
 
@@ -294,11 +412,13 @@ export function QuestionsBlock() {
                 autoFocus={interacted}
                 onDone={summary => {
                   setInteracted(true);
+                  setEditingQuestion(null);
                   markAnswered(project.id, current, summary || 'Answered');
                   toast.success('Answer saved', 'Your plan has been updated.');
                 }}
                 onSkip={() => {
                   setInteracted(true);
+                  if (editingQuestion) { setEditingQuestion(null); return; }
                   setSkipped(s => [...s.filter(x => x !== current), current]);
                 }}
               />
@@ -323,16 +443,12 @@ export function QuestionsBlock() {
                       <span className="text-graphite">{q}</span>
                       <span className="block font-medium text-ink">{a}</span>
                     </span>
-                    {project.questions.includes(q) && (
+                    {(project.questions.includes(q) || Boolean(project.answeredQuestions?.[q])) && (
                       <Button
                         size="sm"
                         variant="text"
                         icon={<RotateCcw />}
-                        onClick={() => useUi.setState(s => {
-                          const next = { ...(s.answered[project.id] ?? {}) };
-                          delete next[q];
-                          return { answered: { ...s.answered, [project.id]: next } };
-                        })}
+                        onClick={() => { setEditingQuestion(q); setInteracted(true); setReviewing(false); }}
                       >
                         Change
                       </Button>

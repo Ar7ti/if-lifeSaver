@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -26,7 +27,7 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
     if (!open && el.open) el.close();
   }, [open]);
 
-  return (
+  return createPortal(
     <dialog
       ref={ref}
       onClose={onClose}
@@ -36,14 +37,14 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
       aria-labelledby={titleId}
       className={cn(
         'm-0 mt-auto w-full max-w-none rounded-t-[16px] bg-surface p-0 text-ink shadow-float backdrop:bg-midnight/30 open:flex open:flex-col',
-        'max-h-[92dvh] sm:m-auto sm:max-h-[86dvh] sm:rounded-card',
+        'max-h-[calc(100dvh-1rem)] overflow-hidden sm:m-auto sm:max-h-[calc(100dvh-3rem)] sm:rounded-card',
         wide ? 'sm:max-w-3xl' : 'sm:max-w-lg',
         className,
       )}
     >
       {open && (
         <>
-          <header className="flex items-start gap-3 border-b border-hairline px-6 pt-5 pb-4">
+          <header className="flex shrink-0 items-start gap-3 border-b border-hairline px-6 pt-5 pb-4">
             <div className="min-w-0 flex-1">
               <h2 id={titleId} className="text-heading-sm font-semibold">
                 {title}
@@ -53,9 +54,10 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
             <Button size="icon-sm" onClick={onClose} aria-label="Close" icon={<X />} className="-mr-2" />
           </header>
           <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">{children}</div>
-          {footer && <footer className="flex flex-wrap justify-end gap-2 border-t border-hairline px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</footer>}
+          {footer && <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-hairline px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</footer>}
         </>
       )}
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }

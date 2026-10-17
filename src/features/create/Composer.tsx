@@ -1,3 +1,4 @@
+import { isChatSubmitKey } from '@/lib/keyboard';
 import { forwardRef, useImperativeHandle, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
@@ -67,7 +68,7 @@ export const Composer = forwardRef<ComposerHandle, { className?: string; autoFoc
             if (error) setError(null);
           }}
           onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) submit(e);
+            if (isChatSubmitKey(e.nativeEvent)) submit(e);
           }}
           placeholder="What are you planning?"
           aria-invalid={Boolean(error)}

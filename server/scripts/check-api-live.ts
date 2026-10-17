@@ -29,10 +29,15 @@ async function main() {
     const {project}=CreateProjectResponseSchema.parse(await request('/api/projects',{
       message:'I am moving to Turku, Finland next month with a budget of 2000 euros. I need a bed.',locale:'en',
     }));
-    assert.equal(project.aiMode,'openai');assert.equal(project.budget.totalMinor,200000);assert.equal(project.workspace.widgets.length,9);
+    assert.equal(project.aiMode,'openai');assert.equal(project.budget.totalMinor,200000);
+    const widgetTypes=new Set(project.workspace.widgets.map(widget=>widget.type));
+    for(const type of ['budget','task_list','service_finder','timeline','shopping_cart','risk_guardian','scenario_comparison'] as const) assert.ok(widgetTypes.has(type),`Missing supported moving widget: ${type}`);
+    assert.ok(project.budget.categories.some(category=>['bed','beds','furniture'].includes(category.id)),'The explicitly requested bed needs a relevant allocation');
+    assert.ok(widgetTypes.has('product_catalog'),'The explicitly requested bed needs product research');
+    assert.equal(widgetTypes.size,project.workspace.widgets.length,'Contextual widgets should not be duplicated');
     assert.equal(project.preferences.deliveryRequired,null);assert.equal(project.preferences.allowUsed,null);
     report.projectId=project.id;report.projectUrl=origin+`/api/projects/${project.id}`;
-    checks.push(`${config.model} created a EUR 2000 moving project, nine widgets and unconfirmed preferences`);
+    checks.push(`${config.model} created a EUR 2000 moving project with supported moving and requested-bed widgets, and unconfirmed preferences`);
     const base=`/api/projects/${project.id}`;
     const research=ResearchResultSchema.parse(await request(`${base}/research`,{category:'beds',location:'Turku, Finland',maxPrice:250}));
     report.research={status:research.status,count:research.offers.length,warnings:research.warnings,offers:research.offers.map(o=>({title:o.title,priceMinor:o.priceMinor,priceStatus:o.priceStatus,sourceUrl:o.sourceUrl,delivery:o.delivery}))};

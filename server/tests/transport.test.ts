@@ -23,5 +23,6 @@ test('HTTP project creation survives an upstream response taking longer than ten
   assert.equal(response.status,201);
   const body=await response.json();
   assert.equal(body.project.budget.totalMinor,200000);
-  assert.equal(body.workspace.widgets.length,9);
+  assert.ok(body.workspace.widgets.some((widget:{type:string})=>widget.type==='service_finder'));
+  assert.ok(!body.workspace.widgets.some((widget:{type:string})=>widget.type==='product_catalog'));
 });

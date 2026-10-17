@@ -79,6 +79,8 @@ export function ShoppingCart() {
   });
 
   const planned = budget.committedMinor + budget.proposedMinor;
+  const knownOffers=new Map(project.researchResults.flatMap(r=>r.offers).map(o=>[o.id,o]));
+  const isService=(item:CartItem)=> item.offerId&&knownOffers.has(item.offerId)?knownOffers.get(item.offerId)!.kind==='service':/^(accommodation|hotel|hostel|flight|train|transport|moving|education|course|inspection|registration|assembly|delivery)(?:_|$)/i.test(item.category);
   const unknownDelivery = cart.filter(i => i.deliveryCostMinor === null);
 
   if (cart.length === 0)
@@ -131,7 +133,7 @@ export function ShoppingCart() {
                   </p>
                   <p className="text-caption text-graphite tabular">
                     {item.quantity > 1 && `${item.quantity} × ${formatMoney(item.unitPriceMinor)} · `}
-                    {item.deliveryCostMinor === null ? 'delivery unknown' : item.deliveryCostMinor > 0 ? `incl. ${formatMoney(item.deliveryCostMinor)} delivery` : 'no delivery fee'}
+                    {isService(item) ? item.deliveryCostMinor===null?'additional fees unconfirmed':`incl. ${formatMoney(item.deliveryCostMinor)} extra fees` : item.deliveryCostMinor === null ? 'delivery unknown' : item.deliveryCostMinor > 0 ? `incl. ${formatMoney(item.deliveryCostMinor)} delivery` : 'no delivery fee'}
                   </p>
                 </div>
               </div>
@@ -198,7 +200,7 @@ export function ShoppingCart() {
         {unknownDelivery.length > 0 && (
           <p className="mt-3 flex items-start gap-2 text-caption text-warn-ink">
             <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
-            {unknownDelivery.length === 1 ? '1 item has' : `${unknownDelivery.length} items have`} an unknown delivery cost, not included above. Confirm with the seller.
+            {unknownDelivery.length === 1 ? '1 item has' : `${unknownDelivery.length} items have`} unconfirmed delivery or service fees, not included above. Confirm the full total with the provider.
           </p>
         )}
       </div>

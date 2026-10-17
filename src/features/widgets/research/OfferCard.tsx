@@ -10,10 +10,10 @@ import { TIER_LABEL, type Tier } from './tiers';
 /** Plain-language reasons, derived only from facts present in the offer data. */
 export function offerReasons(offer: Offer, envelopeLeftMinor: number | null, city: string | null): string[] {
   const out: string[] = [];
-  if (offer.priceMinor !== null && envelopeLeftMinor !== null && offer.priceMinor + (offer.delivery.costMinor ?? 0) <= envelopeLeftMinor) out.push('Fits your budget');
+  if (offer.priceMinor !== null && envelopeLeftMinor !== null && offer.priceMinor + (offer.delivery.costMinor ?? 0) <= envelopeLeftMinor) out.push(offer.delivery.costMinor===null?'Reported price within budget':'Known costs within budget');
   const place = city?.split(',')[0]?.trim();
   if (place && offer.location?.toLowerCase().includes(place.toLowerCase())) out.push(`In ${place}`);
-  if (offer.delivery.costMinor !== null) out.push(offer.delivery.costMinor === 0 ? 'Free delivery' : 'Delivery price listed');
+  if (offer.kind==='product' && offer.delivery.costMinor !== null) out.push(offer.delivery.costMinor === 0 ? 'Free delivery' : 'Delivery price listed');
   if (offer.condition === 'new') out.push('New condition');
   if (offer.verificationStatus === 'source_checked') out.push('Cited source');
   return out.slice(0, 2);
@@ -42,7 +42,7 @@ export function OfferCard({ offer, tier, reasons, inCart, stale, comparing, onAd
     offer.seller.name ?? host ?? offer.sourceName,
     offer.seller.type === 'private' ? sellerTypeLabel.private : null,
     condition && offer.condition !== 'unknown' ? condition : null,
-    offer.delivery.costMinor !== null ? `Delivery ${formatMoney(offer.delivery.costMinor)}` : offer.delivery.available === false ? 'Pickup only' : 'Delivery unknown',
+    offer.kind==='service' ? 'Confirm all fees and terms' : offer.delivery.costMinor !== null ? `Delivery ${formatMoney(offer.delivery.costMinor)}` : offer.delivery.available === false ? 'Pickup only' : 'Delivery unknown',
   ].filter(Boolean);
 
   return (

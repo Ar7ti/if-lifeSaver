@@ -4,6 +4,7 @@ import { Responses, type ResponseCreateParamsNonStreaming } from 'openai/resourc
 import { ResearchRequestSchema, ResearchResultSchema, type LifeProject } from '../../shared/contracts/index.js';
 import { AppError } from '../src/errors.js';
 import { createSearchProvider, type SearchProvider } from '../src/research.js';
+import { assessLocation, assessRelevance, planResearch } from '../src/research-intent.js';
 
 const request = ResearchRequestSchema.parse({ category: 'furniture' });
 const project: LifeProject = {
@@ -123,6 +124,9 @@ test('live makes two bounded stateless calls, hosted search required then tool-f
   assert.deepEqual(search.body.include, ['web_search_call.action.sources']);
   assert.equal(search.body.max_tool_calls, 3);
   assert.equal(search.body.parallel_tool_calls, false);
+  assert.match(search.body.instructions!, /Offer: exact product\/service name; Price:/);
+  assert.match(search.body.instructions!, /Seller: reported seller\/source label/);
+  assert.match(search.body.instructions!, /do not rewrite, translate, normalize/);
   assert.equal(calls[1]!.body.tool_choice, 'none');
   assert.deepEqual(calls[1]!.body.tools, []);
   assert.equal(calls[1]!.body.text?.format?.type, 'json_schema');
@@ -135,6 +139,7 @@ test('live makes two bounded stateless calls, hosted search required then tool-f
     assert.ok(call.body.max_output_tokens! <= 6000);
   }
   assert.equal(calls[0]!.options.signal, calls[1]!.options.signal);
+  assert.match(calls[1]!.body.instructions!, /Do not rewrite upstream facts/);
 });
 
 test('cited generated summaries yield estimated reported prices, NEVER independently verified prices', async t => {
@@ -167,7 +172,7 @@ test('a citation alone establishes URL provenance without inventing a source-lis
   assert.equal(value.offers.length, 1);
   assert.equal(value.offers[0]!.verificationStatus, 'source_checked');
   assert.match(value.offers[0]!.evidence.join(' '), /no matching source-list entry/);
-  assert.match(value.offers[0]!.recommendation, /source provenance \+10\/15/);
+  assert.match(value.offers[0]!.recommendation, /source provenance \+5\/10/);
 });
 
 test('returned URLs, uncited text, and source titles alone do not establish offers', async t => {
@@ -249,8 +254,13 @@ test('prices use integer EUR cents, reject ambiguous money and never estimate mi
     ['Chair Alpha costs 12.34 EUR.', 1234, 1234], ['Chair Alpha costs EUR 0.', 0, 0],
     ['Chair Alpha costs USD 100.', 10000, null], ['Chair Alpha costs EUR 100.', 9900, null],
     ['Chair Alpha from EUR 100.', 10000, null], ['Chair Alpha was EUR 100.', 10000, null],
-    ['Chair Alpha costs EUR 10–20.', 1000, null], ['Chair Alpha costs EUR 1,299.00.', 129900, null],
-    ['Chair Alpha costs EUR 1 299.', 100, null], ['Chair Alpha monthly EUR 10.', 1000, null],
+    ['Chair Alpha costs EUR 10–20.', 1000, null], ['Chair Alpha costs EUR 1,299.00.', 129900, 129900],
+    ['Chair Alpha costs EUR 1 299.', 129900, 129900],
+    ['Chair Alpha costs EUR 3,900.', 390000, 390000], ['Chair Alpha costs EUR 3 900.', 390000, 390000],
+    ['Chair Alpha costs EUR 3.900.', 390000, 390000], ['Chair Alpha costs EUR 3 900,50.', 390050, 390050],
+    ['Chair Alpha costs EUR 1.299,00.', 129900, 129900], ['Chair Alpha costs EUR 1,299,50.', 129950, null],
+    ['Chair Alpha costs EUR 12,34,567.', 123456700, null], ['Chair Alpha costs EUR 3,90.0.', 39000, null],
+    ['Chair Alpha costs 3 900.', 390000, null], ['Chair Alpha monthly EUR 10.', 1000, null],
     ['Chair Alpha delivery EUR 10.', 1000, null],
   ] as const;
   for (const [text, reported, expected] of entries) {
@@ -260,6 +270,47 @@ test('prices use integer EUR cents, reject ambiguous money and never estimate mi
     assert.equal(offer.priceStatus, expected === null ? 'unknown' : 'estimated', text);
     t.mock.restoreAll();
   }
+});
+
+test('Finnish mover titles pass lexical relevance while route-only titles fail', () => {
+  const plan = planResearch({ ...request, category: 'moving', kind: 'service' }, project);
+  for (const title of ['Muuttopalvelu', 'Turun sisäinen muutto', 'Kotimuutto', 'Pitkän matkan muutot koko Suomeen', 'Kuljetuspalvelu']) {
+    assert.equal(assessRelevance(title, plan).excluded, false, title);
+  }
+  assert.equal(assessRelevance('Helsinki–Turku', plan).excluded, true);
+});
+
+test('accommodation identity can be established by its own cited sentence, not another title', async t => {
+  const entries = [
+    { url: urlA, title: 'APT Rome Apartments', text: 'APT Rome Apartments costs EUR 500. Location: Rome.' },
+    { url: urlB, title: 'The Beehive', text: 'The Beehive is a hostel in Rome. Price: EUR 300.' },
+    { url: urlC, title: 'Hotel Margaret', text: 'Hotel Margaret costs EUR 450. Location: near Termini Station.' },
+    { url: 'https://rome-stays.fi/vittoria', title: 'Apartment Via Vittoria', text: 'Apartment Via Vittoria costs EUR 400. Location: Via Vittoria.' },
+    { url: 'https://stockholm-stays.fi/hotel', title: 'Stockholm hotel', text: 'Stockholm hotel costs EUR 350. Location: Stockholm.' },
+    { url: 'https://goods.fi/brand', title: 'Brand Toy Shop', text: 'Brand Toy Shop costs EUR 20. A separate hostel in Rome is listed nearby.' },
+  ];
+  const offers = entries.map(e => contextualCandidate(e.title, e.text, e.url, 40000, {
+    location: e.text.match(/Location: ([^.]+)/)?.[1] ?? null,
+    locationQuote: e.text.match(/Location: [^.]+\./)?.[0] ?? null,
+  }));
+  mockResults(t, offers, citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'accommodation' }, { ...project, scenarioType: 'travel', location: 'Rome' });
+  assert.deepEqual(new Set(value.offers.map(o => o.title)), new Set(['APT Rome Apartments', 'The Beehive', 'Hotel Margaret', 'Apartment Via Vittoria']));
+  assert.equal(value.offers.find(o => o.title === 'Hotel Margaret')!.location, 'near Termini Station');
+  assert.equal(value.offers.find(o => o.title === 'Hotel Margaret')!.recommendation.includes('location coverage remains unknown'), false);
+  assert.match(value.offers.find(o => o.title === 'Hotel Margaret')!.recommendation, /does not establish a city conflict/);
+  assert.match(value.warnings.join(' '), /Stockholm hotel.*location mismatch.*Stockholm.*Rome/);
+  assert.match(value.warnings.join(' '), /Brand Toy Shop.*category mismatch/);
+});
+
+test('country-wide location requests stay unknown for city-only evidence', () => {
+  const requestFI = { ...request, category: 'moving', kind: 'service' as const };
+  const plan = planResearch(requestFI, { ...project, location: 'Finland' });
+  for (const city of ['Lempäälä', 'Kaarina', 'Hartola']) {
+    assert.equal(assessLocation(plan, `Location: ${city}.`, city, null, null).status, 'unknown', city);
+  }
+  assert.equal(assessLocation(plan, 'Location: Kaarina, Finland.', 'Kaarina, Finland', null, null).status, 'match');
+  assert.equal(assessLocation(plan, 'Location: Kaarina, Sweden.', 'Kaarina, Sweden', null, null).status, 'conflict');
 });
 
 test('delivery requires destination support and does not mistake item price for delivery cost', async t => {
@@ -293,7 +344,11 @@ test('new-only, required delivery, price ceilings and unavailable stock are appl
   const value = await run(undefined, { ...request, maxPrice: 100 }, constrained);
   assert.deepEqual(value.offers.map(o => o.title), ['Chair Alpha']);
   assert.match(value.warnings.join(' '), /4 offer\(s\) failed/);
-  assert.match(value.offers[0]!.recommendation, /delivery is separate/);
+  assert.match(value.offers[0]!.recommendation, /Item ceiling excludes delivery/);
+  assert.match(value.warnings.join(' '), /Chair Beta.*new-only/);
+  assert.match(value.warnings.join(' '), /Chair Gamma.*unknown item price/);
+  assert.match(value.warnings.join(' '), /Chair Delta.*delivery required but reported unavailable/);
+  assert.match(value.warnings.join(' '), /Chair Epsilon.*out of stock/);
 });
 
 test('unknown condition cannot pass new-only and unknown delivery cannot pass delivery required (including demo)', async t => {
@@ -314,7 +369,7 @@ test('unknown condition cannot pass new-only and unknown delivery cannot pass de
 test('services use not_applicable condition and can pass allowUsed false', async t => {
   mockResults(t, [candidate({ title: 'Moving service', identityQuote: 'Moving service costs EUR 100.', priceQuote: 'Moving service costs EUR 100.' })],
     citedSearch([{ url: urlA, text: 'Moving service costs EUR 100.' }]));
-  const value = await run(undefined, { ...request, kind: 'service' }, { ...project, preferences: { ...project.preferences, allowUsed: false } });
+  const value = await run(undefined, { ...request, category: 'moving', kind: 'service' }, { ...project, preferences: { ...project.preferences, allowUsed: false } });
   assert.equal(value.offers[0]!.condition, 'not_applicable');
   assert.equal(value.offers[0]!.kind, 'service');
 });
@@ -333,10 +388,10 @@ test('scores and ordering are deterministic across response order and explain al
   mockResults(t, [...offers].reverse(), citedSearch([...entries].reverse()));
   const second = await run();
   assert.deepEqual(first.offers.map(o => [o.title, o.score, o.recommendation]), second.offers.map(o => [o.title, o.score, o.recommendation]));
-  assert.deepEqual(first.offers.map(o => [o.title, o.score]), [['Chair Alpha', 95], ['Chair Gamma', 90], ['Chair Beta', 55]]);
-  assert.match(first.offers[0]!.recommendation, /reported item price \+40\/40/);
-  assert.match(first.offers[0]!.recommendation, /source provenance \+15\/15/);
-  assert.match(first.offers[0]!.recommendation, /price confidence \+5\/10/);
+  assert.deepEqual(first.offers.map(o => [o.title, o.score]), [['Chair Alpha', 90], ['Chair Gamma', 85], ['Chair Beta', 75]]);
+  assert.match(first.offers[0]!.recommendation, /known quoted cost \+20\/20/);
+  assert.match(first.offers[0]!.recommendation, /source provenance \+10\/10/);
+  assert.match(first.offers[0]!.recommendation, /category relevance \+25\/25/);
 });
 
 test('prompt injection remains untrusted data, with no executable or URL-fetching tools', async t => {
@@ -418,4 +473,322 @@ test('factory validates live configuration and request contract before SDK calls
   const provider = createSearchProvider(liveOptions);
   assert.throws(() => provider.search({ ...request, maxPrice: -1 }, project), errorCode('INVALID_RESEARCH_REQUEST'));
   assert.equal(calls.length, 0);
+});
+
+function contextualCandidate(title: string, text: string, url: string, priceMinor: number | null, overrides: Record<string, unknown> = {}) {
+  return candidate({ sourceUrl: url, title, identityQuote: text, priceMinor,
+    priceQuote: priceMinor === null ? null : `${title} costs EUR ${priceMinor / 100}.`,
+    deliveryAvailable: null, deliveryCostMinor: null, deliveryQuote: null,
+    condition: 'unknown', conditionQuote: null, availability: 'unknown', availabilityQuote: null, ...overrides });
+}
+
+test('query plan sends actual travel dates, origin, party, goal and remaining budget in three diverse queries', async t => {
+  const travel: LifeProject = { ...project, scenarioType: 'travel', location: 'Paris', title: 'Family visit to Paris',
+    originalMessage: 'Visit Paris from Helsinki with two travelers in July 2027.',
+    preferences: { ...project.preferences, origin: 'Helsinki', startDate: '2027-07-02', endDate: '2027-07-08', durationDays: 6, travelers: 2,
+      priorities: ['direct route'], useCase: 'family holiday' },
+    budget: { ...project.budget, totalMinor: 200000, availableMinor: 150000,
+      categories: [{ id: 'transport', title: 'Travel transport', allocatedMinor: 60000, committedMinor: 10000, proposedMinor: 5000 }] },
+  };
+  const text = 'Flight Helsinki Paris costs EUR 300. Origin: Helsinki. Destination: Paris.';
+  const calls = mockResults(t, [contextualCandidate('Flight Helsinki Paris', text, urlA, 30000,
+    { origin: 'Helsinki', originQuote: 'Origin: Helsinki.', location: 'Paris', locationQuote: 'Destination: Paris.' })], citedSearch([{ url: urlA, text }]));
+  const req = { ...request, category: 'transport', kind: 'service' as const, preferences: ['checked baggage'] };
+  const value = await run(undefined, req, travel);
+  const input = JSON.parse(calls[0]!.body.input as string);
+  assert.equal(input.plan.scenarioType, 'travel');
+  assert.equal(input.plan.budget.categoryRemainingMinor, 45000);
+  assert.equal(input.plan.budget.projectAvailableMinor, 150000);
+  assert.equal(input.plan.goal.originalMessage, travel.originalMessage);
+  assert.equal(input.queries.length, 3);
+  assert.equal(new Set(input.queries).size, 3);
+  for (const query of input.queries) {
+    for (const detail of ['Helsinki', 'Paris', '2027-07-02', '2027-07-08', '6 days', '2 travelers', 'EUR 450.00', 'checked baggage', 'direct route']) assert.ok(query.includes(detail), detail);
+  }
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0]!.body.max_tool_calls, 3);
+  assert.equal(value.offers[0]!.location, 'Paris');
+  assert.equal(value.offers[0]!.priceStatus, 'estimated');
+  assert.match(value.warnings.join(' '), /date-specific availability/);
+});
+
+test('scenario plans use actual vehicle, inventory, household, and moving context without guessing missing dates', () => {
+  const car = planResearch({ ...request, category: 'car', preferences: ['low mileage'] }, { ...project, scenarioType: 'car_purchase',
+    preferences: { ...project.preferences, vehicleType: 'hybrid hatchback', useCase: 'city commuting' } });
+  assert.equal(car.category.focus, 'car');
+  assert.ok(car.queries.every(q => q.includes('hybrid hatchback') && q.includes('city commuting')));
+  assert.match(car.queries[0]!, /-toy -rental -lease/);
+  for (const scenarioType of ['home_furnishing', 'student_life', 'moving'] as const) {
+    const plan = planResearch({ ...request, category: 'bed' }, { ...project, scenarioType,
+      preferences: { ...project.preferences, ownsFurniture: true, ownedItems: ['desk', 'chair'], householdSize: 2 } });
+    assert.equal(plan.preferences.ownsFurniture, true);
+    assert.deepEqual(plan.preferences.ownedItems, ['desk', 'chair']);
+    assert.ok(plan.queries.every(q => q.includes('desk, chair') && q.includes('bed')));
+    assert.equal(plan.dates.startDate, null);
+    assert.equal(plan.dates.endDate, null);
+  }
+  const moving = planResearch({ ...request, category: 'moving', kind: 'service' }, { ...project,
+    preferences: { ...project.preferences, origin: 'Turku', moveDate: '2027-01-12' } });
+  assert.ok(moving.queries.every(q => q.includes('from Turku to Helsinki') && q.includes('2027-01-12')));
+});
+
+test('bed title relevance excludes cheaper bedlinen, protectors, pet beds and unrelated furniture', async t => {
+  const titles = ['Solid bed frame', 'Cotton bedlinen', 'Mattress protector', 'Dog bed', 'Dining chair'];
+  const entries = titles.map((title, i) => ({ url: `https://shop-${i}.fi/item`, text: `${title} costs EUR ${i ? 10 : 150}.` }));
+  mockResults(t, entries.map((e, i) => contextualCandidate(titles[i]!, e.text, e.url, i ? 1000 : 15000)), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'bed' });
+  assert.deepEqual(value.offers.map(o => o.title), ['Solid bed frame']);
+  assert.match(value.warnings.join(' '), /Cotton bedlinen.*category mismatch/);
+  assert.match(value.warnings.join(' '), /Dining chair.*does not identify a bed/);
+});
+
+test('vehicle purchase rejects toy cars, rental cars, leases and parts even when they are cheaper', async t => {
+  const titles = ['Toyota Yaris hatchback', 'Toy car Toyota', 'Car rental Toyota', 'Toyota lease', 'Car parts Toyota'];
+  const entries = titles.map((title, i) => ({ url: `https://cars-${i}.fi/item`, text: `${title} costs EUR ${i ? 20 : 12000}.` }));
+  mockResults(t, entries.map((e, i) => contextualCandidate(titles[i]!, e.text, e.url, i ? 2000 : 1200000)), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'car' }, { ...project, scenarioType: 'car_purchase',
+    preferences: { ...project.preferences, vehicleType: 'hatchback' }, budget: { ...project.budget, totalMinor: 1500000, availableMinor: 1500000 } });
+  assert.deepEqual(value.offers.map(o => o.title), ['Toyota Yaris hatchback']);
+  assert.equal(value.offers[0]!.priceMinor, 1200000);
+  assert.equal(value.offers[0]!.priceStatus, 'estimated');
+  assert.match(value.warnings.join(' '), /vehicle purchase excludes toys, rentals, leases/);
+});
+
+test('travel accommodation rejects goods and explicit wrong destinations while leaving unknown locality honest', async t => {
+  const entries = [
+    { url: urlA, title: 'Paris hotel room', text: 'Paris hotel room costs EUR 400. Location: Paris.' },
+    { url: urlB, title: 'Oslo hotel room', text: 'Oslo hotel room costs EUR 100. Location: Oslo.' },
+    { url: urlC, title: 'Hotel room unknown', text: 'Hotel room unknown costs EUR 300.' },
+    { url: 'https://goods.fi/linen', title: 'Hotel bedlinen', text: 'Hotel bedlinen costs EUR 10.' },
+  ];
+  mockResults(t, entries.map(e => contextualCandidate(e.title, e.text, e.url, e.url === urlA ? 40000 : e.url === urlB ? 10000 : e.url === urlC ? 30000 : 1000)), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'accommodation' }, { ...project, scenarioType: 'travel', location: 'Paris',
+    preferences: { ...project.preferences, deliveryRequired: true, allowUsed: false } });
+  assert.deepEqual(new Set(value.offers.map(o => o.title)), new Set(['Paris hotel room', 'Hotel room unknown']));
+  assert.equal(value.offers.find(o => o.title === 'Hotel room unknown')!.location, null);
+  assert.equal(value.offers.find(o => o.title === 'Paris hotel room')!.condition, 'not_applicable');
+  assert.match(value.warnings.join(' '), /Oslo hotel room.*location mismatch.*Oslo.*Paris/);
+  assert.match(value.warnings.join(' '), /Hotel bedlinen.*category mismatch/);
+});
+
+test('travel transport checks passenger relevance and explicit origin/destination conflicts', async t => {
+  const entries = [
+    { url: urlA, title: 'Flight Helsinki Paris', text: 'Flight Helsinki Paris costs EUR 300. Origin: Helsinki. Destination: Paris.', origin: 'Helsinki', destination: 'Paris' },
+    { url: urlB, title: 'Train Stockholm Paris', text: 'Train Stockholm Paris costs EUR 100. Origin: Stockholm. Destination: Paris.', origin: 'Stockholm', destination: 'Paris' },
+    { url: urlC, title: 'Flight Helsinki Oslo', text: 'Flight Helsinki Oslo costs EUR 100. Origin: Helsinki. Destination: Oslo.', origin: 'Helsinki', destination: 'Oslo' },
+    { url: 'https://mover.fi/item', title: 'Furniture moving transport', text: 'Furniture moving transport costs EUR 50. Origin: Helsinki. Destination: Paris.', origin: 'Helsinki', destination: 'Paris' },
+  ];
+  mockResults(t, entries.map(e => contextualCandidate(e.title, e.text, e.url, e.url === urlA ? 30000 : e.url.includes('mover') ? 5000 : 10000,
+    { origin: e.origin, originQuote: `Origin: ${e.origin}.`, location: e.destination, locationQuote: `Destination: ${e.destination}.` })), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'transport', kind: 'service' }, { ...project, scenarioType: 'travel', location: 'Paris',
+    preferences: { ...project.preferences, origin: 'Helsinki' } });
+  assert.deepEqual(value.offers.map(o => o.title), ['Flight Helsinki Paris']);
+  assert.match(value.warnings.join(' '), /Train Stockholm Paris.*origin Stockholm conflicts with requested Helsinki/);
+  assert.match(value.warnings.join(' '), /Flight Helsinki Oslo.*Oslo.*Paris/);
+  assert.match(value.warnings.join(' '), /Furniture moving transport.*travel transport excludes freight/);
+});
+
+test('conflicting pickup locality is excluded, national delivery is retained with coverage unknown', async t => {
+  const entries = [
+    { url: urlA, title: 'Bed local pickup', text: 'Bed local pickup costs EUR 80. Pickup only in Turku.' },
+    { url: urlB, title: 'Bed national retailer', text: 'Bed national retailer costs EUR 100. Location: Turku. National delivery throughout Finland.' },
+    { url: urlC, title: 'Bed location unknown', text: 'Bed location unknown costs EUR 90.' },
+  ];
+  const offers = entries.map((e, i) => contextualCandidate(e.title, e.text, e.url, [8000, 10000, 9000][i]!));
+  mockResults(t, offers, citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'bed' });
+  assert.deepEqual(new Set(value.offers.map(o => o.title)), new Set(['Bed national retailer', 'Bed location unknown']));
+  const national = value.offers.find(o => o.title === 'Bed national retailer')!;
+  assert.equal(national.location, 'Turku');
+  assert.equal(national.delivery.available, null);
+  assert.match(national.recommendation, /national delivery is reported; destination coverage still needs confirmation/);
+  assert.match(value.warnings.join(' '), /Bed local pickup.*Turku.*Helsinki/);
+  t.mock.restoreAll();
+  mockResults(t, offers, citedSearch(entries));
+  const constrained = await run(undefined, { ...request, category: 'bed' }, { ...project, preferences: { ...project.preferences, deliveryRequired: true } });
+  assert.deepEqual(constrained.offers, []);
+  assert.match(constrained.warnings.join(' '), /Bed national retailer.*destination coverage is unknown/);
+});
+
+test('reported destination delivery can make a retailer in another city relevant', async t => {
+  const text = 'Bed nationwide costs EUR 100. Location: Turku. Delivery to Helsinki available for EUR 10.';
+  mockResults(t, [contextualCandidate('Bed nationwide', text, urlA, 10000, { location: 'Turku', locationQuote: 'Location: Turku.',
+    deliveryAvailable: true, deliveryCostMinor: 1000, deliveryQuote: 'Delivery to Helsinki available for EUR 10.' })], citedSearch([{ url: urlA, text }]));
+  const value = await run(undefined, { ...request, category: 'bed' }, { ...project, preferences: { ...project.preferences, deliveryRequired: true } });
+  assert.equal(value.offers.length, 1);
+  assert.equal(value.offers[0]!.location, 'Turku');
+  assert.match(value.offers[0]!.recommendation, /reported delivery covers the destination/);
+});
+
+test('seller, location and specifications require same-summary quotes and remain publicly reported, unverified', async t => {
+  const text = 'Bed Aspen costs EUR 180. Seller: Aspen Store. Location: Helsinki. Size: 160x200. Material: solid wood.';
+  mockResults(t, [contextualCandidate('Bed Aspen', text, urlA, 18000, {
+    sellerName: 'Aspen Store', sellerQuote: 'Seller: Aspen Store.', location: 'Helsinki', locationQuote: 'Location: Helsinki.',
+    specs: [{ value: '160x200', quote: 'Size: 160x200.' }, { value: 'free assembly', quote: 'Free assembly included.' }],
+  })], citedSearch([{ url: urlA, text }]));
+  const value = await run(undefined, { ...request, category: 'bed', preferences: ['160x200', 'free assembly'] });
+  const offer = value.offers[0]!;
+  assert.equal(offer.seller.name, 'Aspen Store');
+  assert.equal(offer.seller.verified, false);
+  assert.equal(offer.seller.type, 'unknown');
+  assert.equal(offer.imageUrl, null);
+  assert.equal(offer.availability, 'unknown');
+  assert.equal(offer.location, 'Helsinki');
+  assert.match(offer.evidence.join(' '), /Specification reported in generated search summary, not verified: Size: 160x200/);
+  assert.equal(offer.evidence.some(e => e.includes('Free assembly')), false);
+  assert.match(offer.recommendation, /Reported attribute matches 1\/2: 160x200/);
+  t.mock.restoreAll();
+  mockResults(t, [contextualCandidate('Bed Aspen', text, urlA, 18000, { sellerName: 'Invented seller', sellerQuote: 'Seller: Invented seller.',
+    location: 'Oslo', locationQuote: 'Location: Oslo.', specs: null })], citedSearch([{ url: urlA, text }]));
+  const unsupported = (await run(undefined, { ...request, category: 'bed' })).offers[0]!;
+  assert.equal(unsupported.seller.name, null);
+  assert.equal(unsupported.location, 'Helsinki'); // Only explicit summary wording, never the fabricated field.
+});
+
+test('ranking uses known delivery cost so the lowest item price is not automatically best', async t => {
+  const entries = [
+    { url: urlA, title: 'Bed cheap item', text: 'Bed cheap item costs EUR 100. Delivery to Helsinki available for EUR 200.' },
+    { url: urlB, title: 'Bed better total', text: 'Bed better total costs EUR 150. Delivery to Helsinki available for EUR 10.' },
+  ];
+  mockResults(t, entries.map((e, i) => contextualCandidate(e.title, e.text, e.url, i ? 15000 : 10000, {
+    deliveryAvailable: true, deliveryCostMinor: i ? 1000 : 20000, deliveryQuote: `Delivery to Helsinki available for EUR ${i ? 10 : 200}.`,
+  })), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'bed' });
+  assert.deepEqual(value.offers.map(o => o.title), ['Bed better total', 'Bed cheap item']);
+  assert.match(value.offers[0]!.recommendation, /Known quoted cost: EUR 160.00/);
+  assert.match(value.offers[1]!.recommendation, /Known quoted cost: EUR 300.00/);
+});
+
+test('remaining category budget guides ranking without inventing a hard ceiling, explicit maxPrice remains hard', async t => {
+  const entries = [
+    { url: urlA, title: 'Bed within envelope', text: 'Bed within envelope costs EUR 90. Delivery to Helsinki available for EUR 0.' },
+    { url: urlB, title: 'Bed over envelope', text: 'Bed over envelope costs EUR 50. Delivery to Helsinki available for EUR 100.' },
+  ];
+  const offers = entries.map((e, i) => contextualCandidate(e.title, e.text, e.url, i ? 5000 : 9000, {
+    deliveryAvailable: true, deliveryCostMinor: i ? 10000 : 0, deliveryQuote: `Delivery to Helsinki available for EUR ${i ? 100 : 0}.`,
+  }));
+  const budgeted: LifeProject = { ...project, budget: { ...project.budget, categories: [
+    { id: 'furniture', title: 'Furniture', allocatedMinor: 20000, committedMinor: 7000, proposedMinor: 3000 },
+  ] } };
+  mockResults(t, offers, citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'bed' }, budgeted);
+  assert.equal(value.offers.length, 2);
+  assert.equal(value.offers[0]!.title, 'Bed within envelope');
+  assert.match(value.offers[0]!.recommendation, /budget fit \+15\/15/);
+  assert.match(value.offers[1]!.recommendation, /known cost exceeds envelope/);
+  assert.match(value.warnings.join(' '), /Category\/project budgets guide ranking/);
+  t.mock.restoreAll();
+  mockResults(t, offers, citedSearch(entries));
+  const capped = await run(undefined, { ...request, category: 'bed', maxPrice: 80 }, budgeted);
+  assert.deepEqual(capped.offers.map(o => o.title), ['Bed over envelope']);
+  assert.match(capped.warnings.join(' '), /Bed within envelope.*EUR 90.00 exceeds EUR 80.00 ceiling/);
+});
+
+test('supported attributes and location can outweigh a cheaper poorly specified candidate', async t => {
+  const entries = [
+    { url: urlA, title: 'Bed basic', text: 'Bed basic costs EUR 100.' },
+    { url: urlB, title: 'Bed specified', text: 'Bed specified costs EUR 150. Location: Helsinki. Size: 160x200. Material: solid wood. Delivery to Helsinki available for EUR 0.' },
+  ];
+  mockResults(t, entries.map((e, i) => contextualCandidate(e.title, e.text, e.url, i ? 15000 : 10000, i ? {
+    specs: [{ value: '160x200', quote: 'Size: 160x200.' }, { value: 'solid wood', quote: 'Material: solid wood.' }],
+    deliveryAvailable: true, deliveryCostMinor: 0, deliveryQuote: 'Delivery to Helsinki available for EUR 0.',
+  } : {})), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'bed', preferences: ['160x200', 'solid wood'] });
+  assert.deepEqual(value.offers.map(o => o.title), ['Bed specified', 'Bed basic']);
+  assert.match(value.offers[0]!.recommendation, /requested attributes \+10\/10/);
+  assert.match(value.offers[0]!.recommendation, /attributes are unverified reports/);
+});
+
+test('duplicates collapse deterministically, and conflicting duplicate prices are discarded with a reason', async t => {
+  const text = 'Bed duplicate costs EUR 100. Bed duplicate costs EUR 120.';
+  const a = contextualCandidate('Bed duplicate', text, urlA, 10000);
+  const b = contextualCandidate('Bed duplicate', text, urlA, 12000);
+  mockResults(t, [a, a], citedSearch([{ url: urlA, text }]));
+  assert.equal((await run(undefined, { ...request, category: 'bed' })).offers.length, 1);
+  for (const offers of [[a, b], [b, a]]) {
+    t.mock.restoreAll();
+    mockResults(t, offers, citedSearch([{ url: urlA, text }]));
+    const value = await run(undefined, { ...request, category: 'bed' });
+    assert.deepEqual(value.offers, []);
+    assert.match(value.warnings.join(' '), /Bed duplicate.*duplicate reports conflict on price/);
+  }
+});
+
+test('unit travel rates never become an invented full-stay price and empty extraction stays limited', async t => {
+  const text = 'Hotel Aspen costs EUR 80 per night. Location: Paris.';
+  mockResults(t, [contextualCandidate('Hotel Aspen', text, urlA, 48000, { priceQuote: text })], citedSearch([{ url: urlA, text }]));
+  const travel: LifeProject = { ...project, scenarioType: 'travel', location: 'Paris',
+    preferences: { ...project.preferences, startDate: '2027-07-02', endDate: '2027-07-08', durationDays: 6, travelers: 2 } };
+  const value = await run(undefined, { ...request, category: 'accommodation' }, travel);
+  assert.equal(value.offers[0]!.priceMinor, null);
+  assert.equal(value.offers[0]!.priceStatus, 'unknown');
+  t.mock.restoreAll();
+  const calls = mockResults(t, [], citedSearch([{ url: urlA, text }]));
+  const empty = await run(undefined, { ...request, category: 'accommodation' }, travel);
+  assert.equal(empty.status, 'limited');
+  assert.deepEqual(empty.offers, []);
+  assert.equal(calls.length, 2);
+  assert.match(empty.warnings.join(' '), /No offers could be established/);
+});
+
+test('ISO dates and route origin wording do not turn an explicit reported trip total into a price range', async t => {
+  const title = 'Flight from Helsinki to Paris';
+  const text = `${title} costs EUR 300. Travel dates: 2027-07-02 to 2027-07-08. Origin: Helsinki. Destination: Paris.`;
+  mockResults(t, [contextualCandidate(title, text, urlA, 30000)], citedSearch([{ url: urlA, text }]));
+  const value = await run(undefined, { ...request, category: 'transport', kind: 'service' }, { ...project, scenarioType: 'travel', location: 'Paris',
+    preferences: { ...project.preferences, origin: 'Helsinki', startDate: '2027-07-02', endDate: '2027-07-08' } });
+  assert.equal(value.offers[0]!.priceMinor, 30000);
+  assert.equal(value.offers[0]!.priceStatus, 'estimated');
+});
+
+test('long preferences and inventory keep planned queries bounded, diverse, and explicitly contextual', () => {
+  const plan = planResearch({ ...request, category: 'bed', preferences: Array.from({ length: 20 }, (_v, i) => `preference ${i} ${'x'.repeat(170)}`) },
+    { ...project, scenarioType: 'student_life', preferences: { ...project.preferences, ownsFurniture: true,
+      ownedItems: Array.from({ length: 50 }, (_v, i) => `item ${i} ${'x'.repeat(65)}`) } });
+  assert.equal(new Set(plan.queries).size, 3);
+  assert.ok(plan.queries.every(query => query.length <= 1800 && query.includes('bed') && query.includes('Helsinki')));
+  assert.equal(plan.preferences.ownedItems.length, 50);
+  assert.equal(plan.preferences.requested.length, 20);
+});
+
+test('conditional free shipping never passes required delivery or supplies a fabricated zero cost', async t => {
+  const text = 'Bed conditional costs EUR 100. Free delivery to Helsinki for orders over EUR 500.';
+  const offers = [contextualCandidate('Bed conditional', text, urlA, 10000, { deliveryAvailable: true, deliveryCostMinor: 0,
+    deliveryQuote: 'Free delivery to Helsinki for orders over EUR 500.' })];
+  mockResults(t, offers, citedSearch([{ url: urlA, text }]));
+  const value = await run(undefined, { ...request, category: 'bed' });
+  assert.equal(value.offers[0]!.delivery.available, null);
+  assert.equal(value.offers[0]!.delivery.costMinor, null);
+  t.mock.restoreAll();
+  mockResults(t, offers, citedSearch([{ url: urlA, text }]));
+  const required = await run(undefined, { ...request, category: 'bed' }, { ...project, preferences: { ...project.preferences, deliveryRequired: true } });
+  assert.deepEqual(required.offers, []);
+  assert.match(required.warnings.join(' '), /destination coverage is unknown/);
+});
+
+test('specific furnishing categories reject unrelated items and accessories', async t => {
+  const entries = [
+    { url: urlA, title: 'Oak desk', text: 'Oak desk costs EUR 100.' },
+    { url: urlB, title: 'Desk lamp', text: 'Desk lamp costs EUR 10.' },
+    { url: urlC, title: 'Kitchen chair', text: 'Kitchen chair costs EUR 20.' },
+  ];
+  mockResults(t, entries.map((e, i) => contextualCandidate(e.title, e.text, e.url, [10000, 1000, 2000][i]!)), citedSearch(entries));
+  const value = await run(undefined, { ...request, category: 'desk' }, { ...project, scenarioType: 'home_furnishing' });
+  assert.deepEqual(value.offers.map(o => o.title), ['Oak desk']);
+  assert.match(value.warnings.join(' '), /Desk lamp.*category mismatch/);
+});
+
+test('country aliases do not contradict a country-wide request and descriptive categories retain budget context',()=>{
+ const vehicle={...project,scenarioType:'car_purchase' as const,location:'Finland',budget:{...project.budget,categories:[{id:'vehicle',title:'Vehicle',allocatedMinor:200000,committedMinor:50000,proposedMinor:10000}]}};
+ const plan=planResearch(ResearchRequestSchema.parse({category:'reliable_used_car'}),vehicle);
+ assert.equal(plan.budget.categoryRemainingMinor,140000);
+ assert.equal(assessLocation(plan,'Location: Suomi.','Suomi',null,null).status,'match');
+ assert.equal(assessLocation(plan,'Location: Kaarina.','Kaarina',null,null).status,'unknown');
+ assert.equal(assessLocation(plan,'Location: Sweden.','Sweden',null,null).status,'conflict');
+});
+
+test('mixed thousands separators do not establish an unambiguous quoted amount',async t=>{
+ const text='Chair Alpha costs EUR 1,234.567.';
+ mockResults(t,[candidate({identityQuote:text,priceQuote:text,priceMinor:123456700})],citedSearch([{url:urlA,text}]));
+ const result=await run();assert.equal(result.offers[0]!.priceMinor,null);
 });

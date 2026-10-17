@@ -1,3 +1,4 @@
+import { isEditableKeyboardEvent } from '@/lib/keyboard';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -29,6 +30,7 @@ export function Menu({ trigger, items, label, align = 'end' }: { trigger: (props
   }, [open]);
 
   function onKeyDown(e: React.KeyboardEvent) {
+    if (e.defaultPrevented || e.nativeEvent.isComposing || isEditableKeyboardEvent(e.nativeEvent)) return;
     const nodes = [...(list.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
     const i = nodes.indexOf(document.activeElement as HTMLButtonElement);
     if (e.key === 'Escape') {

@@ -26,7 +26,7 @@ export interface WidgetDefinition {
  */
 export const REGISTRY: Record<WorkspaceWidget['type'], WidgetDefinition> = {
   budget: { emoji: '💸', label: 'Budget', icon: <Wallet />, Component: BudgetWidget, minSpan: 6 },
-  product_catalog: { emoji: '🛋️', label: 'Furniture', icon: <Store />, Component: ({ widget }) => <ResearchCatalog kind="product" widget={widget} />, minSpan: 12 },
+  product_catalog: { emoji: '🛋️', label: 'Product research', icon: <Store />, Component: ({ widget }) => <ResearchCatalog kind="product" widget={widget} />, minSpan: 12 },
   shopping_cart: { emoji: '🛒', label: 'Planning cart', icon: <ShoppingBag />, Component: ShoppingCart, minSpan: 6 },
   service_finder: { emoji: '🚚', label: 'Service finder', icon: <Truck />, Component: ({ widget }) => <ResearchCatalog kind="service" widget={widget} />, minSpan: 12 },
   scenario_comparison: { emoji: '⚖️', label: 'Scenario simulator', icon: <Gauge />, Component: ScenarioSimulator, minSpan: 12 },

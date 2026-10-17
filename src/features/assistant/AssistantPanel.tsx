@@ -1,3 +1,4 @@
+import { isChatSubmitKey } from '@/lib/keyboard';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowUp, Loader2, X } from 'lucide-react';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 import { ActionCard } from './ActionCard';
 
-const SUGGESTIONS = ['Find cheaper furniture', 'Show only local sellers', 'Compare the cheapest moving options', 'Move €100 into my emergency reserve'];
+const SUGGESTIONS = {moving:['Compare moving services','Review transport risks','Add a moving task'],travel:['Find cheaper accommodation','Compare transport options','Review my travel budget'],car_purchase:['Find cheaper cars','Compare ownership costs','Review vehicle inspection risks'],home_furnishing:['Compare furniture options','Review delivery costs','Find cheaper options'],student_life:['Review my student budget','Create a study logistics checklist','Find relevant courses'],other:['Review my budget','Create a checklist','Compare my options']};
 
 function useElapsed(running: boolean) {
   const [s, setS] = useState(0);
@@ -97,7 +98,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
           <div className="flex flex-col gap-3">
             <p className="text-body-sm text-graphite">Ask for changes in your own words. I&rsquo;ll suggest specific actions, and nothing changes until you apply it.</p>
             <ul className="flex flex-col gap-1.5">
-              {SUGGESTIONS.map(s => (
+              {SUGGESTIONS[project.scenarioType].map(s => (
                 <li key={s}>
                   <button onClick={() => submit(s)} className="w-full rounded-button border border-hairline px-3 py-2 text-left text-body-sm text-ink/85 transition-colors duration-200 hover:border-hairline-strong hover:bg-hover">
                     {s}
@@ -153,7 +154,7 @@ export function AssistantPanel({ onClose, className }: { onClose?: () => void; c
             value={draft}
             onChange={e => setDraft(project.id, e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) submit(draft, e);
+              if (isChatSubmitKey(e.nativeEvent)) submit(draft, e);
             }}
             placeholder="Ask to change your plan…"
             className="max-h-32 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-body sm:text-body-sm placeholder:text-stone focus:outline-none [field-sizing:content]"

@@ -5,7 +5,7 @@ import type { ProjectTask } from '@contracts';
 import { useWorkspace } from '@/features/workspace/context';
 import { useUi } from '@/stores/ui';
 import { EmptyState } from '@/components/ui/States';
-import { formatDate } from '@/lib/format';
+import { formatDate, humanizeCategory } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useTaskStatus } from './useTaskStatus';
 
@@ -103,10 +103,14 @@ export function TaskList() {
   const done = tasks.filter(t => t.status === 'done').length;
 
   const sections = useMemo(() => {
+    if(project.scenarioType!=='moving') {
+      const categories=[...new Set(tasks.map(t=>t.category))];
+      return categories.map(id=>({id,emoji:'✅',title:project.budget.categories.find(c=>c.id===id)?.title??humanizeCategory(id),tasks:tasks.filter(t=>t.category===id)}));
+    }
     const map = new Map<SectionId, ProjectTask[]>();
     for (const t of tasks) map.set(sectionOf(t), [...(map.get(sectionOf(t)) ?? []), t]);
     return SECTIONS.map(s => ({ ...s, tasks: map.get(s.id) ?? [] })).filter(s => s.tasks.length > 0);
-  }, [tasks]);
+  }, [tasks,project.scenarioType,project.budget.categories]);
 
   if (tasks.length === 0)
     return (

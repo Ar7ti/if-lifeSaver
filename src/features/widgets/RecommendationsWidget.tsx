@@ -40,7 +40,8 @@ export function RecommendationsWidget() {
       {recs.length > 0 && (
         <ol className="flex flex-col gap-2">
           {shown.map((r, i) => {
-            const { title, detail } = split(r);
+            const structured=project.recommendationDetails?.[i];
+            const { title, detail } = structured ? {title:structured.title,detail:structured.explanation} : split(r);
             return (
               <li key={r} className="flex flex-col gap-3 rounded-[16px] bg-canvas p-3.5 sm:flex-row sm:items-center">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -52,7 +53,7 @@ export function RecommendationsWidget() {
                     {detail && <p className="mt-0.5 text-body-sm text-graphite">{detail}</p>}
                   </div>
                 </div>
-                <Button size="sm" variant="primary" icon={<ArrowRight />} onClick={() => ask(`Help me with this: ${r}`)} className="flex-row-reverse self-start sm:self-center" aria-label={`Start: ${title}`}>
+                <Button size="sm" variant="primary" icon={<ArrowRight />} onClick={() => ask(`Help me with this: ${project.recommendationDetails?.[i]?.action ?? r}`)} className="flex-row-reverse self-start sm:self-center" aria-label={`Start: ${title}`}>
                   Start
                 </Button>
               </li>

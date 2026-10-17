@@ -1,6 +1,6 @@
 # Life Simulator backend
 
-Fastify + TypeScript API for the Moving Workspace. The backend package is independent so the frontend agent can choose its build tools without a package configuration conflict. Shared contracts live in `shared/contracts/index.ts`.
+Fastify + TypeScript API for contextual moving, travel, vehicle, furnishing, student and general life-planning workspaces. The backend package is independent so the frontend agent can choose its build tools without a package configuration conflict. Shared contracts live in `shared/contracts/index.ts`.
 
 ## Run
 
@@ -56,7 +56,7 @@ File persistence validates stored state, uses UUID filenames, restrictive file p
 
 ## Research and truthful provenance
 
-The live provider uses OpenAI's hosted web search and a second structured extraction request. It requires actual search calls and cited public HTTPS source URLs, limits calls and output sizes, and rejects ungrounded identities and unsafe links. It does not fetch arbitrary URLs or scrape websites. The provider keeps source evidence, unknown fields, source-check timestamps and deterministic score explanations. Current prices reported only in generated search summaries remain estimates; they are not independently verified source prices. Seller identities, images, availability and delivery remain unknown when evidence does not establish them. A price ceiling filters item prices; delivery is separate. Restrictive delivery/new-only preferences can produce limited or empty results.
+The live provider uses OpenAI's hosted web search and a second structured extraction request. It requires actual search calls and cited public HTTPS source URLs, limits calls and output sizes, and rejects ungrounded identities and unsafe links. It does not fetch arbitrary URLs or scrape websites. The provider keeps source evidence, unknown fields, source-check timestamps and deterministic score explanations. Current prices reported only in generated search summaries remain estimates; they are not independently verified source prices. Seller identities, images, availability and delivery remain unknown when evidence does not establish them. Targeted query plans include scenario, location/route, dates, party size, available budget and preferences. Deterministic category/locality checks exclude mismatches; conflicting duplicates are discarded. Ranking considers known item-plus-delivery cost, budget fit, locality, supported attributes and evidence, with explicit uncertainty. A price ceiling filters item prices; delivery is separate. Restrictive delivery/new-only preferences can produce limited or empty results.
 
 Official implementation references: [Responses Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses) and [hosted web search](https://developers.openai.com/api/docs/guides/tools-web-search).
 
@@ -67,3 +67,17 @@ Official implementation references: [Responses Structured Outputs](https://devel
 All incoming bodies use strict Zod schemas. Errors have `{error:{code,message,details?}}`. Validation returns 400, unknown resources 404, stale revisions 409, rate limits 429, provider failures 502/503, and model/research timeouts 504. Responses omit provider errors and secrets. Bodies are limited to 32 KiB; AI/research routes have tighter rate limits. Unexpected errors use a generic response. Exact origin checks, Helmet headers, bearer-token support and redacted request logging are enabled. Untrusted search content is separated from system instructions and never executed. Links must be public HTTPS URLs; the server does not fetch user-supplied URLs.
 
 The default is a single-user local demo. The shared deployment token is not a per-user identity system. Internet production requires user authentication, project ownership authorization, durable database storage and distributed concurrency/rate-limit controls. Local file storage supports one backend process; it is not a multi-process database. No insurance coverage or risk probability is claimed. Risk warnings express observed gaps and suggested preventive steps, without treating an unknown seller as fraudulent.
+
+## Contextual verification
+
+```sh
+npm --prefix server test
+npm --prefix server run build
+npm run build
+npx playwright install chromium
+npm run test:ui
+```
+
+Browser tests start/reuse test servers on API 3002 and frontend 5174. Their real workflows use the local planner and explicitly fictional demo research. Independent backend tests mock OpenAI/search responses. Opt-in live verification: start the server with credentials, then run `cd server && npm run check:context-live`. It checks moving with owned furniture, Helsinki–Rome travel, and used-car purchasing; records sourced search outcomes and scope redirects; and leaves test projects. Empty/limited results are recorded honestly and do not imply market availability. General technical tutorials are redirected before model invocation; the model also receives a specialized scope policy. The deterministic English parser and scope rules are intentionally bounded, and unusual or multilingual phrasing may require clarification.
+
+The separate frontend mock adapter is a fixed moving fixture. For contextual planning without credentials, use the API data source with `AI_MODE=local` and optional `RESEARCH_MODE=demo`.

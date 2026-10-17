@@ -3,9 +3,11 @@ import { AgentCommandSchema, LifeProjectSchema, type LifeProject, type ProjectPa
 import type { ProjectRepository } from './repository.js';
 import type { Planner } from './ai.js';
 import type { SearchProvider } from './research.js';
-import { allocateBudget, recalculateBudget, simulateScenarios, analyzeRisks } from './finance.js';
+import { allocateBudgetForPlan, recalculateBudget, simulateScenarios, analyzeRisks } from './finance.js';
 import { createWorkspace, patchWorkspace } from './workspace.js';
 import { AppError, notFound } from './errors.js';
+import { buildScenarioProfile } from './scenario-profile.js';
+import { classifyScope } from './scope-policy.js';
 
 export class ProjectService {
   constructor(readonly repository: ProjectRepository, private planner: Planner, private search: SearchProvider) {}
@@ -15,18 +17,22 @@ export class ProjectService {
     project.risks = analyzeRisks(project);
   }
   async create(input: CreateProjectRequest) {
+    const scope = classifyScope(input.message);
+    if(scope.classification==='AMBIGUOUS') throw new AppError('SCOPE_CLARIFICATION',scope.reply??'What practical life goal would you like to plan?',422);
+    if (scope.classification === 'OUT_OF_SCOPE') throw new AppError('OUT_OF_SCOPE',scope.reply??'Please describe a practical life-planning goal.',422);
     const plan = await this.planner.createProject(input);
+    const profile = buildScenarioProfile({message:input.message,scenarioType:plan.scenarioType,preferences:plan.preferences,location:plan.location,totalMinor:plan.budgetMinor??undefined});
     const now = new Date().toISOString();
-    let budget = allocateBudget(plan.budgetMinor ?? 0, plan.budgetMinor !== null);
-    if (plan.allocation && plan.budgetMinor !== null) {
+    let budget = allocateBudgetForPlan(plan.budgetMinor ?? 0,profile.categories,10,plan.budgetMinor !== null);
+    if (plan.allocation && plan.budgetMinor !== null && plan.allocation.categories.every(c=>profile.categories.some(p=>p.id===c.id))) {
       // AI may propose allocations, but the deterministic engine checks every total.
       try { budget = recalculateBudget({...budget,...plan.allocation,categories:plan.allocation.categories.map(c=>({...c,committedMinor:0,proposedMinor:0}))},[]); }
       catch { plan.assumptions.push('The AI allocation did not fit the budget; a provisional template allocation is shown.'); }
     }
     const project: LifeProject = {
-      id:randomUUID(),revision:0,title:plan.title,scenarioType:plan.scenarioType,location:plan.location,locale:input.locale,originalMessage:input.message,status:'planning',preferences:plan.preferences,
-      assumptions:[...new Set([...plan.assumptions,'Category allocations and missing-data scenario costs are provisional planning estimates; review them before committing.'])],confirmedFacts:plan.confirmedFacts,questions:plan.questions,budget,cart:[],tasks:plan.tasks.slice(0,200).map(t=>({...t,id:randomUUID(),status:'todo',origin:plan.aiMode==='local'?'template':'ai'})),
-      workspace:createWorkspace(plan.title,plan.scenarioType==='moving'?[...plan.widgetTypes,'budget','product_catalog','shopping_cart','service_finder','scenario_comparison','risk_guardian','timeline','recommendations','task_list']:plan.widgetTypes),researchResults:[],risks:[],scenarios:[],actions:[],recommendations:plan.recommendations,aiMode:plan.aiMode,createdAt:now,updatedAt:now,
+      id:randomUUID(),revision:0,title:plan.title,scenarioType:plan.scenarioType,location:plan.location,locale:input.locale,originalMessage:input.message,status:'planning',preferences:profile.preferences,
+      assumptions:[...new Set([...plan.assumptions,'Category allocations and missing-data scenario costs are provisional planning estimates; review them before committing.'])],confirmedFacts:plan.confirmedFacts,questions:profile.questions,answeredQuestions:{},categoryReasons:profile.categories.map(({id,reason})=>({id,reason})),recommendationDetails:plan.recommendationDetails??profile.recommendationDetails,budget,cart:[],tasks:plan.tasks.slice(0,200).map(t=>({...t,id:randomUUID(),status:'todo',origin:plan.aiMode==='local'?'template':'ai'})),
+      workspace:createWorkspace(plan.title,profile.widgetTypes,plan.scenarioType),researchResults:[],risks:[],scenarios:[],actions:[],recommendations:plan.recommendations,aiMode:plan.aiMode,createdAt:now,updatedAt:now,
     };
     this.derive(project,0);
     return this.repository.create(LifeProjectSchema.parse(project));
@@ -38,6 +44,7 @@ export class ProjectService {
       if (patch.status !== undefined) project.status = patch.status;
       if (patch.location !== undefined) project.location = patch.location;
       if (patch.preferences) project.preferences = {...project.preferences,...patch.preferences};
+      if(project.preferences.startDate && project.preferences.endDate && project.preferences.endDate < project.preferences.startDate) throw new AppError('VALIDATION_ERROR','Return date must be on or after departure');
       if (patch.budget) {
         const {categories,...fields} = patch.budget;
         project.budget = {...project.budget,...fields,confirmed:true};
@@ -48,15 +55,27 @@ export class ProjectService {
         if (!task) throw notFound('Task');
         task.status=update.status;
       }
-      project.questions = project.questions.filter(question => {
-        if (/exact move date/i.test(question) && project.preferences.moveDate) return false;
-        if (/where are you moving\?/i.test(question) && project.location) return false;
-        if (/where are you moving from.*how many/i.test(question) && project.preferences.origin && project.preferences.householdSize) return false;
-        if (/what budget|budget in euros/i.test(question) && project.budget.confirmed) return false;
-        return true;
-      });
+      if (patch.answers) {
+        project.answeredQuestions ??= {};
+        for (const answer of patch.answers) {
+          if (!project.questions.includes(answer.question) && !Object.hasOwn(project.answeredQuestions,answer.question)) throw new AppError('VALIDATION_ERROR','Answer must refer to a project question');
+          project.answeredQuestions[answer.question]=answer.answer;
+        }
+      }
+      const profile=buildScenarioProfile({message:project.originalMessage,scenarioType:project.scenarioType,preferences:project.preferences,location:project.location,totalMinor:project.budget.confirmed?project.budget.totalMinor:undefined});
+      project.questions=profile.questions.filter(question=>!project.answeredQuestions?.[question]);
+      project.categoryReasons=profile.categories.map(({id,reason})=>({id,reason}));
+      const missingTypes=profile.widgetTypes.filter(type=>!project.workspace.widgets.some(widget=>widget.type===type));
+      if(missingTypes.length) {
+        const additions=createWorkspace(project.title,missingTypes,project.scenarioType).widgets;
+        const bottom=Math.max(0,...project.workspace.widgets.map(w=>w.position.y+w.position.h));
+        additions.forEach(w=>{w.position.y=Math.min(100,w.position.y+bottom);});
+        project.workspace.widgets.push(...additions);
+        project.workspace.updatedAt=new Date().toISOString();
+      }
+      if(patch.preferences?.ownsFurniture===true && !profile.widgetTypes.includes('product_catalog')) project.workspace.widgets.filter(w=>w.type==='product_catalog').forEach(w=>{w.visible=false;});
       // Research is retained for audit, but stale offers cannot enter new simulations/cart.
-      if (patch.location !== undefined || patch.preferences?.deliveryRequired !== undefined || patch.preferences?.allowUsed !== undefined) {
+      if (patch.location !== undefined || patch.preferences?.deliveryRequired !== undefined || patch.preferences?.allowUsed !== undefined || patch.preferences?.startDate !== undefined || patch.preferences?.endDate !== undefined || patch.preferences?.durationDays !== undefined || patch.preferences?.travelers !== undefined || patch.preferences?.ownsFurniture !== undefined || patch.preferences?.ownedItems !== undefined || patch.preferences?.vehicleType !== undefined || patch.preferences?.useCase !== undefined) {
         project.researchResults.forEach(r=> { if (!r.warnings.includes('Project constraints changed after this search; research again before selecting these offers.')) r.warnings.push('Project constraints changed after this search; research again before selecting these offers.'); });
       }
       this.derive(project);
@@ -68,6 +87,8 @@ export class ProjectService {
   async research(id: string, request: ResearchRequest) {
     // Network work stays outside the state lock, then merges against the latest project.
     const snapshot = await this.get(id);
+    const scope=classifyScope([request.category.replaceAll('_',' '),...request.preferences].join(' '),snapshot);
+    if(scope.classification==='OUT_OF_SCOPE') throw new AppError('OUT_OF_SCOPE',scope.reply??'Research must relate to a practical life decision.',422);
     const query = {...request,location:request.location??snapshot.location??undefined};
     if (!query.location) throw new AppError('VALIDATION_ERROR','Provide a research location or set a project destination');
     const result = await this.search.search(query,snapshot);
@@ -114,11 +135,14 @@ export class ProjectService {
   scenarios(id: string) { return this.repository.update(id,p=>this.derive(p)); }
   async assistant(id: string,request: AssistantRequest):Promise<AssistantResponse> {
     const snapshot=await this.get(id);
+    const scope=classifyScope(request.message,snapshot);
+    if(scope.classification==='OUT_OF_SCOPE'||scope.classification==='AMBIGUOUS'||scope.reply) return {reply:scope.reply??'Which part of your life plan should we work on?',proposedActions:[],workspacePatch:null};
     const output=await this.planner.assistant(snapshot,request);
-    const commands=output.commands.slice(0,5).map(command=>AgentCommandSchema.parse(command));
+    const seen=new Set<string>();
+    const commands=output.commands.slice(0,5).map(command=>AgentCommandSchema.parse(command)).filter(command=>{const key=JSON.stringify(command);if(seen.has(key))return false;seen.add(key);return true;});
     let actions:AgentAction[]=[];
     await this.repository.update(id,p=>{
-      actions=commands.map((command,i)=>({id:randomUUID(),command,status:'proposed',requiresConfirmation:true,explanation:output.explanations[i]??'Review and confirm this change.',result:null,createdAt:new Date().toISOString()}));
+      actions=commands.map(command=>({id:randomUUID(),command,status:'proposed',requiresConfirmation:true,explanation:output.explanations[output.commands.findIndex(candidate=>JSON.stringify(candidate)===JSON.stringify(command))]??'Review and confirm this change.',result:null,createdAt:new Date().toISOString()}));
       p.actions=[...p.actions,...actions].slice(-200);
       // Proposals never mutate user selections; confirmation is a separate request.
       this.derive(p);
@@ -168,7 +192,9 @@ export class ProjectService {
     const route=`${project.preferences.origin?`from ${project.preferences.origin} `:''}to ${destination}${project.preferences.moveDate?` on ${project.preferences.moveDate}`:''}`;
     const serviceEnglish=`Hello! I am planning a move ${route} and am interested in ${offer.title}. Could you confirm availability and provide an itemized quote including transport, labor, stairs, packing, taxes and any extra charges? Please share the service scope, payment and cancellation terms, and the process for handling damage. Let me know what inventory and access details you need. Thank you!`;
     const serviceFinnish=`Hei! Suunnittelen muuttoa kohteeseen ${destination}${project.preferences.moveDate?` päivänä ${project.preferences.moveDate}`:''} ja olen kiinnostunut palvelusta ${offer.title}. Voisitteko vahvistaa saatavuuden ja antaa eritellyn tarjouksen, joka sisältää kuljetuksen, työn, portaat, pakkaamisen, verot ja mahdolliset lisämaksut? Pyydän myös palvelun sisällön sekä maksu-, peruutus- ja vahinkotilanteiden käsittelyehdot. Mitä tietoja tavaroista ja kulkuyhteyksistä tarvitsette? Kiitos!`;
-    const text=offer.kind==='service'?(request.language==='fi'?serviceFinnish:serviceEnglish):(request.language==='fi'?finnish:english);
+    const contextualServiceEnglish=`Hello! I am interested in ${offer.title} for my ${project.scenarioType.replaceAll('_',' ')} plan in ${destination}${project.preferences.startDate?` from ${project.preferences.startDate}`:''}${project.preferences.endDate?` to ${project.preferences.endDate}`:''}. Could you confirm availability, the full price including taxes and extra charges, what is included, payment and cancellation terms, and any information you need from me? Thank you!`;
+    const contextualServiceFinnish=`Hei! Olen kiinnostunut palvelusta ${offer.title} kohteessa ${destination}. Voisitteko vahvistaa saatavuuden, kokonaishinnan veroineen ja lisämaksuineen, palvelun sisällön sekä maksu- ja peruutusehdot? Mitä lisätietoja tarvitsette? Kiitos!`;
+    const text=offer.kind==='service'?(project.scenarioType==='moving'?(request.language==='fi'?serviceFinnish:serviceEnglish):(request.language==='fi'?contextualServiceFinnish:contextualServiceEnglish)):(request.language==='fi'?finnish:english);
     return {draft:text+(request.notes?`\n\n${request.notes}`:''),handoffUrl:offer.sourceUrl,sent:false,warnings:[...(offer.seller.type==='private'?['Inspect the item and verify the seller before making any payment.']:[]),...(offer.verificationStatus==='demo'?['Fictional demo offer; no real seller is available.']:[]),'This is a draft. Copy and send it yourself after review.']};
   }
   async sellerMessage(id: string,request: SellerMessageRequest) {return this.draft(await this.get(id),request);}

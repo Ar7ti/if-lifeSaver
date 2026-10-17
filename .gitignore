@@ -9,3 +9,7 @@ server/data/
 # Frontend build output
 /dist/
 *.tsbuildinfo
+
+# Browser regression artifacts
+/test-results/
+/playwright-report/

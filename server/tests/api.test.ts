@@ -28,7 +28,9 @@ const base=(project:LifeProject)=>`/api/projects/${project.id}`;
 
 test('moving flow: research, cart CRUD, budgets, scenarios, risks, workspace and seller draft',async t=>{
   const {app,project}=await setup();t.after(()=>app.close());const url=base(project);
-  assert.equal(project.budget.totalMinor,200000);assert.equal(project.workspace.widgets.length,9);
+  assert.equal(project.budget.totalMinor,200000);
+  assert.deepEqual(project.workspace.widgets.map(widget=>widget.type).sort(),['budget','recommendations','risk_guardian','scenario_comparison','service_finder','shopping_cart','task_list','timeline'].sort());
+  assert.ok(!project.workspace.widgets.some(widget=>widget.type==='product_catalog'),'A move without a requested product does not require a product catalog');
   assert.equal(project.scenarios.length,3);assert.ok(project.tasks.length);
   const research=await app.inject({method:'POST',url:`${url}/research`,payload:{category:'beds',location:'Turku, Finland',maxPrice:250}});
   assert.equal(research.statusCode,200,research.body);const found=ResearchResultSchema.parse(research.json());assert.equal(found.offers.length,1);

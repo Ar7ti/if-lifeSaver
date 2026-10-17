@@ -1,3 +1,4 @@
+import { isEditableKeyboardEvent } from '@/lib/keyboard';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CheckSquare, ChevronUp, FolderClosed, Home, LayoutGrid, PanelLeftClose, PanelLeftOpen, Plus, Settings as SettingsIcon, ShoppingBag, Sparkles, type LucideIcon } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -93,7 +94,10 @@ function UserMenu({ compact }: { compact: boolean }) {
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+      if (e instanceof KeyboardEvent) {
+        if (e.defaultPrevented || e.isComposing || isEditableKeyboardEvent(e)) return;
+        if (e.key === 'Escape') setOpen(false);
+      } else if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', close);

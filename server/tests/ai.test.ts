@@ -35,8 +35,9 @@ test('local extraction preserves unknowns and never invents verified facts', asy
   assert.ok(plan.assumptions.some(a => /Finland/.test(a)));
   assert.ok(plan.confirmedFacts.every(f => !/verified|offer|price/i.test(f)));
   assert.equal(plan.allocation, null);
+  assert.ok(plan.widgetTypes.includes('service_finder'));
   assert.ok(plan.widgetTypes.includes('shopping_cart'));
-  assert.deepEqual(new Set(plan.widgetTypes), new Set(WidgetTypeSchema.options));
+  assert.ok(plan.widgetTypes.length < WidgetTypeSchema.options.length);
 });
 
 test('moving request with a euro amount needs no literal budget keyword',async()=>{
@@ -130,6 +131,27 @@ test('plural bed categories still use selected prices for a cheaper search', asy
   assert.equal(command?.arguments.maxPrice,124.99);
 });
 
+test('local assistant resolves cheaper options from active category, selected item, then travel default', async () => {
+  const source=project();
+  source.scenarioType='travel'; source.location='Paris';
+  source.budget.categories=[{id:'accommodation',title:'Accommodation',allocatedMinor:50000,committedMinor:0,proposedMinor:0}];
+  const defaultResult=await createPlanner(options).assistant(source,{message:'Find cheaper options'});
+  assert.equal(defaultResult.commands.find(c=>c.type==='research_services')?.arguments.category,'accommodation');
+  source.cart=[{title:'Train',category:'transport',status:'selected',unitPriceMinor:10000} as LifeProject['cart'][number]];
+  const selected=await createPlanner(options).assistant(source,{message:'Find cheaper options'});
+  assert.equal(selected.commands.find(c=>c.type==='research_services')?.arguments.category,'transport');
+  const active=await createPlanner(options).assistant(source,{message:'Find cheaper options',context:{activeCategory:'accommodation'}});
+  assert.equal(active.commands.find(c=>c.type==='research_services')?.arguments.category,'accommodation');
+});
+
+test('car followup researches vehicles and never defaults to moving', async () => {
+  const source=project(); source.scenarioType='car_purchase'; source.originalMessage='I want to buy a car'; source.budget.categories=[];
+  const result=await createPlanner(options).assistant(source,{message:'Find cheaper options and split the budget'});
+  assert.equal(result.commands.find(c=>c.type==='research_products')?.arguments.category,'vehicle');
+  const allocation=result.commands.find(c=>c.type==='propose_budget_allocation');
+  assert.ok(allocation && allocation.arguments.categories.every(c=>!['moving','furniture'].includes(c.id)));
+});
+
 test('OpenAI project uses Responses parse with strict format and grounds unknown budget/date', async () => {
   const local = await createPlanner(options).createProject({message: 'I am moving next month', locale: 'en'});
   const calls: unknown[] = [];
@@ -166,6 +188,44 @@ test('OpenAI preserves a stated euro word budget but not unstated or non-EUR bud
   assert.ok(dollar.questions.some(question => /in euros|EUR/i.test(question)));
 });
 
+test('OpenAI enriches grounded travel title and tasks while rejecting moving content', async () => {
+  const message='Plan a five day stay in Rome with a budget of €900';
+  const local=await createPlanner(options).createProject({message,locale:'en'});
+  assert.equal(local.scenarioType,'other');
+  const planner=createPlannerWithClient({mode:'openai',model:'test',timeoutMs:1000},async()=>({
+    status:'completed',output:[],output_parsed:{...local,scenarioType:'travel',location:'Rome',title:'Five day stay in Rome',
+      tasks:[
+        {title:'Compare Rome accommodation cancellation terms',category:'accommodation',dueDate:null,notes:''},
+        {title:'Book moving services',category:'moving',dueDate:null,notes:''},
+        {title:'Buy a bed for Rome',category:'accommodation',dueDate:null,notes:''},
+      ],
+      recommendations:['Compare Rome accommodation cancellation terms.','Book moving services.'],aiMode:'openai'},
+  }));
+  const plan=await planner.createProject({message,locale:'en'});
+  assert.equal(plan.scenarioType,'travel');
+  assert.equal(plan.location,'Rome');
+  assert.equal(plan.title,'Five day stay in Rome');
+  assert.ok(plan.tasks.some(t=>/cancellation terms/i.test(t.title)));
+  assert.ok(!plan.tasks.some(t=>/moving|bed/i.test(t.title)));
+  assert.ok(plan.recommendations.some(r=>/cancellation terms/i.test(r)));
+  assert.ok(!plan.recommendations.some(r=>/moving services/i.test(r)));
+  assert.ok(!plan.widgetTypes.includes('product_catalog'));
+});
+
+test('OpenAI rejects unsupported scenario, location, dates, and hard boolean guesses', async () => {
+  const message='Plan a graduation party';
+  const local=await createPlanner(options).createProject({message,locale:'en'});
+  const planner=createPlannerWithClient({mode:'openai',model:'test',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{
+    ...local,scenarioType:'travel',location:'Paris',preferences:{...local.preferences,startDate:'2027-07-01',travelers:4,allowUsed:false,deliveryRequired:true},
+    title:'Paris travel plan',tasks:[{title:'Book a Paris hotel',category:'accommodation',dueDate:null,notes:''}],aiMode:'openai',
+  }}));
+  const plan=await planner.createProject({message,locale:'en'});
+  assert.equal(plan.scenarioType,'other'); assert.equal(plan.location,null);
+  assert.equal(plan.preferences.startDate,null); assert.equal(plan.preferences.travelers,null);
+  assert.equal(plan.preferences.allowUsed,null); assert.equal(plan.preferences.deliveryRequired,null);
+  assert.ok(!plan.tasks.some(t=>/hotel/i.test(t.title)));
+});
+
 test('OpenAI assistant drops invalid, unknown, and ungrounded commands', async () => {
   const planner = createPlannerWithClient({mode: 'openai', model: 'test', timeoutMs: 1000}, async () => ({
     status: 'completed', output: [], output_parsed: {
@@ -191,8 +251,8 @@ test('model guesses never turn unknown delivery and used-item preferences into h
   const unknown=await planner.createProject(input);
   assert.equal(unknown.preferences.deliveryRequired,null);
   assert.equal(unknown.preferences.allowUsed,null);
-  assert.ok(unknown.questions.some(q=>/delivery/i.test(q)));
-  assert.ok(unknown.questions.some(q=>/used/i.test(q)));
+  assert.ok(unknown.questions.length <= 3);
+  assert.ok(unknown.questions.every(q=>!/already answered/i.test(q)));
   const explicit=await planner.createProject({...input,message:input.message+'. Delivery required. New only.'});
   assert.equal(explicit.preferences.deliveryRequired,true);
   assert.equal(explicit.preferences.allowUsed,false);
@@ -232,4 +292,21 @@ test('OpenAI refusal, incomplete output, and timeout become AppError', async () 
   });
   await assert.rejects(planner.createProject(request), (error: unknown) => error instanceof AppError && error.code === 'AI_TIMEOUT');
   assert.equal(signal?.aborted, true);
+});
+
+test('course research remains an education service, while furniture searches propose products',async()=>{
+ const source=project();
+ source.scenarioType='student_life';source.originalMessage='Find a programming course within my education budget';
+ const course=await createPlanner(options).assistant(source,{message:'Find a programming course'});
+ assert.ok(course.commands.some(c=>c.type==='research_services'&&c.arguments.category==='education'));
+ source.scenarioType='home_furnishing';
+ const furniture=await createPlanner(options).assistant(source,{message:'Find furniture'});
+ assert.ok(furniture.commands.some(c=>c.type==='research_products'&&c.arguments.category==='furniture'));
+});
+
+test('model enrichment cannot introduce furniture buying into a move with owned furniture',async()=>{
+ const request={message:'I am moving to Turku with €2000 and already own furniture.',locale:'en' as const};
+ const local=await createPlanner(options).createProject(request);
+ const planner=createPlannerWithClient({mode:'openai',model:'test',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{...local,tasks:[{title:'Buy furniture for Turku',category:'moving',dueDate:null,notes:''}],recommendations:['Compare furniture for Turku.'],aiMode:'openai'}}));
+ const result=await planner.createProject(request);assert.ok(!result.tasks.some(t=>/buy furniture/i.test(t.title)));assert.ok(!result.recommendations.some(r=>/compare furniture/i.test(r)));
 });

@@ -12,11 +12,11 @@ type Entry = { kind: 'task'; id: string; date: string | null } | { kind: 'milest
 export function ActionTimeline() {
   const { project } = useWorkspace();
   const setStatus = useTaskStatus();
-  const moveDate = project.preferences.moveDate;
+  const moveDate = project.scenarioType==='travel'?project.preferences.startDate:project.preferences.moveDate;
   const today = new Date().toISOString().slice(0, 10);
 
   const dated: Entry[] = project.tasks.filter(t => t.dueDate).map(t => ({ kind: 'task', id: t.id, date: t.dueDate }));
-  if (moveDate) dated.push({ kind: 'milestone', id: 'move', date: moveDate, label: project.scenarioType === 'moving' ? 'Moving day' : 'Target date' });
+  if (moveDate) dated.push({ kind: 'milestone', id: 'move', date: moveDate, label: project.scenarioType === 'moving' ? 'Moving day' : project.scenarioType==='travel'?'Departure':'Target date' });
   dated.sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   const undated = project.tasks.filter(t => !t.dueDate);
   const byId = new Map(project.tasks.map(t => [t.id, t]));
@@ -31,7 +31,7 @@ export function ActionTimeline() {
   return (
     <div className="flex flex-col gap-4">
       {!moveDate && (
-        <p className="rounded-[10px] bg-canvas px-3 py-2 text-body-sm text-graphite">Add your {project.scenarioType === 'moving' ? 'move date' : 'target date'} in the overview to anchor this timeline.</p>
+        <p className="rounded-[10px] bg-canvas px-3 py-2 text-body-sm text-graphite">Add your {project.scenarioType === 'moving' ? 'move date' : project.scenarioType==='travel'?'departure date':'target date'} in the overview to anchor this timeline.</p>
       )}
       {dated.length > 0 && (
         <ol className="relative flex flex-col">

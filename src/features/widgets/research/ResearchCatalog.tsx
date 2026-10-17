@@ -27,7 +27,7 @@ const useRunKinds = create<{ kinds: Record<string, Kind>; mark: (id: string, kin
   mark: (id, kind) => set(s => ({ kinds: { ...s.kinds, [id]: kind } })),
 }));
 
-const SERVICE_HINT = /mov|van|transport|truck|clean|storage|service|insur|electric|internet|broadband|lock|removal/;
+const SERVICE_HINT = /mov|van|transport|truck|clean|storage|service|insur|electric|internet|broadband|lock|removal|accommodation|hotel|hostel|flight|train|rail|tour|course/;
 
 function resultKind(r: ResearchResult, known: Record<string, Kind>): Kind {
   if (r.offers.length) return r.offers.some(o => o.kind === 'service') && !r.offers.some(o => o.kind === 'product') ? 'service' : 'product';
@@ -45,6 +45,10 @@ function toSlug(text: string) {
  * offers it returns count against that envelope instead of a new, empty one.
  */
 const ENVELOPE_GROUPS: [RegExp, RegExp][] = [
+  [/car|vehicle/, /vehicle|purchase/],
+  [/hotel|hostel|accommodation|stay/, /accommodation|housing|lodging/],
+  [/flight|train|rail|bus|airport/, /transport/],
+  [/course|education|tuition/, /education/],
   [/bed|sofa|couch|desk|table|chair|wardrobe|shel|mattress|dresser|drawer|furniture/, /furnit/],
   [/fridge|freezer|washer|washing|oven|microwave|dishwasher|appliance|vacuum|kettle/, /applian/],
   [/towel|kitchen|lamp|curtain|bedding|essential|cutlery|pan|pot|plate/, /essential/],
@@ -116,7 +120,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const research = useMutation({
     mutationFn: async (input: { text: string; max: number | undefined; prefs: string[] }) =>
       writer.api.research(project.id, {
-        category: envelopeFor(input.text, project.budget.categories) ?? toSlug(input.text),
+        category: toSlug(input.text),
         kind,
         maxPrice: input.max,
         preferences: [`Looking for: ${input.text}`.slice(0, 200), ...input.prefs],
@@ -155,7 +159,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const [seller, setSeller] = useState<'any' | 'company' | 'private'>('any');
   const [fitBudget, setFitBudget] = useState(false);
 
-  const envelope = project.budget.categories.find(c => c.id === current?.category);
+  const envelope = project.budget.categories.find(c => c.id === current?.category || c.id === envelopeFor(current?.category ?? '', project.budget.categories));
   const envelopeLeft = envelope ? envelope.allocatedMinor - envelope.committedMinor - envelope.proposedMinor : null;
   const tiers = useMemo(() => (current ? tierMap(current.offers) : new Map()), [current]);
 
@@ -203,8 +207,16 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const compareOffers = (current?.offers ?? []).filter(o => compare.includes(o.id));
   useEffect(() => setCompare([]), [current?.id]);
 
-  const starters = isProduct ? PRODUCT_STARTERS : SERVICE_STARTERS;
-  const prefOptions = isProduct ? PRODUCT_PREFS : SERVICE_PREFS;
+  const contextual = {
+    moving: {products:PRODUCT_STARTERS.filter(x=>!(project.preferences.ownedItems??[]).some(item=>x.toLowerCase().includes(item.toLowerCase()))),services:SERVICE_STARTERS,prefs:SERVICE_PREFS},
+    travel:{products:['Luggage','Travel essentials'],services:['Return flights','Accommodation','Airport transfer','Activities'],prefs:['Free cancellation','Total trip price','Direct route','Public transport']},
+    car_purchase:{products:['Reliable used car','Small used car','Family car'],services:['Vehicle inspection','Ownership costs'],prefs:['Itemized quote','Public reviews','Local availability']},
+    home_furnishing:{products:PRODUCT_STARTERS.filter(x=>!(project.preferences.ownedItems??[]).some(item=>x.toLowerCase().includes(item.toLowerCase()))),services:['Furniture delivery','Assembly service'],prefs:['Fixed price','Delivery and assembly','Weekend availability']},
+    student_life:{products:['Study essentials','Laptop'],services:['Student housing','Public transport','Programming course'],prefs:['Student discount','Monthly cost','Flexible dates']},
+    other:{products:['Essential purchases'],services:['Relevant local services'],prefs:['Fixed price','Local availability']},
+  }[project.scenarioType];
+  const starters = isProduct ? contextual.products : contextual.services;
+  const prefOptions = isProduct ? PRODUCT_PREFS : contextual.prefs;
   const location = project.location ?? 'your destination';
   const showForm = formOpen || (!current && !research.isPending);
 
@@ -231,7 +243,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             </label>
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-stone" aria-hidden />
-              <Input id={`q-${widget.id}`} value={query} maxLength={60} onChange={e => setQuery(e.target.value)} placeholder={isProduct ? 'What are you looking for? e.g. Bed frame' : 'Which service? e.g. Moving company'} className="h-11 rounded-[10px] bg-canvas pl-10 border-transparent" />
+              <Input id={`q-${widget.id}`} value={query} maxLength={60} onChange={e => setQuery(e.target.value)} placeholder={`What are you looking for? e.g. ${starters[0] ?? 'Relevant options'}`} className="h-11 rounded-[10px] bg-canvas pl-10 border-transparent" />
             </div>
             <div className="relative @lg:w-32">
               <label className="sr-only" htmlFor={`max-${widget.id}`}>
