@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
+import { useReducedMotion } from 'motion/react';
+import { useTypewriter } from './useTypewriter';
 
 export interface ComposerHandle {
   fill: (text: string) => void;
@@ -12,11 +14,15 @@ export interface ComposerHandle {
 const MAX = 2000;
 
 /** The natural-language entry point. Submitting hands the message to the creation screen. */
-export const Composer = forwardRef<ComposerHandle, { className?: string; autoFocus?: boolean; size?: 'lg' | 'md' }>(function Composer(
-  { className, autoFocus, size = 'lg' },
+export const Composer = forwardRef<ComposerHandle, { className?: string; autoFocus?: boolean; size?: 'lg' | 'md'; typingExamples?: string[] }>(function Composer(
+  { className, autoFocus, size = 'lg', typingExamples },
   ref,
 ) {
   const [value, setValue] = useState('');
+  const [focused, setFocused] = useState(false);
+  const reduce = useReducedMotion();
+  // Decorative only: the label stays "What are you planning?" for assistive tech.
+  const typed = useTypewriter(typingExamples ?? [], Boolean(typingExamples?.length) && !focused && value === '' && !reduce);
   const [error, setError] = useState<string | null>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
@@ -70,7 +76,9 @@ export const Composer = forwardRef<ComposerHandle, { className?: string; autoFoc
           onKeyDown={e => {
             if (isChatSubmitKey(e.nativeEvent)) submit(e);
           }}
-          placeholder="What are you planning?"
+          placeholder={typed ? `${typed}▍` : 'What are you planning?'}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? 'life-prompt-error' : 'life-prompt-hint'}
           className={cn(

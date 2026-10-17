@@ -190,3 +190,18 @@
   animation: pulse-soft 1.6s ease-in-out infinite;
   border-radius: 6px;
 }
+
+/* Landing marquee: two identical halves scroll by exactly one half for a seamless loop. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee 48s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}

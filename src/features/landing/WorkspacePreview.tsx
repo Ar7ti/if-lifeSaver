@@ -1,4 +1,10 @@
+import { createContext, useContext, useRef } from 'react';
+import { motion, useInView, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Check, LayoutGrid, Sparkles, Store, Truck, Wallet, ShieldCheck } from 'lucide-react';
+import { CountUp } from './motion-kit';
+
+/** True once the preview has scrolled into view: its content then animates in, once. */
+const Live = createContext(false);
 import { cn } from '@/lib/cn';
 import { LogoMark } from '@/features/shell/Logo';
 
@@ -16,7 +22,7 @@ function MiniBar({ label, spent, total, tone }: { label: string; spent: number; 
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-ink/[0.07]">
-        <div className={cn('h-full rounded-full', tone)} style={{ width: `${(spent / total) * 100}%` }} />
+        <motion.div className={cn('h-full rounded-full', tone)} initial={false} animate={{ width: useContext(Live) ? `${(spent / total) * 100}%` : '0%' }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }} />
       </div>
     </div>
   );
@@ -34,9 +40,58 @@ function Panel({ title, icon, children, className }: { title: string; icon: Reac
   );
 }
 
-export function WorkspacePreview() {
+function PreviewTask({ title, done, delay }: { title: string; done: boolean; delay: number }) {
+  const live = useContext(Live);
+  const checked = done && live;
   return (
-    <figure className="relative mx-auto w-full max-w-[1120px]">
+    <li className="flex items-center gap-2 rounded-md border border-hairline px-2 py-1.5 text-[11px]">
+      <motion.span
+        className="grid size-3.5 place-items-center rounded-[4px] border"
+        initial={false}
+        animate={checked ? { backgroundColor: '#0075de', borderColor: '#0075de', scale: [1, 1.25, 1] } : { backgroundColor: 'rgba(0,0,0,0)', borderColor: 'rgba(0,0,0,0.25)' }}
+        transition={{ delay, duration: 0.35 }}
+      >
+        <motion.span initial={false} animate={{ scale: checked ? 1 : 0 }} transition={{ delay: delay + 0.05, type: 'spring', stiffness: 500, damping: 22 }} className="text-white">
+          <Check className="size-2.5" />
+        </motion.span>
+      </motion.span>
+      <motion.span className="relative" initial={false} animate={{ color: checked ? '#615d59' : '#000000' }} transition={{ delay }}>
+        {title}
+        <motion.span className="absolute top-1/2 left-0 h-px w-full bg-current" style={{ originX: 0 }} initial={false} animate={{ scaleX: checked ? 1 : 0 }} transition={{ delay: delay + 0.1, duration: 0.3 }} />
+      </motion.span>
+    </li>
+  );
+}
+
+function PreviewScenario({ name, value, chosen }: { name: string; value: string; chosen: boolean }) {
+  const live = useContext(Live) && chosen;
+  return (
+    <motion.div
+      className="flex items-center justify-between rounded-md px-2 py-1.5 text-[11px]"
+      initial={false}
+      animate={{ backgroundColor: live ? '#e6f3fe' : '#f6f5f4', boxShadow: live ? '0 0 0 1px rgba(0,117,222,0.4)' : '0 0 0 0px rgba(0,117,222,0)' }}
+      transition={{ delay: 1.6, duration: 0.4 }}
+    >
+      <span className="font-medium">{name}</span>
+      <span className="tabular font-semibold">{value}</span>
+    </motion.div>
+  );
+}
+
+export function WorkspacePreview() {
+  const ref = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+  const inView = useInView(ref, { once: true, amount: 0.35 });
+  return (
+    <Live.Provider value={inView || Boolean(reduce)}>
+      <PreviewBody innerRef={ref} />
+    </Live.Provider>
+  );
+}
+
+function PreviewBody({ innerRef }: { innerRef: React.RefObject<HTMLElement | null> }) {
+  return (
+    <figure ref={innerRef} className="relative mx-auto w-full max-w-[1120px]">
       <div className="overflow-hidden rounded-[14px] border border-hairline bg-canvas shadow-mockup" role="img" aria-label="A moving workspace: budget bars, recommended furniture, a task checklist, three cost scenarios and risk alerts">
         {/* window chrome */}
         <div className="flex items-center gap-2 border-b border-hairline bg-surface px-4 py-2.5">
@@ -72,7 +127,9 @@ export function WorkspacePreview() {
             </div>
             <div className="grid gap-2.5 sm:grid-cols-3">
               <Panel title="Budget" icon={<Wallet />}>
-                <div className="mb-2 text-[22px] font-semibold tracking-[-0.6px] tabular">€2,000</div>
+                <div className="mb-2 text-[22px] font-semibold tracking-[-0.6px] tabular">
+                  <CountUp to={2000} format={n => `€${n.toLocaleString('en-IE')}`} />
+                </div>
                 <div className="flex flex-col gap-2">
                   <MiniBar label="Furniture" spent={480} total={700} tone="bg-blue" />
                   <MiniBar label="Moving" spent={290} total={300} tone="bg-saffron" />
@@ -110,13 +167,8 @@ export function WorkspacePreview() {
                     ['Book moving van', true],
                     ['Update address with Posti', false],
                     ['Set up electricity', false],
-                  ].map(([t, done]) => (
-                    <li key={t as string} className="flex items-center gap-2 rounded-md border border-hairline px-2 py-1.5 text-[11px]">
-                      <span className={cn('grid size-3.5 place-items-center rounded-[4px] border', done ? 'border-blue bg-blue text-white' : 'border-ink/25')}>
-                        {done && <Check className="size-2.5" />}
-                      </span>
-                      <span className={cn(done && 'text-graphite line-through')}>{t as string}</span>
-                    </li>
+                  ].map(([t, done], i) => (
+                    <PreviewTask key={t as string} title={t as string} done={done as boolean} delay={0.6 + i * 0.45} />
                   ))}
                 </ul>
               </Panel>
@@ -126,11 +178,8 @@ export function WorkspacePreview() {
                     ['Economy', '€1,240', 'bg-canvas'],
                     ['Balanced', '€1,388', 'bg-sky-tint ring-1 ring-blue/40'],
                     ['Comfort', '€1,710', 'bg-canvas'],
-                  ].map(([n, v, c]) => (
-                    <div key={n} className={cn('flex items-center justify-between rounded-md px-2 py-1.5 text-[11px]', c)}>
-                      <span className="font-medium">{n}</span>
-                      <span className="tabular font-semibold">{v}</span>
-                    </div>
+                  ].map(([n, v]) => (
+                    <PreviewScenario key={n} name={n!} value={v!} chosen={n === 'Balanced'} />
                   ))}
                 </div>
               </Panel>
