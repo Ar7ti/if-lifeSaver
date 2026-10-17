@@ -24,7 +24,9 @@ export async function buildApp(deps: AppDependencies={}) {
   const search=deps.search??createSearchProvider({mode:config.researchMode,apiKey:config.apiKey,model:config.model,timeoutMs:config.researchTimeoutMs});
   await repository.ready();
   const service=new ProjectService(repository,planner,search);
-  const app=Fastify({bodyLimit:32*1024,requestTimeout:125000,connectionTimeout:10000,logger:config.logLevel==='silent'?false:{level:config.logLevel,redact:['req.headers.authorization','req.headers.cookie','res.headers["set-cookie"]']},trustProxy:false});
+  // A quiet socket must outlive the maximum bounded provider call (120 seconds).
+  // connectionTimeout applies while an async handler is waiting, too.
+  const app=Fastify({bodyLimit:32*1024,requestTimeout:125000,connectionTimeout:130000,logger:config.logLevel==='silent'?false:{level:config.logLevel,redact:['req.headers.authorization','req.headers.cookie','res.headers["set-cookie"]']},trustProxy:false});
   await app.register(helmet);
   await app.register(cors,{origin:config.origins,methods:['GET','POST','PATCH','DELETE','OPTIONS'],allowedHeaders:['Content-Type','Authorization']});
   await app.register(rateLimit,{max:120,timeWindow:'1 minute',errorResponseBuilder:()=>new AppError('RATE_LIMITED','Too many requests; please try again shortly.',429)});
