@@ -108,3 +108,29 @@ One `ResearchResult.offers` array is retained. Optional `eligibilityStatus`, `ev
 ## Universal Products v1 — contract 1.10.0
 
 The existing research endpoint and single offers array are retained. Optional request fields: `productSource` (auto/web/ebay), `country` (ISO2), `currency`, `searchTerms`, `providerCategoryId`, `deliveryPostalCode`. Offers can retain supported original currencies or null; project/cart budgets stay EUR. Optional `product` metadata carries provider/item identity, API/metadata provenance, original/provider-display-converted prices, requested marketplace, images, shipping class and known subtotal. Cart choices preserve this metadata. Results optionally include `productRoutes`, `productDiagnostics` and `providerOrder`. Provider source order must not be locally re-sorted. Same-currency original prices render through `formatMoney(...,{currency})`; do not compare currencies without a sourced conversion. Foreign and potential offers are rejected from cart/replacement/scenario budgets server-side. API failures never trigger web research automatically. Existing unsupported/missing-credential states offer an explicit web retry. `GET /api/products/capabilities` is authenticated and contains only safe access/country/category metadata. API credentials remain backend-only. See `UNIVERSAL_PRODUCTS_V1.md` for access blockers, official contract evidence and the synthetic local demo.
+
+## Demo rescue — contract 1.10.1
+
+Optional `ResearchResult.sourceNotes` retains up to eight safe cited discovery sources (`url`, `title`, `summary`, `evidence`: `cited_summary` or `source_reference`). These are research context, not product offers, and cannot enter the cart or budget. The existing catalog shows notes even when no qualifying listings exist. A completed search can return `limited` notes with an explicit extraction/quota/timeout warning instead of losing already obtained sources. Failed initial searches still return structured errors. No additional provider calls, quota increases or price-verification claims are introduced. Old saved results remain compatible.
+
+The same rescue also fixes product intent taking precedence over an incidental apartment mention, adds the standard research widget after an explicit successful search when none exists (without unhiding a customized hidden widget), and treats markdown missing-location markers as unknown. Older completed searches can expose safe previously cited reference links without another paid call, without recreating offers/prices or clearing genuine hard-constraint violations.
+
+## Focused furniture research — contract 1.10.2
+
+Optional `ResearchResult.furnitureSearchLinks` contains typed `source_search` handoffs for IKEA Finland, JYSK Finland and Tori.fi. Render separately from offers: no price, listing photo or Add to plan. Existing request schemas and paid actions are reused. Multi-item furniture requests keep all mentioned types; moving onboarding recognizes find/search and plurals. The optional Shopping button explicitly selects these sources and Web research. No insurer, budget or auth contract changes. See `FURNITURE_RESEARCH.md`.
+
+
+## Contract 1.11.0 — SerpApi Google Shopping
+
+Additive, backward-compatible product research integration. Existing eBay and Web results remain readable.
+
+- `ResearchRequest.productSource` accepts `serpapi`; `auto`/omitted prefers configured SerpApi for supported consumer goods. Explicit `web` and `ebay` retain their providers. Non-product/service routes remain Web Research.
+- `Offer.product.provider` and `ResearchResult.productDiagnostics.provider` can be `serpapi`.
+- Optional `Offer.product.linkDestination` is `google_product`, `retailer` or `unknown`. A Google product link is labelled “View on Google Shopping”, not a direct retailer checkout.
+- Reuse existing source-reported price, image, potential/supported, feedback, cart and scenario contracts. An unknown delivery fee remains `null`; potential/foreign-currency results cannot be added to a EUR plan.
+- No automatic Web fallback on a structured-provider error. The retry/fallback UI requires a click and warns that Web Research uses the AI allowance.
+- New backend-only variables are documented in `.env.example` and `SERPAPI_SHOPPING.md`. No browser key, secret or authentication change.
+
+### Public cart/scenario request fix
+
+`src/api/live.ts` now sends `{}` with `Content-Type: application/json` for bodyless state-changing requests. The live browser exposed that DELETE cart/insurance and POST scenario recalculation otherwise failed the existing public CSRF guard. Origin/session/CSRF checks are unchanged. A real anonymous-session browser test verifies removal/recalculation and confirms non-JSON DELETE still returns 403 (`playwright.serpapi-access.config.ts`).

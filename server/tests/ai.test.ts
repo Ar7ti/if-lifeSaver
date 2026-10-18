@@ -356,3 +356,21 @@ test('broad furniture tab cannot erase the last sofa search on refinements or ad
  const broad=await planner.assistant(p,{message:'Find only used furniture.',context:{activeCategory:'furniture'}});
  const furniture=broad.commands.find(c=>c.type==='research_products');assert(furniture&&furniture.type==='research_products');assert.equal(furniture.arguments.category,'furniture');
 });
+
+test('furniture or bed for an apartment is product intent, not an apartment-rental search',async()=>{
+ const planner=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply:'Review these options.',explanations:[],proposals:[]}}));
+ for(const [message,category] of [['Find affordable furniture for my apartment and show relevant sources.','furniture'],['Find a bed for my apartment','bed'],['Find rental apartments in Turku','housing']] as const){
+  const r=await planner.assistant(project(),{message});const action=r.commands.find(c=>c.type==='research_products'||c.type==='research_services');assert(action);assert.equal(action.arguments.category,category);assert.equal(action.type,category==='housing'?'research_services':'research_products');
+ }
+});
+
+test('safety filtering retains grounded budget advice while excluding unsupported prices and transaction claims',async()=>{
+ const p=project();p.budget.confirmed=true;
+ const make=(reply:string)=>createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply,explanations:[],proposals:[]}}));
+ const good=await make('Your confirmed budget is EUR 2,000. Pack non-fragile items yourself and compare itemized mover quotes. Keep your reserve separate.').assistant(p,{message:'How can I reduce my moving expenses?'});
+ assert.match(good.reply,/confirmed budget is EUR 2,000/);assert.match(good.reply,/Pack non-fragile/);assert.match(good.reply,/reserve/);assert.doesNotMatch(good.reply,/I can propose these/);
+ const mixed=await make('The verified price is EUR 99. Compare itemized moving quotes. I booked a van.').assistant(p,{message:'How can I reduce my moving expenses?'});
+ assert.equal(mixed.reply,'Compare itemized moving quotes.');
+ const wrong=await make('Your confirmed budget is EUR 9,000. Pack carefully.').assistant(p,{message:'How can I reduce my moving expenses?'});
+ assert.doesNotMatch(wrong.reply,/9,000/);assert.match(wrong.reply,/Pack carefully/);
+});

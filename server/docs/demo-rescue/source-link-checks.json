@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://www.ikea.com/fi/fi/p/glostad-2-n-istuttava-sohva-knisa-tummanharmaa-50489012/?utm_source=openai",
+    "method": "GET",
+    "httpStatus": 200,
+    "detailsVerified": false
+  },
+  {
+    "url": "https://www.wanhaelias.fi/tuotteet/huonekalut/?utm_source=openai",
+    "method": "GET",
+    "httpStatus": 200,
+    "detailsVerified": false
+  }
+]

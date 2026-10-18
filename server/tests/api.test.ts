@@ -137,3 +137,12 @@ test('service inquiry drafts use recorded route and quote terms without contacti
   assert.match(draft.json().draft,/from Helsinki to Turku, Finland on 2026-11-15/);
   assert.match(draft.json().draft,/itemized quote/);assert.match(draft.json().draft,/cancellation terms/);
 });
+
+test('explicit product research creates one existing-style catalog and respects hidden state on subsequent research',async t=>{
+ const {app,project}=await setup();t.after(()=>app.close());const url=base(project);
+ assert(!project.workspace.widgets.some(w=>w.type==='product_catalog'));
+ for(let i=0;i<2;i++)assert.equal((await app.inject({method:'POST',url:url+'/research',payload:{category:'furniture',kind:'product',preferences:['Looking for: furniture for my apartment']}})).statusCode,200);
+ let p=(await app.inject(url)).json().project;const widgets=p.workspace.widgets.filter((w:any)=>w.type==='product_catalog');assert.equal(widgets.length,1);assert.equal(widgets[0].visible,true);assert.equal(p.researchResults.at(-1).category,'furniture');assert.equal(p.budget.totalMinor,200000);
+ assert.equal((await app.inject({method:'PATCH',url:url+'/workspace',payload:{widgets:[{id:widgets[0].id,visible:false}]}})).statusCode,200);
+ await app.inject({method:'POST',url:url+'/research',payload:{category:'furniture'}});p=(await app.inject(url)).json().project;assert.equal(p.workspace.widgets.filter((w:any)=>w.type==='product_catalog').length,1);assert.equal(p.workspace.widgets.find((w:any)=>w.id===widgets[0].id).visible,false);
+});

@@ -1,4 +1,4 @@
-import { ResearchRequestSchema,type ResearchRequest,type LifeProject } from '../../shared/contracts/index.js';
+import { furnitureItems, ResearchRequestSchema,type ResearchRequest,type LifeProject } from '../../shared/contracts/index.js';
 
 /** Current user text only; never run this against retrieved pages. Unrecognized
  * constraints remain in preferences for the existing model, not silently guessed. */
@@ -34,7 +34,7 @@ export function normalizeResearchRequest(input:ResearchRequest):ResearchRequest 
  const words=input.preferences.join(' ');
  const categoryText=input.category.replaceAll('_',' ');
  const requested=input.searchTerms??(/\b(?:find|looking|under|cheapest)\b/i.test(categoryText)||['furniture','general'].includes(input.category)?categoryText+' '+words:'');
- const category=/\b(?:laptops?|macbook|notebook)\b/i.test(requested)?'laptop':/\b(?:iphones?|smartphones?|phones?)\b/i.test(requested)?'smartphone':/\b(?:sofas?|couches?)\b/i.test(requested)?'sofa':/\b(?:beds?|mattress)\b/i.test(requested)?'bed':/\bdesks?\b/i.test(requested)?'desk':/\b(?:rental|apartments?)\b/i.test(requested)?'housing':/\b(?:toyota|vehicles?|cars?)\b/i.test(requested)?'vehicle':input.category;
+ const category=furnitureItems(requested).length>1?'furniture':/\b(?:laptops?|macbook|notebook)\b/i.test(requested)?'laptop':/\b(?:iphones?|smartphones?|phones?)\b/i.test(requested)?'smartphone':/\b(?:sofas?|couches?)\b/i.test(requested)?'sofa':/\b(?:beds?|mattress)\b/i.test(requested)?'bed':/\bdesks?\b/i.test(requested)?'desk':/\bfurniture\b/i.test(requested)?'furniture':/\b(?:rental|apartments?)\b/i.test(requested)?'housing':/\b(?:toyota|vehicles?|cars?)\b/i.test(requested)?'vehicle':input.category;
  return ResearchRequestSchema.parse({...explicitResearchConstraints(words),...input,category});
 }
 

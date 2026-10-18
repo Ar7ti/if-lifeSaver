@@ -1,0 +1,39 @@
+{
+  "aiStatus": {
+    "day": "2026-10-18",
+    "publicAiEnabled": true,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [
+      {
+        "role": "admin",
+        "calls": 14,
+        "chargedMicroUsd": 912870,
+        "pending": 0
+      },
+      {
+        "role": "anonymous",
+        "calls": 13,
+        "chargedMicroUsd": 1729518,
+        "pending": 0
+      }
+    ],
+    "costsAreEstimates": true
+  },
+  "demoProject": {
+    "totalMinor": 200000,
+    "committedMinor": 0,
+    "proposedMinor": 0,
+    "cartItems": 0,
+    "deliveryRequired": null,
+    "allowUsed": null
+  },
+  "safeConfig": {
+    "PUBLIC_ACCESS_ENABLED": "true",
+    "PUBLIC_AI_REQUESTS_PER_DAY": "5",
+    "PUBLIC_MAX_CONCURRENT_AI_REQUESTS_PER_SESSION": "1",
+    "GLOBAL_MAX_CONCURRENT_AI_REQUESTS": "3",
+    "GLOBAL_DAILY_AI_BUDGET_USD": "3.00",
+    "SESSION_COOKIE_SECURE": "true"
+  }
+}

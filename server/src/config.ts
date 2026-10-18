@@ -30,6 +30,10 @@ const EnvSchema = z.object({
   EBAY_ENVIRONMENT:z.enum(['production','sandbox']).default('sandbox'), EBAY_CLIENT_ID:z.string().min(1).optional(), EBAY_CLIENT_SECRET:z.string().min(1).optional(),
   EBAY_TIMEOUT_MS:z.coerce.number().int().min(100).max(15000).default(8000), PRODUCT_REQUESTS_PER_DAY:z.coerce.number().int().min(1).max(100).default(20),
   GLOBAL_PRODUCT_REQUESTS_PER_DAY:z.coerce.number().int().min(1).max(4000).default(100),
+  SERPAPI_API_KEY:z.string().min(1).optional(), SERPAPI_ENABLED:z.enum(['true','false']).default('true'),
+  SERPAPI_TIMEOUT_MS:z.coerce.number().int().min(100).max(30000).default(15000),
+  SERPAPI_REQUESTS_PER_USER_PER_DAY:z.coerce.number().int().min(0).max(100).default(5),
+  SERPAPI_GLOBAL_REQUESTS_PER_DAY:z.coerce.number().int().min(0).max(10000).default(30),
   IF_CLIENT_ID:z.string().min(1).optional(), IF_CLIENT_SECRET:z.string().min(1).optional(), IF_SUBSCRIPTION_KEY:z.string().min(1).optional(), IF_PARTNER_ID:z.string().min(1).optional(),
   IF_ENVIRONMENT:z.enum(['sandbox','live']).default('sandbox'), IF_TIMEOUT_MS:z.coerce.number().int().min(100).max(15000).default(8000),
 });
@@ -52,6 +56,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   return {host:e.HOST, port:e.PORT, apiKey:e.OPENAI_API_KEY, model:e.OPENAI_MODEL, aiMode, researchMode, storageMode:e.STORAGE_MODE, dataDir:path.resolve(e.DATA_DIR), apiToken:e.API_TOKEN, origins, aiTimeoutMs:e.AI_TIMEOUT_MS, researchTimeoutMs:e.RESEARCH_TIMEOUT_MS, logLevel:e.LOG_LEVEL,
     publicAccess:{enabled:publicEnabled,aiEnabled:e.PUBLIC_AI_ENABLED==='true',dbPath:path.resolve(e.SECURITY_DB_PATH??path.join(e.DATA_DIR,'security.sqlite')),adminKey:e.ADMIN_ACCESS_KEY,secureCookie:e.SESSION_COOKIE_SECURE==='true',sessionTtl:e.SESSION_TTL_SECONDS,adminTtl:e.ADMIN_SESSION_TTL_SECONDS,dailyCalls:e.PUBLIC_AI_REQUESTS_PER_DAY,sessionConcurrency:e.PUBLIC_MAX_CONCURRENT_AI_REQUESTS_PER_SESSION,globalConcurrency:e.GLOBAL_MAX_CONCURRENT_AI_REQUESTS,maxProjects:e.PUBLIC_MAX_WORKSPACES_PER_SESSION,dailyBudget:e.GLOBAL_DAILY_AI_BUDGET_USD,adminBudget:e.ADMIN_DAILY_AI_BUDGET_USD,inputRate:e.AI_INPUT_USD_PER_MILLION,outputRate:e.AI_OUTPUT_USD_PER_MILLION,searchRate:e.AI_WEB_SEARCH_USD_PER_CALL,reservedInputTokens:e.AI_RESERVED_INPUT_TOKENS,newSessions:e.NEW_SESSIONS_PER_HOUR,globalNewSessions:e.GLOBAL_NEW_SESSIONS_PER_HOUR},
     products:{enabled:e.EBAY_ENABLED==='true',approved:e.EBAY_ACCESS_APPROVED==='true',freeApiConfirmed:e.EBAY_FREE_API_CONFIRMED==='true',environment:e.EBAY_ENVIRONMENT,clientId:e.EBAY_CLIENT_ID,clientSecret:e.EBAY_CLIENT_SECRET,timeoutMs:e.EBAY_TIMEOUT_MS,dailyRequests:e.PRODUCT_REQUESTS_PER_DAY,globalDailyRequests:e.GLOBAL_PRODUCT_REQUESTS_PER_DAY},
+    serpapi:{enabled:e.SERPAPI_ENABLED==='true',apiKey:e.SERPAPI_API_KEY,timeoutMs:e.SERPAPI_TIMEOUT_MS,dailyRequests:e.SERPAPI_REQUESTS_PER_USER_PER_DAY,globalDailyRequests:e.SERPAPI_GLOBAL_REQUESTS_PER_DAY},
     ifInsurance:{clientId:e.IF_CLIENT_ID,clientSecret:e.IF_CLIENT_SECRET,subscriptionKey:e.IF_SUBSCRIPTION_KEY,partnerId:e.IF_PARTNER_ID,environment:e.IF_ENVIRONMENT,timeoutMs:e.IF_TIMEOUT_MS}};
 }
 export type Config = ReturnType<typeof loadConfig>;

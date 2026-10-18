@@ -415,7 +415,8 @@ test('prompt injection remains untrusted data, with no executable or URL-fetchin
 test('upstream errors and refusals do not retry, leak secrets, or silently fall back to demo', async t => {
   for (const failAt of [0, 1]) {
     const calls = mockSdk(t, (_call, index) => { if (index === failAt) throw new Error('secret-test-key upstream failure'); return citedSearch(); });
-    await assert.rejects(run(), error => errorCode('RESEARCH_UNAVAILABLE')(error) && !String(error).includes('secret-test-key'));
+    if(failAt===0)await assert.rejects(run(), error => errorCode('RESEARCH_UNAVAILABLE')(error) && !String(error).includes('secret-test-key'));
+    else {const r=await run();assert.equal(r.mode,'live');assert.equal(r.offers.length,0);assert.equal(r.sourceNotes?.length,1);assert(!JSON.stringify(r).includes('secret-test-key'));assert.match(r.warnings.join(' '),/RESEARCH_UNAVAILABLE/);}
     assert.equal(calls.length, failAt + 1);
     t.mock.restoreAll();
   }
@@ -435,7 +436,7 @@ test('invalid extraction JSON, refusal, schema additions and excessive offers fa
   ];
   for (const response of invalid) {
     const calls = mockSdk(t, (_call, index) => index === 0 ? citedSearch() : response);
-    await assert.rejects(run(), errorCode('INVALID_RESEARCH_RESPONSE'));
+    const r=await run();assert.equal(r.mode,'live');assert.equal(r.status,'limited');assert.deepEqual(r.offers,[]);assert.equal(r.sourceNotes?.length,1);assert.match(r.warnings.join(' '),/INVALID_RESEARCH_RESPONSE/);
     assert.equal(calls.length, 2);
     t.mock.restoreAll();
   }
@@ -465,10 +466,10 @@ test('timeout also aborts the extraction stage with no third call', async t => {
     extractionStarted();
     return new Promise(() => {});
   });
-  const pending = assert.rejects(run(createSearchProvider({ ...liveOptions, timeoutMs: 100 })), errorCode('RESEARCH_TIMEOUT'));
+  const pending = run(createSearchProvider({ ...liveOptions, timeoutMs: 100 }));
   await started;
   t.mock.timers.tick(100);
-  await pending;
+  const r=await pending;assert.equal(r.mode,'live');assert.deepEqual(r.offers,[]);assert.equal(r.sourceNotes?.length,1);assert.match(r.warnings.join(' '),/RESEARCH_TIMEOUT/);
   assert.equal(calls.length, 2);
   assert.equal(calls[1]!.options.signal!.aborted, true);
 });

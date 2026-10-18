@@ -7,7 +7,8 @@ import path from 'node:path';
 import {Responses} from 'openai/resources/responses/responses';
 import {buildApp} from '../src/app.js';
 import {loadConfig} from '../src/config.js';
-import {createSearchProvider} from '../src/research.js';
+import {createSearchProvider,restoreResearchReferences} from '../src/research.js';
+import {AppError} from '../src/errors.js';
 import {planResearch} from '../src/research-intent.js';
 import {ResearchRequestSchema,LifeProjectSchema,ResearchResultSchema,type LifeProject} from '../../shared/contracts/index.js';
 
@@ -89,6 +90,41 @@ test('v2 feedback is free, owned, restart-persistent, affects research and canno
  await app.close();app=await buildApp({config});let saved=(await req(a,base)).json().project;assert.equal(saved.researchFeedback.length,1);assert.equal(saved.cart.length,1);assert(saved.scenarios.every((s:any)=>!s.selectedOfferIds.includes(lead.id)));
  const again=await req(a,base+'/research','POST',{category:'sofa',condition:'used',location:'Turku',localOnly:true,maxPrice:200});assert.equal(again.statusCode,200,again.body);assert(!again.json().offers.some((o:any)=>o.title==='Sofa supported'));assert(again.json().rejections.some((r:any)=>r.reasons.includes('workspace_feedback')));
  const clear=await req(a,base+`/research/${result.id}/feedback`,'POST',{offerId:supported.id,type:null});assert.equal(clear.statusCode,200);assert.equal(clear.json().project.researchFeedback.length,0);assert.equal((await req(a,'/api/session')).json().usage.used,4);
- const exhausted=await req(a,base+'/research','POST',{category:'sofa'});assert.equal(exhausted.statusCode,429);assert.equal(exhausted.json().error.code,'AI_QUOTA_EXCEEDED');const used=calls;
- assert.equal((await req(a,base+'/research','POST',{category:'sofa'})).statusCode,429);assert.equal(calls,used);saved=(await req(a,base)).json().project;assert.equal(saved.researchResults.length,2);assert.equal(saved.budget.totalMinor,200000);
+ const exhausted=await req(a,base+'/research','POST',{category:'sofa'});assert.equal(exhausted.statusCode,200);assert.deepEqual(exhausted.json().offers,[]);assert(exhausted.json().sourceNotes.length);assert.equal(exhausted.json().diagnostics.errorCode,'AI_QUOTA_EXCEEDED');assert.equal((await req(a,'/api/session')).json().usage.used,5);const used=calls;
+ assert.equal((await req(a,base+'/research','POST',{category:'sofa'})).statusCode,429);assert.equal(calls,used);saved=(await req(a,base)).json().project;assert.equal(saved.researchResults.length,3);assert.equal(saved.budget.totalMinor,200000);
+});
+
+test('completed search retains relevant cited notes when no specific listing can be extracted',async t=>{
+ const p=await project(),entries=[entry('Sofa shopping guide',null,'unknown')];let calls=0;
+ t.mock.method(Responses.prototype,'create',async()=>calls++===0?search(entries):extraction([]));
+ const r=await createSearchProvider(options).search(ResearchRequestSchema.parse({category:'sofa',condition:'used',maxPrice:200}),p);
+ assert.equal(calls,2);assert.equal(r.mode,'live');assert.deepEqual(r.offers,[]);assert.equal(r.sourceNotes?.length,1);
+ assert.equal(r.sourceNotes![0]!.url,entries[0]!.url);assert.equal(r.sourceNotes![0]!.evidence,'cited_summary');assert.match(r.summary!.explanation,/cited research source/);
+ assert.deepEqual(r.request!.maxPrice,200);assert.equal(p.budget.totalMinor,200000);assert.equal(p.cart.length,0);
+});
+test('known constraint violations and unsafe URLs never reappear as research notes',async t=>{
+ const r=await run(t,[entry('Sofa expensive',450),entry('Sofa wrong condition',100,'new'),entry('Sofa unsafe',100,'used','Turku','https://127.0.0.1/private')]);
+ assert.deepEqual(r.offers,[]);assert.deepEqual(r.sourceNotes,[]);assert(r.rejections!.some(r=>r.reasons.includes('price')));
+});
+test('quota denied extraction retains already paid cited discovery without automatic retry',async t=>{
+ const p=await project(),entries=[entry('Sofa guide',null,'unknown')];let calls=0;
+ t.mock.method(Responses.prototype,'create',async()=>{if(calls++===0)return search(entries);throw new AppError('AI_QUOTA_EXCEEDED','Provider allowance exhausted',429);});
+ const r=await createSearchProvider(options).search(ResearchRequestSchema.parse({category:'sofa'}),p);
+ assert.equal(calls,2);assert.deepEqual(r.offers,[]);assert.equal(r.sourceNotes?.length,1);assert.match(r.warnings.join(' '),/AI_QUOTA_EXCEEDED/);assert.equal(r.diagnostics!.errorCode,'AI_QUOTA_EXCEEDED');
+});
+
+test('Finnish furniture identities and markdown missing-location markers retain honest potential leads',async t=>{
+ const p=await project(),a=entry('GLOSTAD 2:n istuttava sohva',100,'unknown','** not stated'),b=entry('SIRO ANTIIKKISOHVA',100,'unknown','Turku'),c=entry('TUOLI 1800-LUKU',100,'unknown','Turku');
+ const r=await run(t,[a,b,c],{category:'furniture',condition:'any'},p);
+ assert.equal(r.offers.length,3);const missing=r.offers.find(o=>o.title===a.candidate.title)!;assert.equal(missing.location,null);assert.equal(missing.evidenceByField!.location!.status,'unknown');assert.equal(missing.eligibilityStatus,'potential');assert(r.offers.every(o=>o.evidenceByField!.category!.status==='source_supported'));
+});
+test('older completed search recovers only relevant source references, never prices or known violations',async t=>{
+ const p=await project(),r=await run(t,[],{category:'furniture'});r.sourceNotes=[];r.rejections=[
+ {sourceUrl:'https://fixture-market.fi/furniture',title:'SIRO ANTIIKKISOHVA',reasons:['category']},
+ {sourceUrl:'https://fixture-market.fi/furniture',title:'TUOLI 1800-LUKU',reasons:['category']},
+ {sourceUrl:'https://fixture-market.fi/remote',title:'GLOSTAD sohva',reasons:['category','location']},
+ {sourceUrl:'https://fixture-market.fi/unknown',title:'GLOSTAD unknown marker sohva',reasons:['category','location']},
+ {sourceUrl:'https://fixture-market.fi/toy',title:'Nukkesohva',reasons:['category']},
+ {sourceUrl:'https://127.0.0.1/secret',title:'Sohva',reasons:['category']},
+ ];r.warnings.push('Omitted \"GLOSTAD unknown marker sohva\": category mismatch; location mismatch: reported location ** not stated conflicts with requested Turku, Finland.');restoreResearchReferences(r,p);assert.equal(r.sourceNotes!.length,2);assert.equal(r.sourceNotes![0]!.evidence,'source_reference');assert.equal(r.sourceNotes![0]!.url,'https://fixture-market.fi/furniture');assert.deepEqual(r.offers,[]);assert.equal(r.summary!.supportedCount,0);assert.equal(r.summary!.potentialCount,0);assert(ResearchResultSchema.safeParse(r).success);
 });

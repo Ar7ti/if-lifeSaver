@@ -27,3 +27,17 @@ test('synthetic v2 zero-candidate and prior-format results remain distinct and u
  const {base,catalog}=await setup(page,'missing');await expect(catalog.getByText('No supported matches or useful leads',{exact:true})).toBeVisible();await expect(catalog.getByRole('region',{name:'Improve this search'})).toBeVisible();
  await page.request.post(base+'/research',{data:{category:'legacy'}});await page.reload();await expect(catalog.getByRole('region',{name:'Fictional demo options'})).toBeVisible();await expect(page.locator('#w-budget')).toContainText('€2,000');
 });
+test('source-grounded notes stay visible without product listings, persist and never change the budget',async({page})=>{
+ const {base,catalog}=await setup(page,'notes');const notes=catalog.getByRole('region',{name:'Research notes and sources'});
+ await expect(notes.getByRole('link',{name:/Synthetic furniture research guide/})).toHaveAttribute('href','https://fixtures.example.org/furniture-guide');
+ await notes.getByText('Read research note',{exact:true}).click();await expect(notes).toContainText('No real listings or verified prices');
+ await expect(catalog.getByText('Useful sources found — exact listings need checking',{exact:true})).toBeVisible();await expect(notes.getByRole('button',{name:'Add to plan'})).toHaveCount(0);
+ await page.reload();await expect(notes).toBeVisible();const p=(await(await page.request.get(base)).json()).project;expect(p.budget.totalMinor).toBe(200000);expect(p.cart).toHaveLength(0);expect(p.researchResults.at(-1).sourceNotes).toHaveLength(1);
+});
+test('workspace content remains painted when animation playback is stalled',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});const {catalog}=await setup(page,'notes');
+ await page.evaluate(()=>document.getAnimations().forEach(a=>a.pause()));
+ const paint=await catalog.evaluate(el=>{const styles=[];for(let n:Element|null=el;n;n=n.parentElement)styles.push({opacity:getComputedStyle(n).opacity,visibility:getComputedStyle(n).visibility});return styles;});
+ expect(paint.every(s=>Number(s.opacity)>0&&s.visibility==='visible')).toBe(true);
+ await expect(catalog.getByRole('region',{name:'Research notes and sources'})).toBeVisible();
+});

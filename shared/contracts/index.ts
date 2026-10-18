@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ImageMetadataShape, StoredProductImageSchema, ScenarioChangeSchema, ScenarioSelectionSchema } from './shopping.js';
 export * from './shopping.js';
 export * from './visuals.js';
+export * from './furniture.js';
 export { SessionResponseSchema, ProjectListResponseSchema, type SessionResponse } from './access.js';
 import { ProtectionTimelineStateSchema, ProtectionTimelineResponseSchema } from './protection-timeline.js';
 export * from './protection-timeline.js';
@@ -19,7 +20,7 @@ export * from './protection.js';
  * ResearchRequest.maxPrice is the sole major-unit input, e.g. 250 = €250.
  * All objects are declarative data; arbitrary code/HTML/config keys are rejected.
  */
-export const CONTRACT_VERSION = '1.10.0';
+export const CONTRACT_VERSION = '1.11.0';
 export const ScenarioTypeSchema = z.enum(['moving','travel','car_purchase','home_furnishing','student_life','other']);
 export type ScenarioType = z.infer<typeof ScenarioTypeSchema>;
 export const IdSchema = z.string().uuid();
@@ -64,7 +65,9 @@ export const ProjectTaskSchema = z.object({ id: IdSchema, title: TextSchema, cat
 export const RiskSchema = z.object({ id: z.string().min(1), category: z.enum(['budget', 'delivery', 'seller', 'transport', 'planning', 'contract']), severity: z.enum(['low', 'medium', 'high']), title: TextSchema, explanation: TextSchema, evidence: z.array(TextSchema).min(1), preventiveAction: TextSchema, status: z.enum(['open', 'acknowledged', 'resolved']), sourceUrl: PublicUrlSchema.nullable() }).strict();
 export const SimulationScenarioSchema = z.object({ id: z.enum(['economy', 'balanced', 'comfort']), name: z.enum(['Economy', 'Balanced', 'Comfort']), estimatedTotalMinor: MinorSchema, verifiedCostMinor: MinorSchema, estimatedCostMinor: MinorSchema, remainingMinor: z.number().int().safe(), emergencyReserveMinor: MinorSchema, withinBudget: z.boolean(), convenience: z.enum(['low', 'medium', 'high', 'unknown']), effort: z.enum(['low', 'medium', 'high', 'unknown']), changes:z.array(ScenarioChangeSchema).optional(), fingerprint:z.string().regex(/^[a-f0-9]{64}$/).optional(), sourceMode:z.enum(['live','demo','mixed','planning']).optional(), feasibility:z.enum(['within_budget','over_budget','incomplete']).optional(), explanation:z.string().max(2000).optional(), convenienceEvidence:z.array(z.string()).optional(), selectedOfferIds: z.array(IdSchema), lockedCartItemIds: z.array(IdSchema), risks: z.array(z.string()), tradeOffs: z.array(z.string()), missingData: z.array(z.string()), calculatedAt: TimestampSchema, basedOnRevision: z.number().int().nonnegative() }).strict();
 export const ResearchRequestSchema = z.object({ category: CategoryIdSchema, location: z.string().trim().min(1).max(200).optional(), maxPrice: z.number().nonnegative().max(10_000_000).multipleOf(0.01).optional(), kind: z.enum(['product', 'service']).default('product'), preferences: z.array(z.string().max(200)).max(20).default([]), ...ResearchConstraintsShape, ...ProductSearchShape }).strict();
-export const ResearchResultSchema = z.object({ ...ProductResearchShape, id: IdSchema, category: CategoryIdSchema, status: z.enum(['completed', 'limited', 'unavailable']), mode: z.enum(['live', 'demo', 'unavailable']), offers: z.array(OfferSchema).max(30), warnings: z.array(z.string()), searchedAt: TimestampSchema, query: z.string().max(2000), request:ResearchRequestSchema.optional(), diagnostics:ResearchDiagnosticsSchema.optional(), summary:ResearchSummarySchema.optional(), refinementSuggestions:z.array(ResearchRefinementSchema).max(4).optional(), rejections:z.array(ResearchRejectionSchema).max(30).optional(), engineVersion:z.literal(2).optional() }).strict();
+export const ResearchSourceNoteSchema = z.object({url:PublicUrlSchema,title:z.string().min(1).max(300),summary:z.string().max(1600),evidence:z.enum(['cited_summary','source_reference'])}).strict();
+export const FurnitureSearchLinkSchema = z.object({source:z.enum(['ikea','jysk','tori']),sourceName:z.string().max(40),item:z.enum(['sofa','bed','desk','chair','wardrobe','furniture']),title:z.string().min(1).max(40),query:z.string().max(250),url:PublicUrlSchema,kind:z.literal('source_search'),notice:z.string().max(700)}).strict();
+export const ResearchResultSchema = z.object({ ...ProductResearchShape, id: IdSchema, category: CategoryIdSchema, status: z.enum(['completed', 'limited', 'unavailable']), mode: z.enum(['live', 'demo', 'unavailable']), offers: z.array(OfferSchema).max(30), warnings: z.array(z.string()), searchedAt: TimestampSchema, query: z.string().max(2000), request:ResearchRequestSchema.optional(), diagnostics:ResearchDiagnosticsSchema.optional(), summary:ResearchSummarySchema.optional(), sourceNotes:z.array(ResearchSourceNoteSchema).max(8).optional(), furnitureSearchLinks:z.array(FurnitureSearchLinkSchema).max(15).optional(), refinementSuggestions:z.array(ResearchRefinementSchema).max(4).optional(), rejections:z.array(ResearchRejectionSchema).max(30).optional(), engineVersion:z.literal(2).optional() }).strict();
 export const TaskInputSchema = ProjectTaskSchema.pick({title:true, category:true, dueDate:true, notes:true});
 export const AllocationInputSchema = z.object({ categories: z.array(z.object({ id: CategoryIdSchema, title: z.string().min(1).max(80), allocatedMinor: MinorSchema }).strict()).min(1).max(20), emergencyReserveMinor: MinorSchema }).strict();
 export const ActionArguments = {

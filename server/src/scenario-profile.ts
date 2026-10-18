@@ -107,7 +107,7 @@ function inferredPreferences(message: string, type: ScenarioType, base?: Prefere
   const vehicleType = /\b(?:(?:reliable|used|new|electric|hybrid|family|small)\s+){1,3}(?:car|vehicle|van|suv)\b/i.exec(message)?.[0] ?? null;
   const requiredItems=new Set(base?.requiredItems??[]);
   for(const clause of message.split(/[.!?\n]/)) {
-    if(!/\b(?:need|buy|looking for|furnish)\b/i.test(clause)||/\b(?:don't|do not|no longer) (?:need|want)|\bno (?:new )?furniture\b/i.test(clause))continue;
+    if(!/\b(?:need|buy|find|search|looking for|furnish)\b/i.test(clause)||/\b(?:don't|do not|no longer) (?:need|want)|\bno (?:new )?furniture\b/i.test(clause))continue;
     for(const item of ['sofa','bed','desk','chair','table','wardrobe','lamp','laptop','smartphone','monitor','bicycle'])
       if(new RegExp(`\\b${item}s?\\b`,'i').test(clause)&&!ownedItems.has(item)&&!(ownsFurniture===true&&['sofa','bed','desk','chair','table','wardrobe'].includes(item)))requiredItems.add(item);
   }
@@ -150,9 +150,9 @@ export function buildScenarioProfile(input: {message: string; scenarioType?: Sce
   const recommend = (text: string) => recommendations.push(text);
   if (scenarioType === 'moving') {
     add('moving','Moving services','Moving requires a way to transport belongings.', 5);
-    if (!preferences.ownsFurniture && !owned.has('bed') && /\b(?:need|buy|looking for)\s+(?:a\s+)?(?:bed|mattress)\b/i.test(message)) add('bed','Bed','A bed was explicitly requested for the move.', 2);
-    const furnitureNeed = /\b(?:need|buy|furnish)\b[^.!?\n]{0,60}\bfurniture\b/i.test(message)
-      || ['sofa','desk','table','chair','wardrobe'].some(item=>!owned.has(item) && new RegExp(`\\b(?:need|buy|looking for)\\b[^.!?\\n]{0,40}\\b${item}\\b`,'i').test(message));
+    if (!preferences.ownsFurniture && !owned.has('bed') && /\b(?:need|buy|find|search|looking for)\s+(?:a\s+)?(?:bed|mattress)\b/i.test(message)) add('bed','Bed','A bed was explicitly requested for the move.', 2);
+    const furnitureNeed = /\b(?:need|buy|find|search|furnish)\b[^.!?\n]{0,60}\bfurniture\b/i.test(message)
+      || ['sofa','desk','table','chair','wardrobe'].some(item=>!owned.has(item) && new RegExp(`\\b(?:need|buy|find|search|looking for)\\b[^.!?\\n]{0,40}\\b${item}s?\\b`,'i').test(message));
     if (!preferences.ownsFurniture && furnitureNeed) add('furniture','Furniture','The move includes an explicit furniture need.', 2);
     if (!location) questions.push('Where are you moving?');
     if (!preferences.moveDate) questions.push('What is the exact move date?');

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, useReducedMotion } from 'motion/react';
 import { ArrowDown, ArrowUp, Eye, EyeOff, LayoutGrid, SlidersHorizontal } from 'lucide-react';
 import { WorkspaceSchema, type LifeProject, type WorkspacePatch, type WorkspaceWidget } from '@contracts';
 import { ApiError } from '@/api';
@@ -46,12 +45,11 @@ function useLayoutMutation() {
 
 const span = (w: WorkspaceWidget) => Math.max(w.position.w, REGISTRY[w.type].minSpan) >= 12 ? 12 : 6;
 
-export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
+export function WorkspaceGrid(_props: { fresh: boolean }) {
   const { project } = useWorkspace();
   const collapsed = useUi(s => s.collapsed[project.id]);
   const toggleCollapsed = useUi(s => s.toggleCollapsed);
   const layout = useLayoutMutation();
-  const reduce = useReducedMotion();
   const [customizing, setCustomizing] = useState(false);
 
   // Only validated, declarative specs reach the renderer; unknown types cannot render.
@@ -117,13 +115,9 @@ export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
               const def = REGISTRY[w.type];
               const s = span(w);
               return (
-                <motion.div
+                <div
                   key={w.id}
                   id={firstOfType.get(w.type) === w.id ? `w-${w.type}` : undefined}
-                  layout={reduce ? false : 'position'}
-                  initial={fresh && !reduce ? { opacity: 0, y: 28, scale: 0.97 } : false}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 210, damping: 26, delay: fresh ? 0.12 + i * 0.07 : 0 }}
                   className={cn('min-w-0 scroll-mt-24', s === 12 ? '@4xl:col-span-12' : '@4xl:col-span-6')}
                 >
                   <WidgetFrame
@@ -146,7 +140,7 @@ export function WorkspaceGrid({ fresh }: { fresh: boolean }) {
                       <def.Component widget={w} />
                     </ErrorBoundary>
                   </WidgetFrame>
-                </motion.div>
+                </div>
               );
             })}
           </div>

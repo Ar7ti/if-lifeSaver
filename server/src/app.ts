@@ -27,6 +27,7 @@ import { ProtectionUpdateSchema, CarInsuranceDraftSchema, CarQuoteRequestSchema,
 import { SecurityStore } from './security-store.js';
 import { registerPublicAccess } from './public-access.js';
 import { paidProviderCall } from './access-context.js';
+import {SerpApiShoppingProvider} from './products/serpapi.js';
 
 export interface AppDependencies {config?:Config; repository?:ProjectRepository; planner?:Planner; search?:SearchProvider;productProviders?:ProductProvider[]; ifInsurance?:IfInsuranceProvider;carInsurance?:CarInsuranceProvider}
 const ProjectParams = z.object({projectId:IdSchema}).strict();
@@ -46,7 +47,10 @@ export async function buildApp(deps: AppDependencies={}) {
   await repository.ready();
   if(config.publicAccess.enabled){if(!repository.enableAccessControl||!repository.list)throw new Error('Public access requires an ownership-aware repository');repository.enableAccessControl(config.publicAccess.maxProjects);}
   const productLimiter=config.products.enabled?new ProductRequestLimiter(path.join(config.dataDir,'product-usage.sqlite'),config.products.dailyRequests,config.products.globalDailyRequests):null;
-  const productProviders=deps.productProviders??[new EbayBrowseProvider(config.products,{limit:(scope,dispatch)=>productLimiter?productLimiter.run(scope,dispatch):dispatch(),allow:()=>!config.publicAccess.enabled||accessContext.getStore()?.principal.role==='admin'||security?.enabled()===true,diagnose:event=>app.log.info({product:event},'product_provider_diagnostic')})];
+  const serpLimiter=config.serpapi.enabled&&config.serpapi.apiKey?new ProductRequestLimiter(path.join(config.dataDir,'serpapi-usage.sqlite'),config.serpapi.dailyRequests,config.serpapi.globalDailyRequests):null;
+  const productProviders=deps.productProviders??[
+    new SerpApiShoppingProvider(config.serpapi,{limit:(scope,dispatch)=>{if(!serpLimiter)throw new AppError('SERPAPI_NOT_CONFIGURED','Google Shopping is not configured.',503);return serpLimiter.run(scope,dispatch);},allow:()=>!config.publicAccess.enabled||accessContext.getStore()?.principal.role==='admin'||security?.enabled()===true,diagnose:event=>app.log.info({product:event},'product_provider_diagnostic')}),
+    new EbayBrowseProvider(config.products,{limit:(scope,dispatch)=>productLimiter?productLimiter.run(scope,dispatch):dispatch(),allow:()=>!config.publicAccess.enabled||accessContext.getStore()?.principal.role==='admin'||security?.enabled()===true,diagnose:event=>app.log.info({product:event},'product_provider_diagnostic')})];
   search=createProductResearchRouter(search,productProviders,{diagnose:event=>app.log.info({product:event},'product_research_diagnostic')});
   const service=new ProjectService(repository,planner,search);
   const ifInsurance=deps.ifInsurance??createIfInsuranceProvider(config.ifInsurance);
@@ -67,7 +71,7 @@ export async function buildApp(deps: AppDependencies={}) {
   });
   const security=config.publicAccess.enabled?new SecurityStore(config.publicAccess):null;
   registerPublicAccess(app,config,repository,security);
-  app.addHook('onClose',async()=>{security?.close();productLimiter?.close();});
+  app.addHook('onClose',async()=>{security?.close();productLimiter?.close();serpLimiter?.close();});
   app.setErrorHandler((error,request,reply)=>{
     // Contracts may be consumed from a separate package with its own Zod instance.
     if(error instanceof ZodError || (error instanceof Error && error.name==='ZodError' && Array.isArray((error as ZodError).issues))) {
@@ -87,6 +91,7 @@ export async function buildApp(deps: AppDependencies={}) {
     const body=isQuote&&request.body&&typeof request.body==='object'?Object.fromEntries(Object.entries(request.body).filter(([key])=>key!=='personalIdentityNumber')):request.body;
     if(containsFinnishIdentityNumber(body))throw new AppError('SENSITIVE_INPUT','Enter identity numbers only in the dedicated If quote field. They cannot be saved in your project or sent to the assistant.',400);
   });
+  app.get('/api/admin/product-usage',async()=>({serpapi:{configured:Boolean(config.serpapi.enabled&&config.serpapi.apiKey),...(serpLimiter?.status()??{requests:0,limit:config.serpapi.globalDailyRequests,personalLimit:config.serpapi.dailyRequests,timezone:'UTC'})}}));
   app.get('/api/products/capabilities',async()=>({providers:productProviders.map(p=>p.getCapabilities()),webResearchAvailable:config.researchMode==='live'}));
   app.get('/api/health',async()=>({status:'ok' as const,ready:true,contractVersion:CONTRACT_VERSION,configuration:{ai:config.aiMode,research:search.mode,storage:repository.mode,authentication:Boolean(config.apiToken),providers:{ai:deps.planner?'injected':config.aiMode==='openai'?'openai_sdk':'local',research:deps.search?'injected':config.researchMode==='live'?'openai_sdk':config.researchMode}}}));
   app.post('/api/projects',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(request,reply)=>{

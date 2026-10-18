@@ -1,0 +1,44 @@
+{
+  "production": [
+    {
+      "service": "api",
+      "serviceId": "3416cb94-d9e8-4894-9918-e8002d8004cf",
+      "deploymentId": "e2d53686-7e45-41a1-a8ae-3b44162a7161",
+      "status": "SUCCESS"
+    },
+    {
+      "service": "web",
+      "serviceId": "4d7d0338-9668-4843-ac57-2dc862cae5b7",
+      "deploymentId": "5073a485-83b1-43eb-9a0d-3b230c05e4e1",
+      "status": "SUCCESS"
+    }
+  ],
+  "public-access-staging": [
+    {
+      "service": "api",
+      "serviceId": "3416cb94-d9e8-4894-9918-e8002d8004cf",
+      "deploymentId": "6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a",
+      "status": "SUCCESS"
+    },
+    {
+      "service": "web",
+      "serviceId": "4d7d0338-9668-4843-ac57-2dc862cae5b7",
+      "deploymentId": "2372766f-0e4c-4a2c-aa4e-bc176130c901",
+      "status": "SUCCESS"
+    }
+  ],
+  "live-ai-staging": [
+    {
+      "service": "web",
+      "serviceId": "4d7d0338-9668-4843-ac57-2dc862cae5b7",
+      "deploymentId": "b881b207-f11f-47ab-8a27-1b9c15a5aae3",
+      "status": "SUCCESS"
+    },
+    {
+      "service": "api",
+      "serviceId": "3416cb94-d9e8-4894-9918-e8002d8004cf",
+      "deploymentId": "5c23279d-fa8d-4b78-8d40-f7e26735b2a2",
+      "status": "SUCCESS"
+    }
+  ]
+}

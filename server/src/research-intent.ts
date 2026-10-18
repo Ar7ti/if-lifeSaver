@@ -1,4 +1,5 @@
 import {researchStrategy} from './research-strategy.js';
+import {focusedFurniture} from './furniture-research.js';
 import type { LifeProject, Offer, ResearchRequest } from '../../shared/contracts/index.js';
 
 type Focus = 'rental' | 'insurance' | 'bed' | 'car' | 'accommodation' | 'travel_transport' | 'moving' | 'furniture' | 'generic';
@@ -63,7 +64,8 @@ export function planResearch(request: ResearchRequest, project: LifeProject) {
   const dates = { startDate: p.startDate ?? null, endDate: p.endDate ?? null, durationDays: p.durationDays ?? null, moveDate: p.moveDate };
   const category = allocation?.id === request.category ? allocation.title : request.category.replace(/[_-]/g, ' ');
   const strategy=researchStrategy({category:request.category,focus,condition:request.condition??(p.allowUsed===false?'new':'any'),purpose:request.purpose??'offers',location,origin:p.origin,ceilingMinor:maxItemMinor??planningLimitMinor,period:request.pricePeriod??'one_time',dates,travelers:p.travelers,attributes});
-  const queries=strategy.queries;
+  const furniture=focusedFurniture(request,project);
+  const queries=furniture?.queries??strategy.queries;
   return { scenarioType: project.scenarioType, goal: { title: project.title, originalMessage: project.originalMessage },
     category: { id: request.category, title: category, focus }, location, origin: p.origin, dates,
     travelers: p.travelers ?? null, householdSize: p.householdSize,
@@ -71,7 +73,7 @@ export function planResearch(request: ResearchRequest, project: LifeProject) {
     constraints:{condition:request.condition??(p.allowUsed===false?'new':'any'),localOnly:request.localOnly===true,limit:request.limit??15,sort:request.sort??'recommended',pricePeriod:request.pricePeriod??'one_time',purpose:focus==='insurance'?'information':request.purpose??'offers'},
     preferences: { allowUsed: p.allowUsed, deliveryRequired: p.deliveryRequired, priorities: p.priorities,
       requested: request.preferences, notes: p.notes, ownsFurniture: p.ownsFurniture ?? null, ownedItems: p.ownedItems ?? [],
-      vehicleType: p.vehicleType ?? null, useCase: p.useCase ?? null }, attributes, queries, strategy, excludedSources:(project.researchFeedback??[]).filter(f=>f.type!=='useful').slice(-20).map(f=>f.sourceKey),
+      vehicleType: p.vehicleType ?? null, useCase: p.useCase ?? null }, attributes, queries, strategy:furniture?{...strategy,id:furniture.id,queries,sourceHints:furniture.allowedDomains}:strategy, furniture, excludedSources:(project.researchFeedback??[]).filter(f=>f.type!=='useful').slice(-20).map(f=>f.sourceKey),
   };
 }
 
@@ -107,8 +109,8 @@ export function assessRelevance(title: string, plan: ResearchPlan, sameOfferCont
       return /\b(moving|mover|movers|removal|removals|transport|van hire|\w*muut(?:to|ot)\w*|kuljetus\w*)\b/.test(t)
         ? accept('title identifies a moving or transport service') : reject('title does not identify a moving service');
     case 'furniture':
-      return /\b(chair|table|desk|sofa|couch|bed|mattress|wardrobe|shelf|shelves|bookcase|furniture|dresser|stool|armchair|cabinet)\b/.test(t) &&
-        !/\b(toy|doll|cover|bed ?linen|bedding)\b/.test(t) ? accept('title identifies furniture') : reject('title does not identify furniture');
+      return (/\b(chair|table|desk|sofa|couch|bed|mattress|wardrobe|shelf|shelves|bookcase|furniture|dresser|stool|armchair|cabinet)\b/.test(t) || /\b(?:\w*(?:sohva|sanky|poy[td]|tuoli)\w*|vaatekaap\w*|hylly\w*|lipasto\w*|patja\w*|huonekal\w*)\b/.test(t)) &&
+        !/\b(toy|doll|cover|bed ?linen|bedding)\b|\b\w*(?:lelu|nukke|paallinen|peite|tyyny)\w*\b/.test(t) ? accept('title identifies furniture') : reject('title does not identify furniture');
     default: {
       const rule = furnitureRule(plan.category.id);
       if (rule) return rule.match.test(t) && !rule.avoid.test(t) ? accept(`title identifies the requested ${plan.category.id}`) : reject(`title does not identify the requested ${plan.category.id} itself`);
@@ -135,7 +137,7 @@ export function assessLocation(plan: ResearchPlan, text: string, reported: strin
   const matched = reported ?? (route
     ? /\b(?:destination|arrival)\s*:\s*([^.;\n]{2,100})/i.exec(text)?.[1]?.trim()
     : /\b(?:located in|location\s*:|pickup (?:only )?(?:in|from|at)|(?:hotel|hostel|apartment|accommodation|room|cottage)(?: is)? in)\s*([^.;\n]{2,100})/i.exec(text)?.[1]?.trim()) ?? null;
-  const location = matched && !/^(unknown|not stated|not specified|n\/?a)$/i.test(matched) ? matched : null;
+  const location = matched && !/^(unknown|not stated|not specified|n a|na|ei ilmoitettu|ei tiedossa)$/.test(normalized(matched)) ? matched : null;
   if (route && plan.origin && origin && !samePlace(plan.origin, origin)) return { status: 'conflict', location, reason: `reported route origin ${origin} conflicts with requested ${plan.origin}` };
   if (!plan.location) return { status: 'unknown', location, reason: 'requested location is unknown' };
   if (location && samePlace(location, plan.location)) return { status: 'match', location, reason: `reported location matches ${plan.location}` };

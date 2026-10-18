@@ -1,0 +1,548 @@
+{
+  "checkedAt": "2026-10-18T02:11:06.911382+00:00",
+  "environment": "live-ai-staging",
+  "synthetic": false,
+  "researchOperationsAuthorized": 1,
+  "automaticRetries": 0,
+  "providerModel": "gpt-6.1-sol",
+  "budgetControls": "USD 3 public and USD 3 admin estimated daily budgets; public 5 calls/day and 1/3 concurrency unchanged",
+  "sourceIndependentVerification": false,
+  "providerInvoiceCost": null,
+  "request": {
+    "category": "furniture",
+    "kind": "product",
+    "location": "Turku, Finland",
+    "productSource": "web",
+    "country": "FI",
+    "currency": "EUR",
+    "preferences": [
+      "Looking for: affordable sofas, beds and desks using IKEA, JYSK and Tori."
+    ]
+  },
+  "before": {
+    "day": "2026-10-18",
+    "publicAiEnabled": true,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [
+      {
+        "role": "admin",
+        "calls": 5,
+        "chargedMicroUsd": 203333,
+        "pending": 0
+      },
+      {
+        "role": "anonymous",
+        "calls": 13,
+        "chargedMicroUsd": 1729518,
+        "pending": 0
+      }
+    ],
+    "costsAreEstimates": true
+  },
+  "reuseExistingFictionalDemoWorkspace": true,
+  "httpStatus": 200,
+  "durationMs": 67814,
+  "mode": "live",
+  "resultStatus": "limited",
+  "diagnostics": {
+    "requestId": "64d7d585-7e55-4f65-9c93-58474a4cab35",
+    "operation": "research",
+    "providerMode": "live",
+    "model": "gpt-6.1-sol",
+    "stage": "completed",
+    "toolExecuted": true,
+    "searchCalls": 3,
+    "sourceCount": 56,
+    "passageCount": 13,
+    "candidateCount": 11,
+    "acceptedCount": 2,
+    "rejectedCount": 9,
+    "duplicateCount": 0,
+    "rejectionReasons": {
+      "not_specific_listing": 9,
+      "category": 3
+    },
+    "durationMs": 67410,
+    "inputTokens": 36843,
+    "outputTokens": 4264,
+    "estimatedCostUsd": 0.241332,
+    "errorCode": null,
+    "sourceStrategy": "moving_furniture_finland",
+    "supportedCount": 0,
+    "potentialCount": 2,
+    "missingEvidenceCounts": {
+      "location": 2,
+      "condition": 2,
+      "price": 2,
+      "delivery": 2,
+      "availability": 2
+    }
+  },
+  "summary": {
+    "supportedCount": 0,
+    "potentialCount": 2,
+    "rejectedCount": 9,
+    "sourceCount": 56,
+    "explanation": "No supported matches. 2 potential leads are available; location, price still need checking. 9 source-specific searches are available separately; these links are not listings and do not confirm prices, condition or delivery."
+  },
+  "sourceNotes": [
+    {
+      "url": "https://www.ikea.com/fi/fi/p/saltmyran-2-n-istuttava-sohva-oereryd-harmaanbeige-10596995/?utm_source=openai",
+      "title": "SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige - IKEA",
+      "summary": "**Offer:** SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige; **Price:** 199,- EUR; **Seller:** IKEA; **Location:** not stated; **Delivery:** not stated; **Condition:** not stated; **Availability:** “Tarkistetaan saatavuutta...”; **Image:** not stated; **Assembly:** not stated. Individual product page. ([ikea.com](https://www.ikea.com/fi/fi/p/saltmyran-2-n-istuttava-sohva-oereryd-harmaanbeige-10596995/?utm_source=openai))",
+      "evidence": "cited_summary"
+    },
+    {
+      "url": "https://www.ikea.com/fi/fi/p/soederhamn-2-n-istuttava-divaanisohva-kelinge-tummansininen-s79621756/?utm_source=openai",
+      "title": "SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen - IKEA",
+      "summary": "**Offer:** SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen; **Price:** 639,- EUR; **Seller:** IKEA; **Location:** not stated; **Delivery:** not stated; **Condition:** not stated; **Availability:** “Saatavuuden tarkistaminen...”; **Image:** not stated; **Assembly:** not stated. Individual product page. ([ikea.com](https://www.ikea.com/fi/fi/p/soederhamn-2-n-istuttava-divaanisohva-kelinge-tummansininen-s79621756/?utm_source=openai))",
+      "evidence": "cited_summary"
+    },
+    {
+      "url": "https://jysk.fi/olohuone/sohvat?utm_source=openai",
+      "title": "Sohvat | JYSK",
+      "summary": "**Offer:** Sohva ANDRUP 3-istuttava ovaali beige kangas; **Price:** 399,- EUR/kpl; **Seller:** JYSK; **Location:** not stated; **Delivery:** not stated; **Condition:** not stated; **Availability:** not stated; **Image:** not stated; **Assembly:** not stated. Candidate reported on a category page, not an individual listing. ([jysk.fi](https://jysk.fi/olohuone/sohvat?utm_source=openai))",
+      "evidence": "cited_summary"
+    },
+    {
+      "url": "https://jysk.fi/makuuhuone/sangyt?utm_source=openai",
+      "title": "Sängyt | JYSK",
+      "summary": "**Offer:** Sänky säilytystilalla LIMFJORDEN 90/180x200 beige; **Price:** 300,- EUR/kpl; **Seller:** JYSK; **Location:** not stated; **Delivery:** not stated; **Condition:** not stated; **Availability:** not stated; **Image:** not stated; **Assembly:** not stated. Candidate reported on a category page; mattress inclusion is not established. ([jysk.fi](https://jysk.fi/makuuhuone/sangyt?utm_source=openai))",
+      "evidence": "cited_summary"
+    },
+    {
+      "url": "https://www.ikea.com/fi/fi/cat/tyohuonesetit-53249/?utm_source=openai",
+      "title": "Työpöytä ja tuoli -setit & työhuonesetit - Tilaa heti - IKEA",
+      "summary": "**Offer:** KALLAX / LOBERGET Työpöytä ja tuoli, valkoinen; **Price:** 99,98 EUR; **Seller:** IKEA; **Location:** not stated; **Delivery:** not stated; **Condition:** not stated; **Availability:** not stated; **Image:** not stated; **Assembly:** not stated. Desk-and-chair candidate reported on a category page. ([ikea.com](https://www.ikea.com/fi/fi/cat/tyohuonesetit-53249/?utm_source=openai))",
+      "evidence": "cited_summary"
+    },
+    {
+      "url": "https://www.tori.fi/recommerce/forsale/search?location=1.100016.110853&product_category=2.78.7756.8374&utm_source=openai",
+      "title": "Sohvat | Turku | Tori",
+      "summary": "**Tori:** Search returned a Turku sofa search page, but no verifiable individual sofa, bed or desk listings. I have not treated search results as offers or inferred used condition, seller details or prices. The accessible Turku sofa page is a search handoff only. ([tori.fi](https://www.tori.fi/recommerce/forsale/search?location=1.100016.110853&product_category=2.78.7756.8374&utm_source=openai))",
+      "evidence": "cited_summary"
+    }
+  ],
+  "searchLinks": [
+    {
+      "source": "ikea",
+      "sourceName": "IKEA Finland",
+      "item": "sofa",
+      "title": "Sofas",
+      "query": "sohva",
+      "url": "https://www.ikea.com/fi/fi/search/?q=sohva",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "ikea",
+      "sourceName": "IKEA Finland",
+      "item": "bed",
+      "title": "Beds",
+      "query": "sänky",
+      "url": "https://www.ikea.com/fi/fi/search/?q=s%C3%A4nky",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "ikea",
+      "sourceName": "IKEA Finland",
+      "item": "desk",
+      "title": "Desks",
+      "query": "työpöytä",
+      "url": "https://www.ikea.com/fi/fi/search/?q=ty%C3%B6p%C3%B6yt%C3%A4",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "jysk",
+      "sourceName": "JYSK Finland",
+      "item": "sofa",
+      "title": "Sofas",
+      "query": "sohva",
+      "url": "https://jysk.fi/search?query=sohva",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "jysk",
+      "sourceName": "JYSK Finland",
+      "item": "bed",
+      "title": "Beds",
+      "query": "sänky",
+      "url": "https://jysk.fi/search?query=s%C3%A4nky",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "jysk",
+      "sourceName": "JYSK Finland",
+      "item": "desk",
+      "title": "Desks",
+      "query": "työpöytä",
+      "url": "https://jysk.fi/search?query=ty%C3%B6p%C3%B6yt%C3%A4",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "tori",
+      "sourceName": "Tori.fi",
+      "item": "sofa",
+      "title": "Sofas",
+      "query": "sohva Turku",
+      "url": "https://www.tori.fi/recommerce/forsale/search?q=sohva+Turku",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "tori",
+      "sourceName": "Tori.fi",
+      "item": "bed",
+      "title": "Beds",
+      "query": "sänky Turku",
+      "url": "https://www.tori.fi/recommerce/forsale/search?q=s%C3%A4nky+Turku",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    },
+    {
+      "source": "tori",
+      "sourceName": "Tori.fi",
+      "item": "desk",
+      "title": "Desks",
+      "query": "työpöytä Turku",
+      "url": "https://www.tori.fi/recommerce/forsale/search?q=ty%C3%B6p%C3%B6yt%C3%A4+Turku",
+      "kind": "source_search",
+      "notice": "Search page, not a product listing. Check Turku, Finland, condition, stock and delivery on the source. Keyword search does not apply these filters."
+    }
+  ],
+  "warnings": [
+    "Source checked means URL citation provenance only. Evidence is an assistant-generated cited search summary, not raw webpage text or an independent source API response. Reported prices are estimated, never verified; product, stock, condition, and delivery reports also require confirmation at the source.",
+    "Omitted \"Sänky säilytystilalla LIMFJORDEN 90/180x200 beige\": category or information page is not a specific listing.",
+    "Omitted \"Sohva ANDRUP 3-istuttava ovaali beige kangas\": category or information page is not a specific listing.",
+    "Omitted \"Sohva HEDEHUSENE 3-istuttava beige kangas/kromi\": category or information page is not a specific listing.",
+    "Omitted \"NEIDEN Sängynrunko, mänty, 90x200 cm\": category mismatch: title does not identify furniture; category or information page is not a specific listing.",
+    "Omitted \"SLATTUM Verhoiltu sängynrunko, Vissle tummanharmaa, 140x200 cm\": category mismatch: title does not identify furniture; category or information page is not a specific listing.",
+    "Omitted \"NEIDEN Sängynrunko, mänty, 140x200 cm\": category mismatch: title does not identify furniture; category or information page is not a specific listing.",
+    "Omitted \"SÄBÖVIK Jenkkisänky, kiinteä/Vissle harmaa, 140x200 cm\": category or information page is not a specific listing.",
+    "Omitted \"KALLAX / LOBERGET Työpöytä ja tuoli, valkoinen\": category or information page is not a specific listing.",
+    "Omitted \"TORALD / SMÄLLEN Työpöytä ja tuoli, valkoinen/musta\": category or information page is not a specific listing.",
+    "Potential \"SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige\": The source does not establish the requested local area.; unknown item price.",
+    "Potential \"SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen\": The source does not establish the requested local area.; unknown item price.",
+    "9 candidates were excluded; known violations were not put in potential matches.",
+    "Potential leads have missing evidence. They cannot be added or substituted into the financial plan until reviewed.",
+    "Delivery availability or costs may be unknown; listed prices are not delivered totals.",
+    "Free-text preferences guided discovery but were not independently verified."
+  ],
+  "rejections": [
+    {
+      "sourceUrl": "https://jysk.fi/makuuhuone/sangyt?utm_source=openai",
+      "title": "Sänky säilytystilalla LIMFJORDEN 90/180x200 beige",
+      "reasons": [
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://jysk.fi/olohuone/sohvat?utm_source=openai",
+      "title": "Sohva ANDRUP 3-istuttava ovaali beige kangas",
+      "reasons": [
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://jysk.fi/olohuone/sohvat?utm_source=openai",
+      "title": "Sohva HEDEHUSENE 3-istuttava beige kangas/kromi",
+      "reasons": [
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ikea.com/fi/fi/cat/saengyt-bm003/?msockid=011f3887fd836cd21f932e24fc4a6d19&utm_source=openai",
+      "title": "NEIDEN Sängynrunko, mänty, 90x200 cm",
+      "reasons": [
+        "category",
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ikea.com/fi/fi/cat/saengyt-bm003/?msockid=011f3887fd836cd21f932e24fc4a6d19&utm_source=openai",
+      "title": "SLATTUM Verhoiltu sängynrunko, Vissle tummanharmaa, 140x200 cm",
+      "reasons": [
+        "category",
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ikea.com/fi/fi/cat/saengyt-bm003/?utm_source=openai",
+      "title": "NEIDEN Sängynrunko, mänty, 140x200 cm",
+      "reasons": [
+        "category",
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ikea.com/fi/fi/cat/saengyt-bm003/?utm_source=openai",
+      "title": "SÄBÖVIK Jenkkisänky, kiinteä/Vissle harmaa, 140x200 cm",
+      "reasons": [
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ikea.com/fi/fi/cat/tyohuonesetit-53249/?utm_source=openai",
+      "title": "KALLAX / LOBERGET Työpöytä ja tuoli, valkoinen",
+      "reasons": [
+        "not_specific_listing"
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ikea.com/fi/fi/cat/tyohuonesetit-53249/?utm_source=openai",
+      "title": "TORALD / SMÄLLEN Työpöytä ja tuoli, valkoinen/musta",
+      "reasons": [
+        "not_specific_listing"
+      ]
+    }
+  ],
+  "offers": [
+    {
+      "title": "SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige",
+      "priceMinor": null,
+      "currency": "EUR",
+      "priceStatus": "unknown",
+      "sourceUrl": "https://www.ikea.com/fi/fi/p/saltmyran-2-n-istuttava-sohva-oereryd-harmaanbeige-10596995/?utm_source=openai",
+      "sourceName": "www.ikea.com",
+      "sourceType": "listing",
+      "condition": "unknown",
+      "location": null,
+      "imageUrl": null,
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "location",
+          "required": true,
+          "reason": "The source does not establish the requested local area."
+        },
+        {
+          "field": "condition",
+          "required": false,
+          "reason": "Condition is not stated."
+        },
+        {
+          "field": "price",
+          "required": true,
+          "reason": "A reliable source-reported price is missing."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Delivery arrangements or fees need checking."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current availability is not confirmed."
+        }
+      ],
+      "evidenceByField": {
+        "title": {
+          "status": "source_supported",
+          "snippet": "SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige",
+          "provenance": "cited_search_summary"
+        },
+        "category": {
+          "status": "source_supported",
+          "snippet": "SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige",
+          "provenance": "cited_search_summary"
+        },
+        "sourceType": {
+          "status": "source_supported",
+          "snippet": "SALTMYRAN 2:n istuttava sohva, Öreryd harmaanbeige",
+          "provenance": "cited_search_summary"
+        },
+        "price": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "condition": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "location": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "origin": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "seller": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "image": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "availability": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "delivery": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "dates": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "travelers": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        }
+      }
+    },
+    {
+      "title": "SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen",
+      "priceMinor": null,
+      "currency": "EUR",
+      "priceStatus": "unknown",
+      "sourceUrl": "https://www.ikea.com/fi/fi/p/soederhamn-2-n-istuttava-divaanisohva-kelinge-tummansininen-s79621756/?utm_source=openai",
+      "sourceName": "www.ikea.com",
+      "sourceType": "listing",
+      "condition": "unknown",
+      "location": null,
+      "imageUrl": null,
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "location",
+          "required": true,
+          "reason": "The source does not establish the requested local area."
+        },
+        {
+          "field": "condition",
+          "required": false,
+          "reason": "Condition is not stated."
+        },
+        {
+          "field": "price",
+          "required": true,
+          "reason": "A reliable source-reported price is missing."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Delivery arrangements or fees need checking."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current availability is not confirmed."
+        }
+      ],
+      "evidenceByField": {
+        "title": {
+          "status": "source_supported",
+          "snippet": "SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen",
+          "provenance": "cited_search_summary"
+        },
+        "category": {
+          "status": "source_supported",
+          "snippet": "SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen",
+          "provenance": "cited_search_summary"
+        },
+        "sourceType": {
+          "status": "source_supported",
+          "snippet": "SÖDERHAMN 2:n istuttava divaanisohva, Kelinge tummansininen",
+          "provenance": "cited_search_summary"
+        },
+        "price": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "condition": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "location": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "origin": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "seller": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "image": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "availability": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "delivery": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "dates": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        },
+        "travelers": {
+          "status": "unknown",
+          "snippet": null,
+          "provenance": "none"
+        }
+      }
+    }
+  ],
+  "after": {
+    "day": "2026-10-18",
+    "publicAiEnabled": true,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [
+      {
+        "role": "admin",
+        "calls": 7,
+        "chargedMicroUsd": 444665,
+        "pending": 0
+      },
+      {
+        "role": "anonymous",
+        "calls": 13,
+        "chargedMicroUsd": 1729518,
+        "pending": 0
+      }
+    ],
+    "costsAreEstimates": true
+  },
+  "estimatedApplicationCostUsd": 0.241332,
+  "sdkCallsCharged": 2,
+  "savedResultReloaded": true,
+  "budgetUnchanged": true,
+  "cartUnchanged": true,
+  "adminLoggedOut": true
+}

@@ -63,7 +63,7 @@ export function OfferCard({ offer, tier, reasons, inCart, stale, comparing, onAd
       )}
 
       <div className="flex flex-1 flex-col gap-1.5 px-1.5 pt-3">
-        {offer.product&&<p className="text-caption text-graphite">{offer.product.provider!=='ebay'?'Product metadata · source-reported':offer.product.sourceMode==='sandbox'?'eBay Sandbox · test inventory':'eBay Browse API · provider-reported'}{offer.currency!=='EUR'?' · no EUR conversion':''}</p>}
+        {offer.product&&<p className="text-caption text-graphite">{offer.product.provider==='serpapi'?'Google Shopping · SerpApi · source-reported':offer.product.provider!=='ebay'?'Product metadata · source-reported':offer.product.sourceMode==='sandbox'?'eBay Sandbox · test inventory':'eBay Browse API · provider-reported'}{offer.currency!=='EUR'?' · no EUR conversion':''}</p>}
         {offer.eligibilityStatus&&<p className={cn('text-caption font-medium',offer.eligibilityStatus==='potential'?'text-warn-ink':'text-ok-ink')}>{offer.eligibilityStatus==='potential'?'Potential match · check details':'Matches your criteria'}</p>}
         <h3 className="line-clamp-2 text-body-sm leading-snug font-medium" title={offer.title}>
           {offer.title}
@@ -93,7 +93,7 @@ export function OfferCard({ offer, tier, reasons, inCart, stale, comparing, onAd
           </ul>
         )}
         <details className="text-caption text-graphite">
-          <summary className="cursor-pointer font-medium hover:text-ink">Why AI chose this</summary>
+          <summary className="cursor-pointer font-medium hover:text-ink">{offer.product?'Why this matches':'Why AI chose this'}</summary>
           <p className="mt-1.5 break-words">{offer.confidenceExplanation??offer.recommendation}</p>
           {offer.missingEvidence&&<ul className="mt-2 list-disc space-y-1 pl-4">{offer.missingEvidence.map(m=><li key={m.field}>{m.field}: {m.reason}{m.required?' Required for a supported match.':''}</li>)}</ul>}
           {offer.evidenceByField&&<dl className="mt-2 space-y-2">{Object.entries(offer.evidenceByField).map(([field,e])=>e&&<div key={field}><dt className="font-medium capitalize">{field} · {e.status==='source_supported'?'Supported by source':e.status.replaceAll('_',' ')}</dt>{e.snippet&&<dd className="mt-0.5 break-words">{e.snippet}</dd>}</div>)}</dl>}
@@ -140,7 +140,7 @@ export function OfferCard({ offer, tier, reasons, inCart, stale, comparing, onAd
             )}
             {offer.sourceUrl && (
               <a href={offer.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1 rounded-button px-2 text-caption font-medium text-blue-ink hover:bg-sky-tint" title={offer.sourceUrl}>
-                {host ?? 'Source'} <ExternalLink className="size-3" aria-hidden />
+                {offer.product?.linkDestination==='google_product'?'View on Google Shopping':host ?? 'Source'} <ExternalLink className="size-3" aria-hidden />
                 <span className="sr-only">(opens in a new tab)</span>
               </a>
             )}

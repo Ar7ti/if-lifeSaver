@@ -1,0 +1,12 @@
+{
+  "stagingOnly": true,
+  "rollbackApiWithSerpApiContract": "1689aeff-b0a2-4852-88b1-fdd6b0b671ec",
+  "rollbackWebWithSerpApiContract": "20b0324e-080e-4b80-aaca-87f357322274",
+  "preSerpApiDeployment": "13b7a99c-c391-48a0-a33f-59cd3f742600",
+  "warning": "Pre-SerpApi code cannot safely read newly stored SerpApi provider enum values. Prefer disabling the SerpApi adapter on current code or rolling back to the compatible SerpApi release; preserve all volumes and never delete new research to roll back.",
+  "frozenWorkingRelease": {
+    "api": "85580f46-758e-4cd1-8d1e-8d8dddbfc5a8",
+    "web": "1955d554-dcdb-4de2-9f21-069a2a672aff"
+  },
+  "compatibleFallbackNote": "The older compatible web release predates the public JSON DELETE fix; prefer restoring the frozen working release or disabling only the provider on current code."
+}

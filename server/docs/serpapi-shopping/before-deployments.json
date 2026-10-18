@@ -1,0 +1,50 @@
+[
+  {
+    "environment": "production",
+    "service": "api",
+    "latestId": "e2d53686-7e45-41a1-a8ae-3b44162a7161",
+    "latestStatus": "SUCCESS",
+    "workingId": "e2d53686-7e45-41a1-a8ae-3b44162a7161",
+    "workingStatus": "SUCCESS"
+  },
+  {
+    "environment": "production",
+    "service": "web",
+    "latestId": "5073a485-83b1-43eb-9a0d-3b230c05e4e1",
+    "latestStatus": "SUCCESS",
+    "workingId": "5073a485-83b1-43eb-9a0d-3b230c05e4e1",
+    "workingStatus": "SUCCESS"
+  },
+  {
+    "environment": "public-access-staging",
+    "service": "api",
+    "latestId": "6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a",
+    "latestStatus": "SUCCESS",
+    "workingId": "6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a",
+    "workingStatus": "SUCCESS"
+  },
+  {
+    "environment": "public-access-staging",
+    "service": "web",
+    "latestId": "2372766f-0e4c-4a2c-aa4e-bc176130c901",
+    "latestStatus": "SUCCESS",
+    "workingId": "2372766f-0e4c-4a2c-aa4e-bc176130c901",
+    "workingStatus": "SUCCESS"
+  },
+  {
+    "environment": "live-ai-staging",
+    "service": "api",
+    "latestId": "13b7a99c-c391-48a0-a33f-59cd3f742600",
+    "latestStatus": "SUCCESS",
+    "workingId": "13b7a99c-c391-48a0-a33f-59cd3f742600",
+    "workingStatus": "SUCCESS"
+  },
+  {
+    "environment": "live-ai-staging",
+    "service": "web",
+    "latestId": "362ee430-a135-415c-9626-5b549a4fe85a",
+    "latestStatus": "SUCCESS",
+    "workingId": "362ee430-a135-415c-9626-5b549a4fe85a",
+    "workingStatus": "SUCCESS"
+  }
+]

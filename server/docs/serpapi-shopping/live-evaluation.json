@@ -1,0 +1,1909 @@
+{
+  "provider": "serpapi",
+  "query": "sohva",
+  "country": "FI",
+  "language": "fi",
+  "realSearchAttempts": 1,
+  "openAiCalls": 0,
+  "checks": [
+    "Research persisted with no cart or budget mutation.",
+    "Final saved results deduplicated and conflicting prices classified as potential without another provider search.",
+    "Eligible source-reported EUR offer added as proposed expense, reloaded, duplicate rejected, then removed; original financial totals restored.",
+    "SerpApi quota count survived the API restart.",
+    "No additional search: durable dispatch total 1 and provider account usage increased by 1; current test session OpenAI usage remains 0."
+  ],
+  "contractVersion": "1.11.0",
+  "applicationBefore": {
+    "configured": true,
+    "day": "2026-10-18",
+    "requests": 0,
+    "limit": 30,
+    "pending": 0,
+    "personalRequests": null,
+    "personalLimit": 5,
+    "timezone": "UTC",
+    "countsDispatchedFailures": true
+  },
+  "accountBefore": {
+    "account_status": "Active",
+    "plan_name": "Free Plan",
+    "plan_monthly_price": 0.0,
+    "searches_per_month": 250,
+    "plan_searches_left": 250,
+    "total_searches_left": 250,
+    "this_month_usage": 0,
+    "account_rate_limit_per_hour": 250
+  },
+  "httpStatus": 200,
+  "durationMs": 2009,
+  "result": {
+    "status": "completed",
+    "mode": "live",
+    "summary": {
+      "supportedCount": 3,
+      "potentialCount": 12,
+      "rejectedCount": 23,
+      "sourceCount": 40,
+      "explanation": "3 matches your criteria based on structured API fields; confirm current details at the source. 12 additional potential leads need checking."
+    },
+    "warnings": [
+      "22 malformed API item(s) were rejected before normalization.",
+      "Google Shopping prices and images are source-reported by SerpApi, not independently verified merchant data. Search country/location is not delivery or stock evidence. Google product links may require choosing a retailer. Unknown shipping charges are excluded, not zero.",
+      "SerpApi results are filtered deterministically against your constraints. No automatic follow-up API or Web Research was executed."
+    ],
+    "productDiagnostics": {
+      "provider": "serpapi",
+      "mode": "production",
+      "durationMs": 1567,
+      "apiRequests": 1,
+      "cacheHits": 0,
+      "candidateCount": 40,
+      "acceptedCount": 17,
+      "rejectedCount": 23,
+      "errorCategory": null,
+      "estimatedOpenAiCostUsd": 0
+    },
+    "rejections": [
+      {
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:2592251724774386166,productid:8189844578832988036,headlineOfferDocid:4552550088396350568,imageDocid:154196670240839093,rds:CID_2592251724774386166|PROD_CID_2592251724774386166,gpcid:11267203449155354432,pvt:hg&hl=fi&gl=fi&udm=28",
+        "title": "Veke Miska 2-istuttava vuodesohva kupari wind 100",
+        "reasons": [
+          "category"
+        ]
+      }
+    ]
+  },
+  "offers": [
+    {
+      "title": "JYSK Sohva HELLERUP avopääty",
+      "priceMinor": 60000,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:3692579096357723687,productid:7975440216738797637,headlineOfferDocid:9272854199301155743,imageDocid:16520941780807011577,rds:PC_3579510977286277886|PROD_PC_3579510977286277886,gpcid:3579510977286277886,mid:576462912415535765,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSx5j3zY22IYBbicDCyosoFGAuXKvFK7DXWBkQbAlyjRqJfnpyGBpfVAuAoOtpczqMzyP1FvqTWaqbypln_3cTXi2dS-LNPpZBfV6FKRiQbokWNF_PL6Isd",
+      "seller": {
+        "name": "JYSK",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "supported",
+      "missingEvidence": [
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "3692579096357723687:575dde97e3eb1e25668e8f08cb6c56a9c2f80233",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcS0DUUJ4ilx7K3Tzgu_eKQFN0W7LLAIY_za2zd2U-_CBSIU3e1cH1ulnYtRLQ9X8wZgDgR68Q3G25VUNw6upsbvC8oIVjgIKlwEPF-3Pg_5H5Ctqzjff19Y",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTt_ajUOJaj16uKUlHc0kBOLmdqjte4ONovg09RYVAxlB5V7XwtdBjeiXQzIvTfq27nrk9CbvUnXPHAvsSqEtLQN_H6EkGJ7prCABzFVtw",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcR1isAYPpeIlfyl6NQJE2si7yCxwlz8ZNuYjxUuJmcVQ7szTM0Ga8F3B11l2_LiG4wt9UjSFAIUd9vHJq2s5R7OLHWAsXwuMokzEHbJPY9S",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRvLAcYxRleRnm8wbu0zZIEzHwDkBTLlUgJZPalMX8yFniNlSKfAx-i2COQQd73yDq_-d7hBDd-dey8HzcI44a9kkLMEDew0IReA7h64nCAznx1LnEmgMtq"
+        ],
+        "attributes": {
+          "googleProductId": "3692579096357723687"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "JYSK Sohva HELLERUP avopääty",
+      "priceMinor": 89900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:3692579096357723687,productid:7975440216738797637,headlineOfferDocid:8449927636872080801,imageDocid:16520941780807011577,rds:PC_3579510977286277886|PROD_PC_3579510977286277886,gpcid:3579510977286277886,mid:576462912415535765,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSx5j3zY22IYBbicDCyosoFGAuXKvFK7DXWBkQbAlyjRqJfnpyGBpfVAuAoOtpczqMzyP1FvqTWaqbypln_3cTXi2dS-LNPpZBfV6FKRiQbokWNF_PL6Isd",
+      "seller": {
+        "name": "JYSK",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "supported",
+      "missingEvidence": [
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "3692579096357723687:89221a51e96fa314f50f4d0c778f4c366cbc2feb",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcS0DUUJ4ilx7K3Tzgu_eKQFN0W7LLAIY_za2zd2U-_CBSIU3e1cH1ulnYtRLQ9X8wZgDgR68Q3G25VUNw6upsbvC8oIVjgIKlwEPF-3Pg_5H5Ctqzjff19Y",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTt_ajUOJaj16uKUlHc0kBOLmdqjte4ONovg09RYVAxlB5V7XwtdBjeiXQzIvTfq27nrk9CbvUnXPHAvsSqEtLQN_H6EkGJ7prCABzFVtw",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcR1isAYPpeIlfyl6NQJE2si7yCxwlz8ZNuYjxUuJmcVQ7szTM0Ga8F3B11l2_LiG4wt9UjSFAIUd9vHJq2s5R7OLHWAsXwuMokzEHbJPY9S",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRvLAcYxRleRnm8wbu0zZIEzHwDkBTLlUgJZPalMX8yFniNlSKfAx-i2COQQd73yDq_-d7hBDd-dey8HzcI44a9kkLMEDew0IReA7h64nCAznx1LnEmgMtq"
+        ],
+        "attributes": {
+          "googleProductId": "3692579096357723687"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "JYSK Sohva HELLERUP avopääty",
+      "priceMinor": 60000,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:3692579096357723687,productid:7975440216738797637,headlineOfferDocid:10166227353607510239,imageDocid:16520941780807011577,rds:PC_3579510977286277886|PROD_PC_3579510977286277886,gpcid:3579510977286277886,mid:576462912415535765,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSx5j3zY22IYBbicDCyosoFGAuXKvFK7DXWBkQbAlyjRqJfnpyGBpfVAuAoOtpczqMzyP1FvqTWaqbypln_3cTXi2dS-LNPpZBfV6FKRiQbokWNF_PL6Isd",
+      "seller": {
+        "name": "JYSK",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "supported",
+      "missingEvidence": [
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "3692579096357723687:f902165ac10245f01c2a17f4c2a7f9e7e66d1b98",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcS0DUUJ4ilx7K3Tzgu_eKQFN0W7LLAIY_za2zd2U-_CBSIU3e1cH1ulnYtRLQ9X8wZgDgR68Q3G25VUNw6upsbvC8oIVjgIKlwEPF-3Pg_5H5Ctqzjff19Y",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTt_ajUOJaj16uKUlHc0kBOLmdqjte4ONovg09RYVAxlB5V7XwtdBjeiXQzIvTfq27nrk9CbvUnXPHAvsSqEtLQN_H6EkGJ7prCABzFVtw",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcR1isAYPpeIlfyl6NQJE2si7yCxwlz8ZNuYjxUuJmcVQ7szTM0Ga8F3B11l2_LiG4wt9UjSFAIUd9vHJq2s5R7OLHWAsXwuMokzEHbJPY9S",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRvLAcYxRleRnm8wbu0zZIEzHwDkBTLlUgJZPalMX8yFniNlSKfAx-i2COQQd73yDq_-d7hBDd-dey8HzcI44a9kkLMEDew0IReA7h64nCAznx1LnEmgMtq"
+        ],
+        "attributes": {
+          "googleProductId": "3692579096357723687"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SALTMYRAN 3:n istuttava sohva",
+      "priceMinor": 24900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:8671431225785262912,productid:1063399853435089535,headlineOfferDocid:17052818480738055655,imageDocid:4870660831401404506,rds:PC_10925204299667833807|PROD_PC_10925204299667833807,gpcid:10925204299667833807,mid:576462563898911143,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRxuZXFwb_ChCVopCsns0Y1MntZrLlU8xwcD8AU1PI5ygXVq1SC1YPPGA9ETzyGUQQe9_oMP3g6ycO_ybekClEraTWAaeQPUkUh9iL5nsoW4CP509Yd-wUbug",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "8671431225785262912:5f5cd54040a6b9ef5f36bd02f92a667275ce58a4",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQ4YNg-ChUWVMp3G7DFNl7nsSdg7vycyUSHhI_F60q9Fg8jj1N9guCQtUYTh332PmE9B6zmGNSVKv6r4w-Hjv04xMxHUeQThXUI8lDUeNVE",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRERdz52oPAxEAHsvLZwbWlNbM97esoBrfDMM-aG_fhB8l-TCQWgZ2ZemHZhQs3MNA7AtQalw6Pbj8vYsas_QpYVS1OTM4SzaN8HCCuSt1_SxUYHDtbLUEcIg",
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQN6JIXLiSL1_X-iIxOC73S2ZBnvozYY8EKlOdvNpxkIQj6MpNzczqm9pK9aCkTe1J94EyUvANtTwNH0xBan46ktQapI7LWBQn--8tNkHo6",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcT_ntMXltzFeWjmpH28j1XwDd81P4H4wx_pZ_v2CxMi9RdK10K47ips-x8R7Id0vRpPYyoMX64m3FxNDWiG-GIrgZeAiTNHxytLp5G77TwxN07EYg63DLj92A"
+        ],
+        "attributes": {
+          "googleProductId": "8671431225785262912",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.614Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA VIMLE 3:n istuttava sohva",
+      "priceMinor": 124900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:1055393771886467400,productid:8674249211943574000,headlineOfferDocid:10255595053953550605,imageDocid:5079053350875582947,rds:PC_17374968009713548740|PROD_PC_17374968009713548740,gpcid:342941663508749656,mid:576462803572930201,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQb_Ns-Vy1NbFPleDPAJdTFq0ef9a3LxfJib98yT0ACVhXLKhRtzxWIvwgk8SeZ1FZX3oOy4b59GAXgOTjZwYSGrBEXX2PQ3tSUf8o8ykIu7AW3cmZLpOFmVw",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "1055393771886467400:13a156c47309d5f02b41fc1444ce789ebfea5e18",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSkX2knLieZyaOOBuehaiYYp97a-qOOCY9GEEpiIHL4RTW9LMD6PGVMpwMQqG-_FlEIUUVPvXKs0bkPfH-vOebX9_gwEXOb9GZtd-OatmY",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcS3ooeL_esPTmvAlEIM1ddgrC-XjRHjvzVEjblFVRKTnOlCUhgqksCFJv1r9p9xbxn0oC6mXrCx1Y-9Evz7B_HgfakRkbpL8jImgwn5aYY",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTdw7jyNiD5uy7WbvFkwyheUv8aVmufxLd3da6SILHWE4nljxNAnNM9Gp98-IWmDJTPUs3O6VMkKJM3Aq6M-nflMeWS9ozEDiPtGAUE6JUv",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTFm1Y1UiKoyrZH2VMNoSYE-S-W2tfQgL17bw-0jpki2nt_wem5HQS8uy0TU61n1rL2va3XjzQZWAZ2Rla45g6-5qgW9-Dtawg9qjrGtLVBUI8uUGmBbMmh3w"
+        ],
+        "attributes": {
+          "googleProductId": "1055393771886467400",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.617Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA GLOSTAD n istuttava sohva",
+      "priceMinor": 13900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:11172597059530368759,productid:9617006560693081349,headlineOfferDocid:5233435598767217831,imageDocid:8294131578175923713,rds:PC_2537284250694585549|PROD_PC_2537284250694585549,gpcid:2537284250694585549,mid:576462664317294913,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTzBq1S84xIyKaU19yJDUuPcxTVxjmNOshEGLjVEj-L770V0K-h8CcKI3YfUcN_zcFQpY4GpSvgyAcKkRgmiIq8Vrn9Heo24Yh8O74hLL-aEbY8CDnZL3VFTQ",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "11172597059530368759:b30a40c355fb140a3456d3a287c231d816a7f7fe",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRjebOUBversbU1AMzGTFKNXqMczMqBd9ZYNRAXxt2L5CAzAJ9jPKCa_QYHvS8eHO5UvGaIxgHmHqMZk4Z0R64rCRu0aey_yZ752ptUYhM7AHclkfxi1JfF",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTCJzCxF6gM0x_4SIrKjkxly8eEu5SQxZq7vaoCmTwaf53ezX2B9R58wGzWtvYlp3Ex7ndCte10FqgSNvpJsp4hQ93a9YkFmw2glZDD6P9C0LDRWoYUAgMasA",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQw43hIY3sB1dcLgLLJr89JqlroikUBlaLB0LAltDHcfCTZc3HnnQ8-EDZCwX8sc4m5TbYUQmZikCw-TebJSeHuj-o3HmrTgiJqM7z_wjnUMBbQgr7wxkvU",
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQnPcBvoxZF7Q3dxjx1PVEp8Y7k8xyWDbMpMJJXbeHOnDmYXn4o6lv3RlhOF4qmugN6vtXx_cGx1Y3Do0AGrrf9OFrM4s0fHikxdGuwFOXIcfINlnhD5ScYJw"
+        ],
+        "attributes": {
+          "googleProductId": "11172597059530368759",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA GLOSTAD n istuttava sohva",
+      "priceMinor": 19900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:11172597059530368759,productid:9617006560693081349,headlineOfferDocid:5398256711383204580,imageDocid:8294131578175923713,rds:PC_2537284250694585549|PROD_PC_2537284250694585549,gpcid:2537284250694585549,mid:576462664317294913,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTzBq1S84xIyKaU19yJDUuPcxTVxjmNOshEGLjVEj-L770V0K-h8CcKI3YfUcN_zcFQpY4GpSvgyAcKkRgmiIq8Vrn9Heo24Yh8O74hLL-aEbY8CDnZL3VFTQ",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "11172597059530368759:bfaef63474a073ac392d73c5e7fc6478ac7889e9",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRjebOUBversbU1AMzGTFKNXqMczMqBd9ZYNRAXxt2L5CAzAJ9jPKCa_QYHvS8eHO5UvGaIxgHmHqMZk4Z0R64rCRu0aey_yZ752ptUYhM7AHclkfxi1JfF",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTCJzCxF6gM0x_4SIrKjkxly8eEu5SQxZq7vaoCmTwaf53ezX2B9R58wGzWtvYlp3Ex7ndCte10FqgSNvpJsp4hQ93a9YkFmw2glZDD6P9C0LDRWoYUAgMasA",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQw43hIY3sB1dcLgLLJr89JqlroikUBlaLB0LAltDHcfCTZc3HnnQ8-EDZCwX8sc4m5TbYUQmZikCw-TebJSeHuj-o3HmrTgiJqM7z_wjnUMBbQgr7wxkvU",
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQnPcBvoxZF7Q3dxjx1PVEp8Y7k8xyWDbMpMJJXbeHOnDmYXn4o6lv3RlhOF4qmugN6vtXx_cGx1Y3Do0AGrrf9OFrM4s0fHikxdGuwFOXIcfINlnhD5ScYJw"
+        ],
+        "attributes": {
+          "googleProductId": "11172597059530368759",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Kave Home Sohva Compo",
+      "priceMinor": 134000,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:16726929820493968234,productid:3510552537377607353,headlineOfferDocid:3544876547840324155,imageDocid:146183094109079627,rds:PC_3392591445626573153|PROD_PC_3392591445626573153,gpcid:3392591445626573153,mid:576462562968167243,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTyEUs2ShOcU6q9uUGps8DlQxhKNIFbsTmTEijRrksQtF4oNPmIkWc9YDewtd0BjBFAxhvtDQcumc8d1eaAEc9Yl02qcxHmPqJrnAf2byd4Fu6ofBNav5St",
+      "seller": {
+        "name": "Vepsäläinen",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "16726929820493968234:605e35565f8a2166a1b7f81fd2ac4cbd008bedbd",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRXsVWXaCwPSjEO9Bs8A8OZsFrTFhgJuhmKANWqhEoUQrJSMvSeVzKnMhjNLvvB9xiSW1WrS76Zi6jlsRS5RVyeDylAmg8RqjwmQd_bDj_nddGkO9mgc0rr5KE",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRHWfqEwpDZAJdFAwBxuv0xbt1c19cm822VUKfL9XhT4bFPdaFZvbDQYpSsoDL204m0oOMhAvKadlkVwZOqM0SwzTSTwUsmI1Je7A8c2nErM6n_4S06osKzZXk",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRKaJrOWmBzQCGA3y-D77wGip0srsNNEDU-64hd8ISu7aeQkFeriJU_MgqAUNMDdxEwaOjdZulK-EbBPTJ89Qi7mM3TDW4wMYzFaAdOCH8",
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcR0YmOzzTbN1881pwbLZ3lXS26rN7vWBxcVpfDOq6XY39LffC6sBwWf-SbVukTS_mCm8D1KwMYmhThGkBmOqeozI9IbBngIYjVwDpFGKea7FaYtSkokK7N_"
+        ],
+        "attributes": {
+          "googleProductId": "16726929820493968234",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.618Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SÖDERHAMN 3:n istuttava sohva",
+      "priceMinor": 108900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:10934079381870540643,productid:17854283388730356737,headlineOfferDocid:5111075571540884852,imageDocid:9661701292134243130,rds:PC_13632023890164569261|PROD_PC_13632023890164569261,gpcid:13632023890164569261,mid:576462898558218214,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQ4zXHVjEa1-Z1wvYi_jqN_-rRxH_qp3qrFv4M2MReevrvZztt93B8ZGw0xhSt22QPBCeKXQnpi1dSWCOfWYxDIQh0Xi3U-oFOI2EkVQzWIXphXPCl0EuAWwQ",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "10934079381870540643:f5aee085dd9e659afc23a733fd6cc8096c1c8edc",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSZ-2NVa3pmefweavDYmJgt9CWwRsB1KidWTJS1gTeHVn-Rf_QWJKZ8VPasqrQ-6y7zq3awKV2JmXlkqr8E4lDtYviyvJjNhlOWLE0tdnuZOgHZBZmfrih-Nw",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRllb_NTGFPXfsNC0kPW__qyJHr82roIzh9L1VLJGj4-3vDGRY6ShPWrxfFQTDfUUakl2Ns37XZeVICQjPasFfEeiE3FrC_-K3SejpOXfcweVXQRnTHWaZR",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQq50ndkz39zruzi4fU-4oBoooVrdL0UEYnLowajag2jqzqoZ3B1aNN2GrAABvfs7KBaMZRE0cDrUlpRoOPxc3dGEh0EZeLi6HKoFqravLp8jgdliuhEV9E",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcTwgaROIoY--o-CmhmWB1jFLIX4YlwFJr1qMZaWaTGWm_qaHtc7FblB0UPEUdNJ3pQR9_U7CjFxS3EwGbv_Xb0brChyo4QmiaChanZAmHU"
+        ],
+        "attributes": {
+          "googleProductId": "10934079381870540643",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.619Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SÖDERHAMN 4:n istuttava sohva",
+      "priceMinor": 119800,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:1029678875311708921,productid:4155213671490802179,headlineOfferDocid:9843701381041993600,imageDocid:916779196598364500,rds:PC_12581507021749040381|PROD_PC_12581507021749040381,gpcid:12581507021749040381,mid:576462820079748847,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSQqdhvt7g1qPhVTAkv1Tio2xSaGx7PmXbTUiPMJ1xcOK4CrRjQF6NKPbv-m7BgKbfREWUR36tm-gGrw1RIxTNKLJljDFF1Rpl-YUWk1rXzpf3AZBoS32A_",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "1029678875311708921:054e07d30bdb0e70360916844762b912f1c227ae",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcS7dowzIGDUmxZEropjvIRRu1oGXCN8eN_weKjE4P79_MjI3Uv6WSP-8t6mMQhJk99aA3fzO_YgGUrBjRMiA4Ty64bqGTAnHoOXpS8lpqIF",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRQHQD67JLvqRMhaXmBuYT4Fzhg0D28ZSvsSMUVYikEYEyU264N6zmsir6qiHU8piFq5D8QUYabjgnWoAab6sHtY0jjTxPM9fVBs6RnJ7ahbOrvQZFANScvVg"
+        ],
+        "attributes": {
+          "googleProductId": "1029678875311708921",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SÖDERHAMN 3:n istuttava sohva",
+      "priceMinor": 52900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:16201318671439019761,productid:360759724813669296,headlineOfferDocid:5271402328640554877,imageDocid:7134625366276397698,rds:PC_4978671274445593771|PROD_PC_4978671274445593771,gpcid:4978671274445593771,mid:576462549608581026,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSeyUE8DUOnA1PljRYud9saWLww0vLrnWeQe77R2WZK3IBvJk4fR8Pi6qjvRZYfJ6lO47AkPOMFLk0V3jfLseN_XSFk6V9BIDPz5Eta81IR0-i3hUHZQJUq",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "16201318671439019761:c0fafb5dd3525bf7e5400b682582aaca72ddce5d",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSWxYYQeoEZlr27Cw3qOYH-93Inh52lCxA6S3-p_gUoLVFhTdPIg9-2qKb0v6eOkivHI3_trZXtwbVxW5inZzEyyJb9p82IkZtlae2qcQWc",
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRLWaUob64s-vqAxAMQtOk0slItK84_lKGntPXL2MiK-kHPIspM5foEfbNL4LbcQH852XA0d2JMv_Aj3BqrKGa9FIjGCS3OPPyvJP09t2w",
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQiXELlhBYsWo8McovAgIcSejefo47GaHpR0sdQz7bBINhsxY89C650JmXUgzAfw0B1_2n8tifvzJzaZ4MWRdYXu9I_-GFm7z2P8SjsboI",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRlQBCj73hRc88HeI6HmmrdKVuQ8z3F3yyaN6D9q9HbI8JoBUCvGoaHiH0LB083hXI67nvePNrQ1EdcfOXLVBW0jFtrVt7knif0iunWGqbu3i82Q13HcSEcSA"
+        ],
+        "attributes": {
+          "googleProductId": "16201318671439019761",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA EKTORP 2:n istuttava sohva",
+      "priceMinor": 37900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:10800904165047130406,productid:13124133200047786565,headlineOfferDocid:3519967067214173336,imageDocid:16851252213819007008,rds:PC_11253987856798493968|PROD_PC_11253987856798493968,gpcid:11253987856798493968,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcR1q3nE87sWFncTS3YomhketIbkIFLBfDVMB-wtVlCQCvUB5I9Wl00-ASaxJC3W0txyQCs6VLGgve9U1Uu3Qy0QVNTEXyHWHuRMqunmOqLKUtZZEY0_5Hp0gA",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "10800904165047130406:702ceac758b5006d9ed1c8f817fe7ea29db4508f",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRE-src6s2QSXXPG1bkctVYK4HF3HMsTLYmPK6h1cDNL_yTbk8JDhhr9J9sfdzu-CI4Cbfj3AmBGy4w2OFenAgHujVMpTF4uosyfL2CHdQ",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTtg2Uz_J9TdLysuWGgouxIGyHT1DvB4zbMM7iOGHQChokRw9SAggeTkU_31c1Bu9ohyE_vrlP_kSUGcl61R1kamlUYbnePKH0X1m6YVEWU",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSckT7OyQxsok3kd9oVOpOluvKH6Ge1WOSRkxfAmry0IhmPV2S1amI4BNsVHKapGwa3c-71FitCLRw67MOMR3tbxwll8_Rmus7pJrOyeD4",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTllE7lYVrg5spkkrzY5khG9egMbcg7VMsDFqaqjrMBfibZfc1e9hJxr8n6mwebjSFmdRr3h1_kuW37RmkLwJKjcjR738MZ-nrH7HgcaZw9"
+        ],
+        "attributes": {
+          "googleProductId": "10800904165047130406",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SALTSJÖBADEN 3:n istuttava sohva + divaani",
+      "priceMinor": 59900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:4966441534307397067,productid:4469313394710004335,headlineOfferDocid:10642468458789969932,imageDocid:13976026478466388230,rds:PC_9485224478807941116|PROD_PC_9485224478807941116,gpcid:9485224478807941116,mid:576462531124567782,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcS8uNF2xpsxRbrDLxeLazeussJ00FMpKgpoaPPqjM-COs0UUTJ9zpPIcBFGhmKxDPHvQjWR9IK08kmnVpdDPVTkLiwvRR-InkjPM7Jgay6HQxt4tp7zgNUoSg",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "4966441534307397067:0b6125a394ec913f9aa3d19c5562f21b8db94818",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSZ_Ltk6-Arh0Ygb0i0zdxVi2jFrHOnLMvAqB6BJgl2xooUS_tvIzLZBLz2zPKj60dqgim-KWaCcazNoSYYo6SiAGxU_h01Qd6BTX7oH-6l",
+          "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSYTc4z7N1rgzTs7cTruv6d9v-cQqPgtdr19mY8XVDoJ1ODv31qaU-o1ArT68yDgb6DIYEojEnv742zHN2gbM6pIfYh6r7pvFabuvXrnI4SkLrbTzaNVYoDaQ"
+        ],
+        "attributes": {
+          "googleProductId": "4966441534307397067",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.620Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SÖDERHAMN 4:n istuttava sohva",
+      "priceMinor": 71900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:1029678875311708921,productid:4155213671490802179,headlineOfferDocid:6690858339250553613,imageDocid:916779196598364500,rds:PC_12581507021749040381|PROD_PC_12581507021749040381,gpcid:12581507021749040381,mid:576462820079748847,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSQqdhvt7g1qPhVTAkv1Tio2xSaGx7PmXbTUiPMJ1xcOK4CrRjQF6NKPbv-m7BgKbfREWUR36tm-gGrw1RIxTNKLJljDFF1Rpl-YUWk1rXzpf3AZBoS32A_",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "1029678875311708921:f0dfbc5735b373fef4ae35d762c84c03ebf12ddb",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcS7dowzIGDUmxZEropjvIRRu1oGXCN8eN_weKjE4P79_MjI3Uv6WSP-8t6mMQhJk99aA3fzO_YgGUrBjRMiA4Ty64bqGTAnHoOXpS8lpqIF",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRQHQD67JLvqRMhaXmBuYT4Fzhg0D28ZSvsSMUVYikEYEyU264N6zmsir6qiHU8piFq5D8QUYabjgnWoAab6sHtY0jjTxPM9fVBs6RnJ7ahbOrvQZFANScvVg"
+        ],
+        "attributes": {
+          "googleProductId": "1029678875311708921",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "IKEA SÖDERHAMN 3:n istuttava sohva",
+      "priceMinor": 76900,
+      "currency": "EUR",
+      "sourceName": "Google Shopping · SerpApi",
+      "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:10934079381870540643,productid:17854283388730356737,headlineOfferDocid:9320074046209849793,imageDocid:9661701292134243130,rds:PC_13632023890164569261|PROD_PC_13632023890164569261,gpcid:13632023890164569261,mid:576462898558218214,pvt:hg&hl=fi&gl=fi&udm=28",
+      "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSlwsYjFjqhZcT_xHHAkGdISG6dQCgFS535hIPpZztqzGB6UPmRiAMGDHU_uqG98tImz7y0qbE3BHdhblVtTImn2ad9ywhBz14naJwv55BKyMmYMKy1IJJkpg",
+      "seller": {
+        "name": "IKEA",
+        "type": "unknown",
+        "publicProfileUrl": null,
+        "verified": false
+      },
+      "condition": "unknown",
+      "delivery": {
+        "available": null,
+        "costMinor": null,
+        "details": "Destination eligibility is not confirmed. Shipping cost not established. Extra charges may apply."
+      },
+      "eligibilityStatus": "potential",
+      "missingEvidence": [
+        {
+          "field": "seller",
+          "required": true,
+          "reason": "A single merchant offer has not been established."
+        },
+        {
+          "field": "delivery",
+          "required": false,
+          "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+        },
+        {
+          "field": "availability",
+          "required": false,
+          "reason": "Current quantity and availability require checking at the source."
+        }
+      ],
+      "product": {
+        "provider": "serpapi",
+        "sourceProductId": "10934079381870540643:dc1e217fc55ad022377e46870e450f56415b9ed0",
+        "marketplaceId": "GOOGLE_SHOPPING",
+        "marketplaceCountry": "FI",
+        "sourceMode": "production",
+        "retrievalMethod": "provider_api",
+        "linkDestination": "google_product",
+        "priceType": "fixed",
+        "shippingCostType": "unknown",
+        "deliveryCountry": null,
+        "deliverySupported": null,
+        "sellerCountry": null,
+        "additionalImages": [
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQ-aMfhIgssESQ7gnpFwopLNYVZBOAPg94zfezjL6pvmVqnxK4upq06niUp9m4VF6IwM2-1weh0SK3sLr_OogWOfJRgSEa647kUA6GN8Ftwmm6aWAIKixPLVg",
+          "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcS5ncB8z39opBTeCrNTcrHqFvKcz8eLKCgsIcJgcYWjHWL8Vm7S9lGquiz7dmTTg0i3XKeextmJR8K9JmI48ROzUR66XaxEM0_4RXMXABFEGgW939cjJCwI",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSxcZ6EsvdornY_EN8mXAQskIj0Y1BVGktYWAb_vRVPiQgWrSmxMmgcONJcv2ga0N3t_nbN6jWqTJUCSa9xynzhcmAlYymnk0W8e98QKHrZmzmVNohfPS-X",
+          "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQPYlOzzxqkDLxvpJ6sSZ-YPigazLn2EN2fs5OJLW0Teu4A1JSeW_HyaJjAEA4WF53Bdxuu2Mv--sMMp7QrJ9CokQWupYrcNi4nQhz_KKk"
+        ],
+        "attributes": {
+          "googleProductId": "10934079381870540643",
+          "multipleSources": "true"
+        },
+        "taxInformation": "Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.",
+        "knownTotalMinor": null,
+        "fieldProvenance": {
+          "title": {
+            "path": "shopping_results.title",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "source": {
+            "path": "shopping_results.product_link or link",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "sourceType": {
+            "path": "shopping_results",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "price": {
+            "path": "shopping_results.price + extracted_price",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "currency": {
+            "path": "shopping_results.price currency marker",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "image": {
+            "path": "shopping_results.thumbnail",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          },
+          "seller": {
+            "path": "shopping_results.source",
+            "method": "provider_api",
+            "retrievedAt": "2026-10-18T02:45:39.621Z"
+          }
+        }
+      }
+    }
+  ],
+  "budgetTest": {
+    "title": "JYSK Sohva HELLERUP avopääty",
+    "itemPriceMinor": 60000,
+    "deliveryCostMinor": null,
+    "plannedKnownCostMinor": 60000,
+    "duplicateStatus": 409,
+    "persistedAfterReload": true,
+    "scenarioTotalsMinor": [
+      240000,
+      240000,
+      240000
+    ]
+  },
+  "outcome": "passed_with_documented_extraction_limitations",
+  "initialValidationNote": "The initial test compared the full budget object after removal. Existing cart logic adds a zero-allocation product category, so that comparison failed. The test expense was removed and all monetary totals were restored; follow-up checks below verify those values explicitly.",
+  "reconciledSavedResult": {
+    "summary": {
+      "supportedCount": 6,
+      "potentialCount": 4,
+      "rejectedCount": 28,
+      "sourceCount": 40,
+      "explanation": "6 matches your criteria based on structured API fields; confirm current details at the source. 4 additional potential leads need checking."
+    },
+    "productDiagnostics": {
+      "provider": "serpapi",
+      "mode": "production",
+      "durationMs": 1567,
+      "apiRequests": 1,
+      "cacheHits": 0,
+      "candidateCount": 40,
+      "acceptedCount": 12,
+      "rejectedCount": 28,
+      "errorCategory": null,
+      "estimatedOpenAiCostUsd": 0
+    },
+    "offers": [
+      {
+        "title": "JYSK Sohva HELLERUP avopääty",
+        "priceMinor": 60000,
+        "currency": "EUR",
+        "merchant": "JYSK",
+        "eligibility": "potential",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSx5j3zY22IYBbicDCyosoFGAuXKvFK7DXWBkQbAlyjRqJfnpyGBpfVAuAoOtpczqMzyP1FvqTWaqbypln_3cTXi2dS-LNPpZBfV6FKRiQbokWNF_PL6Isd",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:3692579096357723687,productid:7975440216738797637,headlineOfferDocid:9272854199301155743,imageDocid:16520941780807011577,rds:PC_3579510977286277886|PROD_PC_3579510977286277886,gpcid:3579510977286277886,mid:576462912415535765,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          },
+          {
+            "field": "price",
+            "required": true,
+            "reason": "Google reported conflicting prices for the same product and merchant. Check the current price at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA SALTMYRAN 3:n istuttava sohva",
+        "priceMinor": 24900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "supported",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRxuZXFwb_ChCVopCsns0Y1MntZrLlU8xwcD8AU1PI5ygXVq1SC1YPPGA9ETzyGUQQe9_oMP3g6ycO_ybekClEraTWAaeQPUkUh9iL5nsoW4CP509Yd-wUbug",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:8671431225785262912,productid:1063399853435089535,headlineOfferDocid:17052818480738055655,imageDocid:4870660831401404506,rds:PC_10925204299667833807|PROD_PC_10925204299667833807,gpcid:10925204299667833807,mid:576462563898911143,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA VIMLE 3:n istuttava sohva",
+        "priceMinor": 124900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "supported",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQb_Ns-Vy1NbFPleDPAJdTFq0ef9a3LxfJib98yT0ACVhXLKhRtzxWIvwgk8SeZ1FZX3oOy4b59GAXgOTjZwYSGrBEXX2PQ3tSUf8o8ykIu7AW3cmZLpOFmVw",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:1055393771886467400,productid:8674249211943574000,headlineOfferDocid:10255595053953550605,imageDocid:5079053350875582947,rds:PC_17374968009713548740|PROD_PC_17374968009713548740,gpcid:342941663508749656,mid:576462803572930201,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA GLOSTAD n istuttava sohva",
+        "priceMinor": 13900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "potential",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTzBq1S84xIyKaU19yJDUuPcxTVxjmNOshEGLjVEj-L770V0K-h8CcKI3YfUcN_zcFQpY4GpSvgyAcKkRgmiIq8Vrn9Heo24Yh8O74hLL-aEbY8CDnZL3VFTQ",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:11172597059530368759,productid:9617006560693081349,headlineOfferDocid:5233435598767217831,imageDocid:8294131578175923713,rds:PC_2537284250694585549|PROD_PC_2537284250694585549,gpcid:2537284250694585549,mid:576462664317294913,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          },
+          {
+            "field": "price",
+            "required": true,
+            "reason": "Google reported conflicting prices for the same product and merchant. Check the current price at the source."
+          }
+        ]
+      },
+      {
+        "title": "Kave Home Sohva Compo",
+        "priceMinor": 134000,
+        "currency": "EUR",
+        "merchant": "Vepsäläinen",
+        "eligibility": "supported",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTyEUs2ShOcU6q9uUGps8DlQxhKNIFbsTmTEijRrksQtF4oNPmIkWc9YDewtd0BjBFAxhvtDQcumc8d1eaAEc9Yl02qcxHmPqJrnAf2byd4Fu6ofBNav5St",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:16726929820493968234,productid:3510552537377607353,headlineOfferDocid:3544876547840324155,imageDocid:146183094109079627,rds:PC_3392591445626573153|PROD_PC_3392591445626573153,gpcid:3392591445626573153,mid:576462562968167243,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA SÖDERHAMN 3:n istuttava sohva",
+        "priceMinor": 108900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "potential",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQ4zXHVjEa1-Z1wvYi_jqN_-rRxH_qp3qrFv4M2MReevrvZztt93B8ZGw0xhSt22QPBCeKXQnpi1dSWCOfWYxDIQh0Xi3U-oFOI2EkVQzWIXphXPCl0EuAWwQ",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:10934079381870540643,productid:17854283388730356737,headlineOfferDocid:5111075571540884852,imageDocid:9661701292134243130,rds:PC_13632023890164569261|PROD_PC_13632023890164569261,gpcid:13632023890164569261,mid:576462898558218214,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          },
+          {
+            "field": "price",
+            "required": true,
+            "reason": "Google reported conflicting prices for the same product and merchant. Check the current price at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA SÖDERHAMN 4:n istuttava sohva",
+        "priceMinor": 119800,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "potential",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSQqdhvt7g1qPhVTAkv1Tio2xSaGx7PmXbTUiPMJ1xcOK4CrRjQF6NKPbv-m7BgKbfREWUR36tm-gGrw1RIxTNKLJljDFF1Rpl-YUWk1rXzpf3AZBoS32A_",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:1029678875311708921,productid:4155213671490802179,headlineOfferDocid:9843701381041993600,imageDocid:916779196598364500,rds:PC_12581507021749040381|PROD_PC_12581507021749040381,gpcid:12581507021749040381,mid:576462820079748847,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          },
+          {
+            "field": "price",
+            "required": true,
+            "reason": "Google reported conflicting prices for the same product and merchant. Check the current price at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA SÖDERHAMN 3:n istuttava sohva",
+        "priceMinor": 52900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "supported",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSeyUE8DUOnA1PljRYud9saWLww0vLrnWeQe77R2WZK3IBvJk4fR8Pi6qjvRZYfJ6lO47AkPOMFLk0V3jfLseN_XSFk6V9BIDPz5Eta81IR0-i3hUHZQJUq",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:16201318671439019761,productid:360759724813669296,headlineOfferDocid:5271402328640554877,imageDocid:7134625366276397698,rds:PC_4978671274445593771|PROD_PC_4978671274445593771,gpcid:4978671274445593771,mid:576462549608581026,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA EKTORP 2:n istuttava sohva",
+        "priceMinor": 37900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "supported",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcR1q3nE87sWFncTS3YomhketIbkIFLBfDVMB-wtVlCQCvUB5I9Wl00-ASaxJC3W0txyQCs6VLGgve9U1Uu3Qy0QVNTEXyHWHuRMqunmOqLKUtZZEY0_5Hp0gA",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:10800904165047130406,productid:13124133200047786565,headlineOfferDocid:3519967067214173336,imageDocid:16851252213819007008,rds:PC_11253987856798493968|PROD_PC_11253987856798493968,gpcid:11253987856798493968,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          }
+        ]
+      },
+      {
+        "title": "IKEA SALTSJÖBADEN 3:n istuttava sohva + divaani",
+        "priceMinor": 59900,
+        "currency": "EUR",
+        "merchant": "IKEA",
+        "eligibility": "supported",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcS8uNF2xpsxRbrDLxeLazeussJ00FMpKgpoaPPqjM-COs0UUTJ9zpPIcBFGhmKxDPHvQjWR9IK08kmnVpdDPVTkLiwvRR-InkjPM7Jgay6HQxt4tp7zgNUoSg",
+        "sourceUrl": "https://www.google.com/search?ibp=oshop&q=sohva&prds=catalogid:4966441534307397067,productid:4469313394710004335,headlineOfferDocid:10642468458789969932,imageDocid:13976026478466388230,rds:PC_9485224478807941116|PROD_PC_9485224478807941116,gpcid:9485224478807941116,mid:576462531124567782,pvt:hg&hl=fi&gl=fi&udm=28",
+        "missingEvidence": [
+          {
+            "field": "delivery",
+            "required": false,
+            "reason": "Shipping cost is unknown; the item price is not an all-inclusive total."
+          },
+          {
+            "field": "availability",
+            "required": false,
+            "reason": "Current quantity and availability require checking at the source."
+          }
+        ]
+      }
+    ]
+  },
+  "finalBudgetTest": {
+    "title": "IKEA SALTMYRAN 3:n istuttava sohva",
+    "itemPriceMinor": 24900,
+    "currency": "EUR",
+    "merchant": "IKEA",
+    "deliveryCostMinor": null,
+    "proposedMinor": 24900,
+    "duplicateStatus": 409,
+    "persistedAfterReload": true,
+    "scenarioTotalsMinor": [
+      204900,
+      204900,
+      204900
+    ],
+    "purchased": false
+  },
+  "remoteSecurityChecks": [
+    {
+      "route": ":other-project",
+      "status": 404
+    },
+    {
+      "route": ":other-project/assistant",
+      "status": 404
+    },
+    {
+      "route": ":other-project/research",
+      "status": 404
+    },
+    {
+      "route": ":other-project/cart/items",
+      "status": 404
+    },
+    {
+      "route": ":other-project/protection",
+      "status": 404
+    },
+    {
+      "route": "admin/product-usage",
+      "status": 404
+    },
+    {
+      "check": "missing_csrf",
+      "status": 403
+    },
+    {
+      "check": "private_workspace_list",
+      "passed": true
+    }
+  ],
+  "applicationAfter": {
+    "configured": true,
+    "day": "2026-10-18",
+    "requests": 1,
+    "limit": 30,
+    "pending": 0,
+    "personalRequests": null,
+    "personalLimit": 5,
+    "timezone": "UTC",
+    "countsDispatchedFailures": true
+  },
+  "accountAfter": {
+    "account_status": "Active",
+    "plan_name": "Free Plan",
+    "plan_monthly_price": 0.0,
+    "searches_per_month": 250,
+    "plan_searches_left": 249,
+    "total_searches_left": 249,
+    "this_month_usage": 1,
+    "account_rate_limit_per_hour": 250
+  },
+  "providerUsageDelta": 1
+}

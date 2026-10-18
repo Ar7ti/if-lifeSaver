@@ -8,6 +8,13 @@ export class ProductRequestLimiter{
  private db:DatabaseSync;
  constructor(file:string,private personal=20,private global=100,private now=Date.now){mkdirSync(path.dirname(file),{recursive:true,mode:0o700});this.db=new DatabaseSync(file);chmodSync(file,0o600);this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS product_requests(id TEXT PRIMARY KEY,scope TEXT NOT NULL,day TEXT NOT NULL,status TEXT NOT NULL,started INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS product_requests_day ON product_requests(day,scope);`);}
  close(){this.db.close();}
+ status(scope?:string){
+  const day=new Date(this.now()).toISOString().slice(0,10);
+  const total=Number(this.db.prepare('SELECT COUNT(*) AS n FROM product_requests WHERE day=?').get(day)?.n??0);
+  const pending=Number(this.db.prepare("SELECT COUNT(*) AS n FROM product_requests WHERE status='pending'").get()?.n??0);
+  const personal=scope?Number(this.db.prepare('SELECT COUNT(*) AS n FROM product_requests WHERE day=? AND scope=?').get(day,createHash('sha256').update(scope).digest('hex'))?.n??0):null;
+  return {day,requests:total,limit:this.global,pending,personalRequests:personal,personalLimit:this.personal,timezone:'UTC',countsDispatchedFailures:true};
+ }
  async run<T>(scope:string,dispatch:()=>Promise<T>):Promise<T>{
   const now=this.now(),day=new Date(now).toISOString().slice(0,10),key=createHash('sha256').update(scope).digest('hex'),id=randomUUID();
   this.db.exec('BEGIN IMMEDIATE');try{

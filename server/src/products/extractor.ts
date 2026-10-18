@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {createHash} from 'node:crypto';
 import {ProductCurrencySchema,ProductImageUrlSchema,PublicUrlSchema,ProductMetadataSchema,productExponent,type ProductCurrency} from '../../../shared/contracts/index.js';
 import type {ProductRecord} from './types.js';
 // All extraction is pure: accepts already-authorized bytes/JSON, never fetches a URL or executes scripts.
@@ -13,6 +14,63 @@ export function decimalMinor(value:unknown,currency:unknown):number|null{
 }
 const safeImage=(value:unknown)=>ProductImageUrlSchema.safeParse(value).success?value as string:null;
 const text=(value:unknown,max=4000)=>typeof value==='string'?value.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,max):'';
+
+/** Official Google Shopping result fields only; no LLM or merchant page fetching. */
+const optionalShoppingText=(max:number)=>z.string().max(max).nullish().transform(v=>v??undefined);
+export const SerpApiItemSchema=z.object({
+ title:z.string().min(1).max(2000),product_id:optionalShoppingText(200),product_link:optionalShoppingText(2048),link:optionalShoppingText(2048),
+ price:optionalShoppingText(200),extracted_price:z.number().nonnegative().max(1e9).nullish().transform(v=>v??undefined),currency:optionalShoppingText(8),
+ source:optionalShoppingText(200),thumbnail:optionalShoppingText(2048),thumbnails:z.array(z.string().max(2048)).max(50).nullish().transform(v=>v??undefined),
+ delivery:optionalShoppingText(1000),second_hand_condition:optionalShoppingText(200),snippet:optionalShoppingText(10000),multiple_sources:z.boolean().nullish().transform(v=>v??undefined),
+}).passthrough();
+function shoppingCurrency(value:string):ProductCurrency|null{
+ const found=new Set<ProductCurrency>();
+ for(const code of ProductCurrencySchema.options)if(new RegExp(`\\b${code}\\b`).test(value))found.add(code);
+ if(value.includes('€'))found.add('EUR');if(value.includes('£'))found.add('GBP');
+ if(/US\$/.test(value))found.add('USD');if(/(?:CA|C)\$/.test(value))found.add('CAD');if(/(?:AU|A)\$/.test(value))found.add('AUD');
+ return found.size===1?[...found][0]!:null;
+}
+function shoppingAmount(display:string,currency:ProductCurrency):number|null{
+ let number=display.replace(/\b(?:EUR|GBP|USD|CAD|AUD|CHF|PLN|JPY)\b|(?:US|CA|AU|A|C)\$|[€£$¥]/g,'').trim();
+ number=number.replace(/(\d),[-–]$/,'$1.00').replace(/[\u00a0\u202f ]/g,'');
+ if(!/^\d+(?:[.,]\d+)*$/.test(number))return null;
+ const comma=number.lastIndexOf(','),dot=number.lastIndexOf('.');
+ if(comma>=0&&dot>=0){const decimal=comma>dot?',':'.';number=number.split(decimal===','?'.':',').join('').replace(decimal,'.');}
+ else if(comma>=0){if(/^\d{1,3}(?:,\d{3})+$/.test(number))number=number.replaceAll(',','');else number=number.replace(',','.');}
+ else if(dot>=0&&/^\d{1,3}(?:\.\d{3})+$/.test(number))number=number.replaceAll('.','');
+ return decimalMinor(number,currency);
+}
+export function extractSerpApiItem(raw:unknown,context:{country:string;now?:string}):ProductRecord{
+ const item=SerpApiItemSchema.parse(raw),now=context.now??new Date().toISOString();
+ const url=PublicUrlSchema.parse(item.product_link??item.link);
+ if(/[?&](?:api_key|access_token|client_secret)=/i.test(url))throw Error('UNSAFE_PRODUCT_URL');
+ const host=new URL(url).hostname,google=/(^|\.)google\.(?:com|fi|de|co\.uk|fr|it|es|ca|com\.au|ch|pl|co\.jp)$/.test(host);
+ if(google){const destination=new URL(url);if(!/^\/shopping\/product\/[^/]+/.test(destination.pathname)&&!(destination.pathname==='/search'&&/(?:catalogid|pid):/.test(destination.searchParams.get('prds')??'')))throw Error('NOT_PRODUCT_URL');}
+ if(/(^|\.)serpapi\.com$/.test(host))throw Error('NOT_PRODUCT_URL');
+ const display=item.price??'',explicit=item.currency?shoppingCurrency(item.currency):null,shown=shoppingCurrency(display);
+ const currency=explicit&&shown&&explicit!==shown?null:shown??explicit;
+ const subscription=/\b(?:per (?:month|week|day|year)|monthly|instal\w*)\b|\/\s*(?:mo|month|kk|yr|year)\b/i.test(display);
+ const fixed=!!display&&!subscription&&!/\b(?:from|starting|alkaen|approx|noin)\b|\d\s*[-–]\s*\d/i.test(display);
+ const displayed=currency&&fixed?shoppingAmount(display,currency):null;
+ const numeric=currency&&item.extracted_price!==undefined?decimalMinor(item.extracted_price,currency):null;
+ // Both fields must agree when both exist. Never use an alternative_price or an instalment as the purchase amount.
+ const priceMinor=displayed!==null&&(numeric===null&&item.extracted_price===undefined||numeric===displayed)?displayed:null;
+ const explicitCondition=text(item.second_hand_condition??'',200).toLowerCase();
+ const conditionText=explicitCondition||item.title.toLowerCase();
+ const condition=/\b(?:like new|as new|uudenveroinen)\b/.test(conditionText)?'unknown':/\b(?:refurbished|renewed|kunnostettu)\b/.test(conditionText)?'refurbished':/\b(?:used|pre-owned|second.hand|käytetty)\b/.test(conditionText)?'used':/\b(?:new|brand-new|uusi)\b/.test(conditionText)?'new':'unknown';
+ const photos=[item.thumbnail,...item.thumbnails??[]].flatMap(v=>{const u=safeImage(v);return u&&!/[?&](?:api_key|access_token|client_secret)=/i.test(u)?[u]:[];});
+ const delivery=text(item.delivery,1000),conditional=/\b(?:over|above|minimum|orders|alkaen|yli|vähintään|from|if)\b/i.test(delivery);
+ const free=!conditional&&/^(?:free (?:delivery|shipping)|ilmainen (?:toimitus|kuljetus))\.?$/i.test(delivery);
+ const shippingCurrency=shoppingCurrency(delivery);
+ const shipping=free?0:!conditional&&shippingCurrency===currency&&currency?shoppingAmount(delivery.replace(/\b(?:delivery|shipping|toimitus|kuljetus)\b/gi,'').trim(),currency):null;
+ const provenance:ProductRecord['metadata']['fieldProvenance']={};const field=(name:string,path:string)=>{provenance[name]={path,method:'provider_api',retrievedAt:now};};
+ field('title','shopping_results.title');field('source','shopping_results.product_link or link');field('sourceType','shopping_results');
+ if(priceMinor!==null)field('price','shopping_results.price + extracted_price');if(currency)field('currency',explicit?'shopping_results.currency':'shopping_results.price currency marker');
+ if(photos.length)field('image','shopping_results.thumbnail');if(item.source)field('seller','shopping_results.source');if(condition!=='unknown')field('condition',explicitCondition?'shopping_results.second_hand_condition':'shopping_results.title');if(shipping!==null)field('delivery','shopping_results.delivery');
+ const id=createHash('sha256').update((item.product_id??url)+'\n'+item.title.trim().toLowerCase()+'\n'+(item.source??'').trim().toLowerCase()).digest('hex').slice(0,40);
+ const metadata=ProductMetadataSchema.parse({provider:'serpapi',sourceProductId:(item.product_id?item.product_id.slice(0,120)+':':'')+id,marketplaceId:'GOOGLE_SHOPPING',marketplaceCountry:context.country,sourceMode:'production',retrievalMethod:'provider_api',linkDestination:google?'google_product':'retailer',priceType:subscription?'subscription':fixed?'fixed':'unknown',shippingCostType:shipping===null?'unknown':'fixed',deliveryCountry:null,deliverySupported:null,sellerCountry:null,additionalImages:[...new Set(photos)].slice(1,9),attributes:{...(item.product_id?{googleProductId:item.product_id}:{}),...(delivery?{deliveryText:delivery.slice(0,300)}:{}),...(item.multiple_sources?{multipleSources:'true'}:{})},taxInformation:'Google Shopping source-reported amount, not an independently checked retailer price. Search location does not establish stock, seller locality or delivery eligibility. Taxes and extra charges require checking.',knownTotalMinor:priceMinor!==null&&shipping!==null&&priceMinor+shipping<=1e9?priceMinor+shipping:null,fieldProvenance:provenance});
+ return {title:item.title,description:text(item.snippet),url,imageUrl:photos[0]??null,priceMinor,currency,condition,availability:'unknown',seller:item.source??null,location:null,shippingCostMinor:shipping,fetchedAt:now,metadata};
+}
 function ebayCondition(id:string|undefined):ProductRecord['condition']{
  // Numeric condition IDs from official eBay condition documentation; unknown future IDs stay unknown.
  if(id==='1000')return 'new';if(['2000','2010','2020','2030','2500'].includes(id??''))return 'refurbished';if(['3000','4000','5000','6000','2990','3010'].includes(id??''))return 'used';return 'unknown';

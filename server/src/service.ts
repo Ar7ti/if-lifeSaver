@@ -1,3 +1,4 @@
+import {productIdentity,reconcileSerpApiResult} from './products/reconcile.js';
 import { explicitResearchConstraints, normalizeResearchRequest } from './research-constraints.js';
 import { offerChoice, rememberChoice } from './shopping.js';
 import type { ReplaceCartRequest, UndoCartReplacement, ApplyScenarioRequest } from '../../shared/contracts/index.js';
@@ -7,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { AgentCommandSchema, LifeProjectSchema, researchSourceKey, researchDismissed, type ResearchFeedbackInput, itemVisual, type LifeProject, type ProjectPatch, type WorkspacePatch, type AddCartItemRequest, type CartItemPatch, type AssistantRequest, type AssistantResponse, type ResearchRequest, type SellerMessageRequest, type SellerMessageResponse, type AgentAction, type AgentCommand, type Offer, type CreateProjectRequest } from '../../shared/contracts/index.js';
 import type { ProjectRepository } from './repository.js';
 import type { Planner } from './ai.js';
-import type { SearchProvider } from './research.js';
+import {restoreResearchReferences, type SearchProvider} from './research.js';
 import { allocateBudgetForPlan, recalculateBudget, simulateScenarios, scenarioFingerprint, planningGroup, analyzeRisks } from './finance.js';
 import { createWorkspace, patchWorkspace } from './workspace.js';
 import { AppError, notFound } from './errors.js';
@@ -24,10 +25,19 @@ export class ProjectService {
   constructor(readonly repository: ProjectRepository, private planner: Planner, private search: SearchProvider) {}
   private derive(project: LifeProject, revision = project.revision + 1) {
     reconcileProtection(project);
+    for(const result of project.researchResults){restoreResearchReferences(result,project);reconcileSerpApiResult(result);}
     project.budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense, project.protection?.car.budgetLink);
     project.scenarios = simulateScenarios({...project,revision},{includeDemo:this.search.mode==='demo'});
     if(project.scenarioSelection)project.scenarioSelection.needsReview=project.scenarioSelection.fingerprint!==scenarioFingerprint(project,{includeDemo:this.search.mode==='demo'});
     project.risks = analyzeRisks(project);
+  }
+  private ensureResearchWidget(project:LifeProject,kind:'product'|'service') {
+    const type=kind==='product'?'product_catalog':'service_finder';
+    // An explicit search can introduce a new category; preserve existing hidden/layout choices.
+    if(project.workspace.widgets.some(w=>w.type===type))return;
+    const widget=createWorkspace(project.title,[type],project.scenarioType).widgets[0]!;
+    widget.position.y=Math.min(100,Math.max(0,...project.workspace.widgets.map(w=>w.position.y+w.position.h)));
+    project.workspace.widgets.push(widget);project.workspace.updatedAt=new Date().toISOString();
   }
   private reconcile(project:LifeProject) {
     const profile=buildScenarioProfile({message:project.originalMessage,scenarioType:project.scenarioType,preferences:project.preferences,location:project.location,totalMinor:project.budget.confirmed?project.budget.totalMinor:undefined});
@@ -115,7 +125,7 @@ export class ProjectService {
     this.derive(project,0);
     return this.repository.create(LifeProjectSchema.parse(project));
   }
-  async get(id: string) { const project=await this.repository.get(id);reconcileProtection(project);if(!project.scenarios.length||project.scenarios.some(s=>s.fingerprint!==scenarioFingerprint(project,{includeDemo:this.search.mode==='demo'})))this.derive(project,project.revision);return project; }
+  async get(id: string) { const project=await this.repository.get(id);reconcileProtection(project);for(const result of project.researchResults){restoreResearchReferences(result,project);reconcileSerpApiResult(result);}if(!project.scenarios.length||project.scenarios.some(s=>s.fingerprint!==scenarioFingerprint(project,{includeDemo:this.search.mode==='demo'})))this.derive(project,project.revision);return project; }
   async protectionTimeline(id:string){return movingProtectionTimeline(await this.get(id));}
   protectionMilestone(id:string,milestoneId:ProtectionMilestoneId,input:ProtectionMilestonePatch){return this.repository.update(id,p=>updateProtectionMilestone(p,milestoneId,input),input.expectedRevision);}
   protectionUpdate(id:string,input:ProtectionUpdate){return this.repository.update(id,p=>{updateProtection(p,input);this.derive(p);});}
@@ -227,6 +237,7 @@ export class ProjectService {
     const stored = await this.repository.update(id,p=>{
       if (p.location !== snapshot.location || JSON.stringify(p.preferences)!==JSON.stringify(snapshot.preferences)) throw new AppError('CONFLICT','Project constraints changed during research; run the search again',409);
       p.researchResults = [...p.researchResults,result].slice(-30);
+      this.ensureResearchWidget(p,query.kind);
       this.derive(p);
     });
     return stored.researchResults.at(-1)!;
@@ -249,6 +260,7 @@ export class ProjectService {
   }
   private findOffer(project: LifeProject, offerId: string) {
     for (const result of [...project.researchResults].reverse()) {
+      reconcileSerpApiResult(result);
       const offer = result.offers.find(o=>o.id===offerId);
       if (offer) {
         if (result.warnings.some(w=>w.startsWith('Project constraints changed'))) throw new AppError('STALE_RESEARCH','Research again after changing project constraints',409);
@@ -267,7 +279,7 @@ export class ProjectService {
       if(o.availability==='out_of_stock') throw new AppError('OFFER_UNAVAILABLE','This offer is listed as out of stock');
       if(project.preferences.allowUsed===false&&o.condition==='used') throw new AppError('PREFERENCE_CONFLICT','Used offers are excluded by your preferences');
       if(project.preferences.deliveryRequired===true&&o.delivery.available===false) throw new AppError('PREFERENCE_CONFLICT','This offer does not provide required delivery');
-      if(project.cart.some(i=>i.offerId===o.id||o.product&&i.product?.provider===o.product.provider&&i.product.sourceProductId===o.product.sourceProductId)) throw new AppError('CONFLICT','Offer already in cart; update its quantity',409);
+      if(project.cart.some(i=>i.offerId===o.id||o.product&&productIdentity(i.product,i.title,i.merchantName)===productIdentity(o.product,o.title,o.seller.name))) throw new AppError('CONFLICT','Offer already in cart; update its quantity',409);
       project.cart.push({...offerChoice(o),id:randomUUID(),quantity:input.quantity,status:input.status,addedAt:now});
     } else project.cart.push({...input,id:randomUUID(),offerId:null,currency:'EUR',priceStatus:'estimated',priceOrigin:'user',addedAt:now});
   }
@@ -292,7 +304,7 @@ export class ProjectService {
     const visualMatch=previousVisual!=='unknown'&&previousVisual===nextVisual;
     const visualConflict=previousVisual!=='unknown'&&nextVisual!=='unknown'&&previousVisual!==nextVisual;
     if(visualConflict||(!visualMatch&&planningGroup(item.category,project.budget)!==planningGroup(offer.category,project.budget)))throw new AppError('CATEGORY_MISMATCH','Choose an alternative for the same purchase category.',400);
-    if(project.cart.some(i=>i.id!==item.id&&(i.offerId===offer.id||offer.product&&i.product?.provider===offer.product.provider&&i.product.sourceProductId===offer.product.sourceProductId)))throw new AppError('CONFLICT','This offer is already in the plan.',409);
+    if(project.cart.some(i=>i.id!==item.id&&(i.offerId===offer.id||offer.product&&productIdentity(i.product,i.title,i.merchantName)===productIdentity(offer.product,offer.title,offer.seller.name))))throw new AppError('CONFLICT','This offer is already in the plan.',409);
     if(offer.priceMinor===null||offer.priceStatus==='unknown')throw new AppError('PRICE_UNKNOWN','This alternative has no recorded price.',400);
     if(offer.availability==='out_of_stock')throw new AppError('OFFER_UNAVAILABLE','This alternative is listed as unavailable.',400);
     if(project.preferences.deliveryRequired===true&&offer.kind==='product'&&offer.delivery.available!==true)throw new AppError('PREFERENCE_CONFLICT','Required delivery is not established.',400);
@@ -426,6 +438,7 @@ export class ProjectService {
         if(!query.location)throw new AppError('VALIDATION_ERROR','A research location is required');
         const result=await this.search.search(query,project);
         project.researchResults=[...project.researchResults,result].slice(-30);
+        this.ensureResearchWidget(project,query.kind);
         return `${result.status}: ${result.summary?.explanation??`${result.offers.length} offers`}. ${result.warnings.join(' ')}`.slice(0,4000);
       }
     }

@@ -1,0 +1,24 @@
+{
+  "backendTests": {
+    "passed": 346,
+    "failed": 0,
+    "newSerpApiTests": 19
+  },
+  "browserTests": {
+    "passed": 10,
+    "failed": 0,
+    "groups": {
+      "serpApiFixture": 2,
+      "existingResearchFurniture": 7,
+      "anonymousCsrfCartScenario": 1
+    }
+  },
+  "frontendTypecheck": "passed",
+  "backendTypecheck": "passed",
+  "frontendBuild": "passed",
+  "backendBuild": "passed",
+  "frontendSecretMatches": 0,
+  "realSerpApiSearches": 1,
+  "newOpenAiCalls": 0,
+  "productionAndMockDeploymentsUnchanged": true
+}

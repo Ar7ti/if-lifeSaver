@@ -1,0 +1,38 @@
+[
+  {
+    "environment": "production",
+    "service": "api",
+    "id": "e2d53686-7e45-41a1-a8ae-3b44162a7161",
+    "status": "SUCCESS"
+  },
+  {
+    "environment": "production",
+    "service": "web",
+    "id": "5073a485-83b1-43eb-9a0d-3b230c05e4e1",
+    "status": "SUCCESS"
+  },
+  {
+    "environment": "public-access-staging",
+    "service": "api",
+    "id": "6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a",
+    "status": "SUCCESS"
+  },
+  {
+    "environment": "public-access-staging",
+    "service": "web",
+    "id": "2372766f-0e4c-4a2c-aa4e-bc176130c901",
+    "status": "SUCCESS"
+  },
+  {
+    "environment": "live-ai-staging",
+    "service": "api",
+    "id": "74e7bc70-e2bb-4e12-a371-3d7052214904",
+    "status": "SUCCESS"
+  },
+  {
+    "environment": "live-ai-staging",
+    "service": "web",
+    "id": "99dfc06d-4dc7-4927-90b5-e9e33a42b27d",
+    "status": "SUCCESS"
+  }
+]

@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Check, ChevronDown, Info, Loader2, PenLine, RotateCw, Search, SearchX, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { researchDismissed, researchFeedbackFor, itemVisual, type ResearchFeedback, type ResearchInput, type CartItem, type Offer, type ResearchResult, type WorkspaceWidget } from '@contracts';
+import { researchDismissed, researchFeedbackFor, furnitureItems, itemVisual, type ResearchFeedback, type ResearchInput, type CartItem, type Offer, type ResearchResult, type WorkspaceWidget } from '@contracts';
 import { useWorkspace } from '@/features/workspace/context';
 import { useUi, type FurnitureClass } from '@/stores/ui';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { hostOf, formatMoney, humanizeCategory, pluralize, relativeTime } from '
 import { toast } from '@/stores/toast';
 import { cn } from '@/lib/cn';
 import { OfferCard, offerReasons } from './OfferCard';
+import {FurnitureSources} from './FurnitureSources';
 import { CompareDialog } from './CompareDialog';
 import { SellerMessageDialog } from './SellerMessageDialog';
 import { ManualItemDialog } from './ManualItemDialog';
@@ -117,7 +118,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
 
   // ---- new search ----
   const [query, setQuery] = useState('');
-  const [productSource,setProductSource]=useState<'auto'|'web'|'ebay'>('auto');
+  const [productSource,setProductSource]=useState<'auto'|'web'|'ebay'|'serpapi'>('auto');
   const [country,setCountry]=useState('');
   const [productCurrency,setProductCurrency]=useState<'EUR'|'GBP'|'USD'|'CAD'|'AUD'>('EUR');
   const [maxPrice, setMaxPrice] = useState('');
@@ -142,7 +143,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
       setFormOpen(false);
       await writer.refresh();
       if (result.status === 'unavailable') toast.info('Search returned no options', result.warnings[0]);
-      else toast.success(result.summary?`${result.summary.supportedCount} supported · ${result.summary.potentialCount} potential`:`${pluralize(result.offers.length, 'option')} found`, result.mode === 'demo' ? 'Fictional demo offers.' : 'Check each source before deciding.');
+      else toast.success(!result.offers.length&&result.furnitureSearchLinks?.length?'Source searches ready':result.summary?`${result.summary.supportedCount} supported · ${result.summary.potentialCount} potential`:`${pluralize(result.offers.length, 'option')} found`, result.mode === 'demo' ? 'Fictional demo offers.' : 'Check each source before deciding.');
     },
     onError: writer.reloadOnConflict,
   });
@@ -161,6 +162,16 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
     const classPref = isProduct && cls !== 'all' ? [CLASS_PREFERENCE[cls]] : [];
     setLastRequest(t);
     research.mutate({projectId:project.id, text: t, max: max !== undefined && Number.isFinite(max) && max >= 0 ? Math.round(max * 100) / 100 : undefined, prefs: [...classPref, ...prefs] });
+  }
+
+  function searchFurnitureSources() {
+    if(research.isPending)return;
+    const t=query.trim()||'Furniture';
+    const max=maxPrice.trim()?Number(maxPrice.replace(',','.')):undefined;
+    setLastRequest(t);
+    research.mutate({projectId:project.id,text:t,max:undefined,prefs:[],exact:{category:'furniture',kind:'product',productSource:'web',country:'FI',currency:'EUR',location:project.location??undefined,
+      ...(max!==undefined&&Number.isFinite(max)&&max>=0?{maxPrice:Math.round(max*100)/100}:{}),
+      preferences:[`Looking for: ${t}`.slice(0,200),'Furniture sources: IKEA Finland, JYSK Finland, Tori.fi.',...prefs].slice(0,20)}});
   }
 
   // ---- filters ----
@@ -265,7 +276,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             </label>
             <div className="relative flex min-w-0 flex-1 items-center">
               <Search className="pointer-events-none absolute left-3 size-4 text-stone transition-colors duration-200 group-focus-within/bar:text-blue-ink" aria-hidden />
-              <input id={`q-${widget.id}`} value={query} maxLength={60} onChange={e => setQuery(e.target.value)} placeholder={`What are you looking for? e.g. ${starters[0] ?? 'Relevant options'}`} className="h-10 w-full rounded-[10px] bg-transparent pr-2 pl-9 text-body sm:text-body-sm placeholder:text-stone focus:outline-none" />
+              <input id={`q-${widget.id}`} value={query} maxLength={200} onChange={e => setQuery(e.target.value)} placeholder={`What are you looking for? e.g. ${starters[0] ?? 'Relevant options'}`} className="h-10 w-full rounded-[10px] bg-transparent pr-2 pl-9 text-body sm:text-body-sm placeholder:text-stone focus:outline-none" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] px-3 text-body-sm text-graphite transition-colors duration-150 hover:bg-ink/[0.03] @lg:flex-none @lg:border-l @lg:border-hairline-strong @lg:rounded-none @lg:hover:bg-transparent" htmlFor={`max-${widget.id}`}>
@@ -279,10 +290,11 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             </div>
           </div>
           {isProduct&&<div className="flex flex-wrap gap-2 text-caption text-graphite">
-            <label>Source <select aria-label="Product source" value={productSource} onChange={e=>setProductSource(e.target.value as typeof productSource)} className="h-8 rounded-button border border-hairline bg-surface px-2"><option value="auto">Automatic</option><option value="ebay">eBay structured API</option><option value="web">Web research</option></select></label>
+            <label>Source <select aria-label="Product source" value={productSource} onChange={e=>setProductSource(e.target.value as typeof productSource)} className="h-8 rounded-button border border-hairline bg-surface px-2"><option value="auto">Automatic</option><option value="serpapi">Google Shopping · SerpApi</option><option value="ebay">eBay structured API</option><option value="web">Web research</option></select></label>
             <label>Country <select aria-label="Product country" value={country} onChange={e=>{const v=e.target.value;setCountry(v);setProductCurrency(v==='GB'?'GBP':v==='US'?'USD':v==='CA'?'CAD':v==='AU'?'AUD':'EUR');}} className="h-8 rounded-button border border-hairline bg-surface px-2"><option value="">Use project country</option><option value="FI">Finland</option><option value="DE">Germany</option><option value="GB">United Kingdom</option><option value="US">United States</option><option value="FR">France</option><option value="IT">Italy</option><option value="ES">Spain</option><option value="CA">Canada</option><option value="AU">Australia</option></select></label>
             <label>Currency <select aria-label="Product currency" value={productCurrency} onChange={e=>setProductCurrency(e.target.value as typeof productCurrency)} className="h-8 rounded-button border border-hairline bg-surface px-2">{['EUR','GBP','USD','CAD','AUD'].map(v=><option key={v}>{v}</option>)}</select></label>
           </div>}
+          {isProduct&&project.scenarioType==='moving'&&(!query.trim()||furnitureItems(query).length>0||/furnitur|huonekal/i.test(query))&&(!country||country==='FI')&&/\b(?:Finland|Suomi|Turku|Helsinki|Espoo|Tampere|Vantaa|Oulu|Kuopio|Jyväskylä)\b/i.test(project.location??'')&&<Button type="button" size="sm" variant="outline" className="self-start" icon={<Search/>} disabled={research.isPending} onClick={searchFurnitureSources}>Search IKEA, JYSK &amp; Tori</Button>}
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-caption text-graphite">
             {!current && (
               <>
@@ -389,6 +401,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
       {research.isError && (
         <div className="flex flex-col gap-2">
           <ErrorState error={research.error} onRetry={() => research.variables&&research.mutate(research.variables)} />
+          {isProduct&&productSource!=='web'&&research.variables&&<Button size="sm" variant="outline" className="self-start" onClick={()=>{const input=research.variables!;research.mutate({...input,exact:{...(input.exact??{category:toSlug(input.text),kind:'product',searchTerms:input.text.slice(0,100),maxPrice:input.max,preferences:[`Looking for: ${input.text}`.slice(0,200),...input.prefs],country:country||undefined,currency:productCurrency}),productSource:'web'}});}}>Try Web Research instead (uses AI allowance)</Button>}
           <Button size="sm" variant="text" icon={<PenLine />} className="self-start" onClick={() => setManualOpen(true)}>
             Add your own estimate instead
           </Button>
@@ -401,7 +414,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-caption text-graphite">
             <span className={cn('inline-flex items-center gap-1.5 font-medium', current.mode === 'live' ? 'text-ok-ink' : current.mode === 'demo' ? 'text-warn-ink' : 'text-graphite')}>
               <span className={cn('size-1.5 rounded-full', current.mode === 'live' ? 'bg-ok-fill' : current.mode === 'demo' ? 'bg-saffron' : 'bg-ink/30')} aria-hidden />
-              {current.mode === 'live' ? current.productDiagnostics?'eBay API · no OpenAI extraction':`Live research${current.diagnostics?.toolExecuted?` · ${current.diagnostics.searchCalls} search tool call(s)`:''}` : current.mode === 'demo' ? 'Demo data' : 'Search unavailable'}
+              {current.mode === 'live' ? current.productDiagnostics?`${current.productDiagnostics.provider==='serpapi'?'Google Shopping · SerpApi':'eBay API'} · no OpenAI extraction`:`Live research${current.diagnostics?.toolExecuted?` · ${current.diagnostics.searchCalls} search tool call(s)`:''}` : current.mode === 'demo' ? 'Demo data' : 'Search unavailable'}
             </span>
             <span>
               {humanizeCategory(current.category)} · {pluralize(current.offers.length, 'option')} · {relativeTime(current.searchedAt)}
@@ -436,6 +449,16 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           {current.productRoutes?.map(route=><p key={route.provider} className="text-caption text-graphite">{route.provider}: {route.state.replaceAll('_',' ')} · {route.reason}</p>)}
           {current.request?.productSource&&current.request.productSource!=='web'&&current.status==='unavailable'&&<Button size="sm" variant="outline" onClick={()=>research.mutate({projectId:project.id,text:current.query,max:undefined,prefs:[],exact:{...current.request!,productSource:'web'}})}>Try Web research instead</Button>}
           {current.summary&&<p className="text-body-sm text-graphite" role="status">{current.summary.explanation}</p>}
+          {!!current.furnitureSearchLinks?.length&&<FurnitureSources links={current.furnitureSearchLinks}/>}
+          {!!current.sourceNotes?.length && <section aria-label="Research notes and sources" className="rounded-card border border-hairline bg-canvas p-4">
+            <h4 className="text-body-sm font-semibold">Research notes and sources</h4>
+            <p className="mt-1 text-caption text-graphite">Useful discovery, not confirmed shopping matches. Check your location, price, condition and delivery requirements at each source. No price here has been added to your plan.</p>
+            <ul className="mt-3 space-y-3">{current.sourceNotes.map(note=><li key={note.url} className="min-w-0">
+              <a href={note.url} target="_blank" rel="noopener noreferrer" className="break-words text-body-sm font-medium text-blue-ink hover:underline">{note.title} ↗</a>
+              <p className="text-caption text-graphite">{hostOf(note.url)} · {note.evidence==='cited_summary'?'AI search summary with citation; not independently checked':'Discovered reference; page details not checked'}</p>
+              {note.summary && <details className="mt-1 text-body-sm text-graphite"><summary className="cursor-pointer">Read research note</summary><p className="mt-2 whitespace-pre-wrap break-words">{note.summary}</p></details>}
+            </li>)}</ul>
+          </section>}
           {current.offers.some(o=>researchDismissed(project,o))&&<label className="flex items-center gap-2 text-caption text-graphite"><input type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/> Show results hidden by your feedback</label>}
           {moreFilters && current.offers.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-canvas p-2.5">
@@ -473,7 +496,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           {current.offers.length === 0 ? (
             <EmptyState
               icon={<SearchX />}
-              title={current.status === 'unavailable' ? 'Research is unavailable right now' : current.engineVersion===2?current.summary?.sourceCount?'No supported matches or useful leads':'No usable candidate sources':'No matching options found'}
+              title={current.status === 'unavailable' ? 'Research is unavailable right now' : current.furnitureSearchLinks?.length?'Explore the selected furniture sources':current.sourceNotes?.length?'Useful sources found — exact listings need checking':current.engineVersion===2?current.summary?.sourceCount?'No supported matches or useful leads':'No usable candidate sources':'No matching options found'}
               action={
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button size="sm" variant="outline" icon={<Search />} onClick={() => setFormOpen(true)}>

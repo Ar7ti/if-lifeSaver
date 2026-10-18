@@ -23,8 +23,10 @@ export function createLiveApi(getToken: () => string): LifeSimApi {
     const access=path==='/health'?null:await ensureAccess();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), opts.timeout ?? SHORT_TIMEOUT);
+    // Public CSRF requires JSON even for bodyless DELETE/scenario requests.
+    const body=opts.body===undefined&&opts.method&&opts.method!=='GET'?{}:opts.body;
     const headers: Record<string, string> = {};
-    if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
     const token = getToken();
     if (token&&access?.mode==='legacy') headers.Authorization = `Bearer ${token}`;
     if(access?.mode==='public'&&opts.method&&opts.method!=='GET'){
@@ -37,7 +39,7 @@ export function createLiveApi(getToken: () => string): LifeSimApi {
       response = await fetch(`${BASE}${path}`, {
         method: opts.method ?? 'GET',
         headers,
-        body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        body: body === undefined ? undefined : JSON.stringify(body),
         signal: controller.signal,
         credentials: 'same-origin',
       });

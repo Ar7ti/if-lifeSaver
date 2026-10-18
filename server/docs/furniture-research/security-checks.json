@@ -1,0 +1,46 @@
+{
+  "paidCalls": 0,
+  "checks": [
+    {
+      "pathType": "/projects/:otherProjectId",
+      "method": "GET",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "pathType": "/projects/:otherProjectId/assistant",
+      "method": "POST",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "pathType": "/projects/:otherProjectId/research",
+      "method": "POST",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "pathType": "/admin/status",
+      "method": "GET",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "check": "missing_csrf_rejected",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "check": "owner_filtered_list_is_empty",
+      "passed": true
+    },
+    {
+      "check": "unauthorized_research_and_assistant_spent_no_allowance",
+      "passed": true
+    },
+    {
+      "check": "temporary_visitor_session_revoked",
+      "passed": true
+    }
+  ]
+}

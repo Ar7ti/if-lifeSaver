@@ -1,0 +1,13 @@
+{
+  "browserRole": "admin",
+  "cartItems": 0,
+  "totalMinor": 200000,
+  "committedMinor": 0,
+  "proposedMinor": 0,
+  "sourceReportedItemMinor": 24900,
+  "addedThroughUi": true,
+  "selectionPersistedOnReload": true,
+  "removedThroughUi": true,
+  "apiSearchesDuringBrowserChecks": 0,
+  "alerts": []
+}
