@@ -1,0 +1,7 @@
+{
+  "branch": "codex-wip-backup-20261017-205756",
+  "commit": "edc7ae3024c9abc1770e43753b312bea7e0da2e9",
+  "patchSha256": "ef02a4495c7c371c85155d67dcb603d37958cebdae698143feccc003a5e0eb22",
+  "compressedSha256": "a53561b78f6204bf8c274ddb5a67045c15746918d8a44a916219f277a78ed947",
+  "reason": "Preserve the full historical patch without activating superseded duplicate quote paths or automatic retailer scraping."
+}
