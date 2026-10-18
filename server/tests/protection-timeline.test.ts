@@ -79,3 +79,16 @@ test('anonymous visitors cannot read or mutate another project timeline; CSRF re
  assert.equal((await app.inject({method:'PATCH',url:url+'/home_review',headers:{origin,cookie:a.cookie},payload})).statusCode,403);
  assert.equal((await app.inject({method:'PATCH',url:url+'/home_review',headers:a,payload})).statusCode,200);
 });
+
+test('main authentication protects both timeline routes before reading or changing a project',async t=>{
+ const token='fictional-test-token-over-24-characters';
+ const app=await buildApp({config:loadConfig({AI_MODE:'local',RESEARCH_MODE:'unavailable',STORAGE_MODE:'memory',LOG_LEVEL:'silent',API_TOKEN:token})});t.after(()=>app.close());
+ const headers={authorization:`Bearer ${token}`};
+ const created=await app.inject({method:'POST',url:'/api/projects',headers,payload:{message:'I am moving to Turku with EUR 2000'}});assert.equal(created.statusCode,201,created.body);
+ const url=`/api/projects/${created.json().project.id}/protection-timeline`;
+ assert.equal((await app.inject(url)).statusCode,401);
+ assert.equal((await app.inject({method:'PATCH',url:url+'/home_review',payload:{}})).statusCode,401);
+ assert.equal((await app.inject({url,headers:{authorization:'Bearer invalid'}})).statusCode,401);
+ const own=await app.inject({url,headers});assert.equal(own.statusCode,200,own.body);
+ const saved=await app.inject({method:'PATCH',url:url+'/home_review',headers,payload:{completed:true,expectedContextFingerprint:own.json().milestones[0].contextFingerprint}});assert.equal(saved.statusCode,200,saved.body);assert.equal(saved.json().timeline.completed,1);
+});

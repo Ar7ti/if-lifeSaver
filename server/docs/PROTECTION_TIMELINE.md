@@ -65,7 +65,7 @@ npm run build
 npx playwright test --reporter=line
 ```
 
-New backend tests: `server/tests/protection-timeline.test.ts` — generation, calendar boundaries, old projects, saved review states, contextual invalidation/history, duplicate prevention, unchanged budgets/tasks, real HTTP workflow and restart, optimistic conflict validation, anonymous isolation and CSRF.
+New backend tests: `server/tests/protection-timeline.test.ts` — generation, calendar boundaries, old projects, saved review states, contextual invalidation/history, duplicate prevention, unchanged budgets/tasks, real HTTP workflow and restart, optimistic conflict validation, shared-token authentication, anonymous isolation and CSRF.
 
 New UI tests: `tests/ui/protection-timeline.spec.ts` — actual moving creation and details, completion/reopening and reload, date edits, official link, existing review handoff, travel/car compatibility, postponed review, keyboard expansion, reduced motion, 1440px desktop and 390px mobile without horizontal overflow. Screenshots are in `server/docs/protection-timeline/`.
 
@@ -119,3 +119,7 @@ All other pre-existing working-tree changes were preserved. No dependency or dep
 An initial combined browser run hit the existing 10/minute project-creation limiter. The new fixture helper now honors the server's `Retry-After` response; the clean full rerun passed without weakening server limits or existing tests.
 
 Scope limitations: moving only; browser-only offline demo mode requires connecting to the backend for this feature; external resources are in Finnish; status is planning progress and does not verify insurance. Mobile validation used Chromium viewport tests, not a physical phone or every browser. Milestone history retains the latest 20 events per step. No deployment or external insurer account validation was performed.
+
+## Previous timeline-only release
+
+GitHub main previously shipped the timeline in commit `30d1cd0` with shared-token authentication. Its recorded checks were 219 backend tests and 34 browser tests. The current integration adds the opt-in public-session implementation, shopping and research features described in their separate reports; legacy authentication remains available when public access is disabled. Those historical counts do not describe this integrated release.

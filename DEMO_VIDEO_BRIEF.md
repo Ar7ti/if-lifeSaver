@@ -1,9 +1,9 @@
 # if-liveSaver — Demo Video Brief
 
-**Audience:** Creative director, editor, narrator, and hackathon judges  
-**Format:** Premium, two-minute product demonstration  
-**Repository inspected:** `regal-hadrosaurus-59639ce3`, working copy based on `e23d129`  
-**Inspection date:** 17 October 2026  
+**Audience:** Creative director, editor, narrator, and hackathon judges
+**Format:** Premium, two-minute product demonstration
+**Repository inspected:** `regal-hadrosaurus-59639ce3`, working copy based on `e23d129`
+**Inspection date:** 17 October 2026
 **Scope:** Current source code, existing verification records, and credential-free in-memory rehearsals of the supplied scenarios. This briefing adds no application changes, writes no persistent application data, and makes no live provider requests.
 
 > **The central story:** Describe a real-life decision. Get a practical workspace. Compare options, see the financial consequences, and review relevant protection before committing.
@@ -354,7 +354,7 @@ These are service-level rehearsals, not a fresh browser or live-provider certifi
 
 ### Recommended location
 
-**Existing test URL:** https://web-public-access-staging.up.railway.app/app  
+**Existing test URL:** https://web-public-access-staging.up.railway.app/app
 For the animated landing page, use the same origin at `/`.
 
 This is the isolated mock-only environment documented in the staging report, not permission to change production or remove its safety controls. Availability and remaining allowance should be checked before the shoot.
