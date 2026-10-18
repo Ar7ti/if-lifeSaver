@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { AlertTriangle, ExternalLink, Minus, PenLine, Plus, ShoppingBag, Trash2 } from 'lucide-react';
-import type { CartItem } from '@contracts';
+import { itemVisual, type CartItem } from '@contracts';
+import { ProductVisual } from '@/components/ui/ProductVisual';
+import { ReplaceItemDialog } from './research/ReplaceItemDialog';
 import { useWorkspace } from '@/features/workspace/context';
 import { Button } from '@/components/ui/Button';
 import { Money } from '@/components/ui/Money';
@@ -16,34 +18,13 @@ import { ManualItemDialog } from './research/ManualItemDialog';
 const priceTone = { verified: 'ok', estimated: 'warn', demo: 'warn' } as const;
 const priceText = { verified: 'Verified', estimated: 'Estimate', demo: 'Demo' } as const;
 
-/** Emoji for a budget category, used when a cart line has no listing photo. */
-export function categoryEmoji(category: string) {
-  const c = category.toLowerCase();
-  if (/bed|mattress/.test(c)) return '🛏️';
-  if (/sofa|couch|chair|furniture|desk|table/.test(c)) return '🛋️';
-  if (/mov|van|transport|truck/.test(c)) return '🚚';
-  if (/box|pack/.test(c)) return '📦';
-  if (/fridge|appliance|washer|oven/.test(c)) return '🧊';
-  if (/clean/.test(c)) return '🧽';
-  if (/home|rent|house|apartment/.test(c)) return '🏠';
-  return '🛒';
-}
-
-function CartThumb({ imageUrl, category }: { imageUrl: string | null; category: string }) {
-  const [failed, setFailed] = useState(false);
-  if (imageUrl && !failed)
-    return <img src={imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="size-11 shrink-0 rounded-[10px] bg-canvas object-cover outline outline-1 -outline-offset-1 outline-black/10" />;
-  return (
-    <span className="emoji grid size-11 shrink-0 place-items-center rounded-[10px] bg-canvas text-[20px]" aria-hidden>
-      {categoryEmoji(category)}
-    </span>
-  );
-}
+export function categoryEmoji(category:string){return itemVisual(category).emoji;}
 
 export function ShoppingCart() {
   const { project, writer } = useWorkspace();
   const { cart, budget } = project;
   const offerImages = new Map(project.researchResults.flatMap(r => r.offers).map(o => [o.id, o.imageUrl]));
+  const [replacing,setReplacing]=useState<CartItem|null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -80,7 +61,7 @@ export function ShoppingCart() {
 
   const planned = budget.committedMinor + budget.proposedMinor;
   const knownOffers=new Map(project.researchResults.flatMap(r=>r.offers).map(o=>[o.id,o]));
-  const isService=(item:CartItem)=> item.offerId&&knownOffers.has(item.offerId)?knownOffers.get(item.offerId)!.kind==='service':/^(accommodation|hotel|hostel|flight|train|transport|moving|education|course|inspection|registration|assembly|delivery)(?:_|$)/i.test(item.category);
+  const isService=(item:CartItem)=> item.kind?item.kind==='service':item.offerId&&knownOffers.has(item.offerId)?knownOffers.get(item.offerId)!.kind==='service':/^(accommodation|hotel|hostel|flight|train|transport|moving|education|course|inspection|registration|assembly|delivery)(?:_|$)/i.test(item.category);
   const unknownDelivery = cart.filter(i => i.deliveryCostMinor === null);
 
   if (cart.length === 0)
@@ -103,6 +84,7 @@ export function ShoppingCart() {
 
   return (
     <div className="flex flex-col gap-4">
+      {replacing&&<ReplaceItemDialog key={replacing.id} item={replacing} onClose={()=>setReplacing(null)}/>}
       <ul className="flex flex-col divide-y divide-hairline">
         {cart.map(item => {
           const line = item.unitPriceMinor * item.quantity + (item.deliveryCostMinor ?? 0);
@@ -110,15 +92,15 @@ export function ShoppingCart() {
           return (
             <li key={item.id} className={cn('flex flex-col gap-2 py-3 first:pt-0 transition-opacity duration-200', busy === item.id && 'opacity-60')}>
               <div className="flex items-start gap-3">
-                <CartThumb imageUrl={item.offerId ? (offerImages.get(item.offerId) ?? null) : null} category={item.category} />
+                <ProductVisual compact item={{...item,imageUrl:item.imageUrl??(item.offerId?offerImages.get(item.offerId):null)}} />
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-body-sm font-medium" title={item.title}>
                     {item.title}
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-graphite">
                     <span>{humanizeCategory(item.category)}</span>
-                    <Pill tone={priceTone[item.priceStatus]}>{priceText[item.priceStatus]}</Pill>
-                    {item.status === 'proposed' && <Pill tone="blue">Proposed</Pill>}
+                    <Pill tone={priceTone[item.priceStatus]}>{item.priceOrigin==='user'?'Your price':item.priceOrigin==='source_reported'?'Source-listed':priceText[item.priceStatus]}</Pill>
+                    {item.status === 'proposed' ? <Pill tone="blue">Proposed</Pill> : <Pill tone="neutral">Chosen · fixed in scenarios</Pill>}
                     {host && (
                       <a href={item.sourceUrl!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-blue-ink hover:underline">
                         {host} <ExternalLink className="size-3" aria-hidden />
@@ -160,6 +142,7 @@ export function ShoppingCart() {
                   </button>
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button size="sm" variant="text" onClick={()=>setReplacing(item)} disabled={busy===item.id}>Replace</Button>
                   {item.status === 'proposed' && (
                     <Button size="sm" variant="ghost" onClick={() => patch.mutate({ item, status: 'selected' })} disabled={busy === item.id}>
                       Choose

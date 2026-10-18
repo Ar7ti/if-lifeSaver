@@ -1,0 +1,60 @@
+{
+  "source": "https://developer.ebay.com/api-docs/master/buy/browse/openapi/3/buy_browse_v1_oas3.json",
+  "version": "v1.20.4",
+  "sha256": "6ce90cbf7facc62b34c25a7eb5e5a164bbe18c3ba99e100dcbc33b7c7cf94414",
+  "verifiedOperations": {
+    "/item_summary/search": {
+      "method": "GET",
+      "security": [
+        {
+          "api_auth": [
+            "https://api.ebay.com/oauth/api_scope"
+          ]
+        }
+      ],
+      "parameters": [
+        "aspect_filter",
+        "auto_correct",
+        "category_ids",
+        "charity_ids",
+        "compatibility_filter",
+        "epid",
+        "fieldgroups",
+        "filter",
+        "gtin",
+        "limit",
+        "offset",
+        "q",
+        "sort",
+        "X-EBAY-C-ENDUSERCTX",
+        "X-EBAY-C-MARKETPLACE-ID",
+        "Accept-Language"
+      ]
+    },
+    "/item/{item_id}": {
+      "method": "GET",
+      "security": [
+        {
+          "api_auth": [
+            "https://api.ebay.com/oauth/api_scope"
+          ]
+        }
+      ],
+      "parameters": [
+        "fieldgroups",
+        "item_id",
+        "X-EBAY-C-ENDUSERCTX",
+        "X-EBAY-C-MARKETPLACE-ID",
+        "Accept-Language",
+        "quantity_for_shipping_estimate"
+      ]
+    }
+  },
+  "credentialPresence": {
+    "local": false,
+    "liveAiStagingApi": false
+  },
+  "liveVerification": "BLOCKED \u2014 no eBay credentials or partner approval configured; no token, search or details request made to eBay.",
+  "verifiedAt": "2026-10-18T00:43:42.903442+00:00",
+  "feeAndPermissionGates": "EBAY_ACCESS_APPROVED and EBAY_FREE_API_CONFIRMED default false; production use remains disabled without an operator review of actual account terms."
+}

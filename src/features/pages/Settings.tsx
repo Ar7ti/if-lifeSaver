@@ -11,6 +11,8 @@ import { Field, Input } from '@/components/ui/Field';
 import { cn } from '@/lib/cn';
 import { PageContainer, PageHeader } from './PageHeader';
 import { ServiceStatus } from './ServiceStatus';
+import { AccessSettings } from '@/features/access/SessionBoundary';
+import { useAccess } from '@/api/access';
 
 const SOURCES: { value: DataSource; title: string; body: string }[] = [
   { value: 'live', title: 'Live service', body: 'Uses the Life Simulator API: AI planning, real web research and saved projects.' },
@@ -23,12 +25,14 @@ export function Settings() {
   const [confirmClear, setConfirmClear] = useState(false);
   const projects = useProjects(s => s.projects);
   const qc = useQueryClient();
+  const publicMode=useAccess(s=>s.info?.mode==='public');
 
   return (
     <PageContainer className="max-w-[760px]">
       <PageHeader title="Settings" description="Preferences are stored in this browser only." />
 
       <div className="flex flex-col gap-4">
+        <AccessSettings />
         <Card>
           <fieldset>
             <legend className="text-heading-sm font-semibold">Data source</legend>
@@ -65,7 +69,7 @@ export function Settings() {
           </fieldset>
         </Card>
 
-        <Card>
+        {!publicMode&&<Card>
           <h2 className="text-heading-sm font-semibold">Access token</h2>
           <p className="mt-1 text-body-sm text-graphite">Only needed when the service runs with a shared API token. This is not an AI provider key.</p>
           <form
@@ -84,7 +88,7 @@ export function Settings() {
               Save token
             </Button>
           </form>
-        </Card>
+        </Card>}
 
         <Card>
           <h2 className="text-heading-sm font-semibold">This browser</h2>
@@ -101,7 +105,7 @@ export function Settings() {
         open={confirmClear}
         onClose={() => setConfirmClear(false)}
         title="Forget all projects in this browser?"
-        description="Your list of projects will be cleared from this browser. Demo projects will be lost. Live projects remain on the server, but you will need their links to open them."
+        description={publicMode?'This clears the browser list and demo projects. Live workspaces remain private to your session and return after reload. It does not delete your session cookie.':'Your list of projects will be cleared from this browser. Demo projects will be lost. Live projects remain on the server, but you will need their links to open them.'}
         footer={
           <>
             <Button variant="text" onClick={() => setConfirmClear(false)}>

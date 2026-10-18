@@ -105,7 +105,14 @@ function inferredPreferences(message: string, type: ScenarioType, base?: Prefere
   const ownsFurniture = /\b(?:already own|own|have|bringing|bring|keeping|keep)\s+(?:all|my|our|the)?\s*furniture\b/i.test(message) ? true
     : /\b(?:no furniture|need (?:all|new) furniture|furnish from scratch)\b/i.test(message) ? false : null;
   const vehicleType = /\b(?:(?:reliable|used|new|electric|hybrid|family|small)\s+){1,3}(?:car|vehicle|van|suv)\b/i.exec(message)?.[0] ?? null;
+  const requiredItems=new Set(base?.requiredItems??[]);
+  for(const clause of message.split(/[.!?\n]/)) {
+    if(!/\b(?:need|buy|looking for|furnish)\b/i.test(clause)||/\b(?:don't|do not|no longer) (?:need|want)|\bno (?:new )?furniture\b/i.test(clause))continue;
+    for(const item of ['sofa','bed','desk','chair','table','wardrobe','lamp','laptop','smartphone','monitor','bicycle'])
+      if(new RegExp(`\\b${item}s?\\b`,'i').test(clause)&&!ownedItems.has(item)&&!(ownsFurniture===true&&['sofa','bed','desk','chair','table','wardrobe'].includes(item)))requiredItems.add(item);
+  }
   const inferred = {
+    requiredItems:[...requiredItems],
     moveDate: type === 'moving' ? dates[0] ?? null : null, origin: type === 'moving' || type === 'travel' ? origin : null, householdSize: type === 'moving' && count ? countValue(count[1] ?? count[2]!) : null,
     deliveryRequired, allowUsed, priorities: [], notes: type === 'moving' && /\bnext month\b/i.test(message) ? 'User said the move is next month; exact date is not specified.' : '',
     startDate: type === 'travel' ? dates[0] ?? null : null, endDate: type === 'travel' ? dates[1] ?? inferredEnd : null,

@@ -4,7 +4,7 @@
   "type": "module",
   "version": "1.0.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",

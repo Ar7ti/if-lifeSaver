@@ -97,7 +97,7 @@ test('demo offers have fictional labels, null links, and demo provenance through
   const value = await run(provider);
   assert.equal(value.mode, 'demo');
   assert.match(value.warnings.join(' '), /fictional/);
-  assert.equal(value.offers.length, 2);
+  assert.equal(value.offers.length, 3);
   for (const offer of value.offers) {
     assert.match(offer.title, /Fictional demo/);
     assert.equal(offer.sourceUrl, null);
@@ -107,7 +107,8 @@ test('demo offers have fictional labels, null links, and demo provenance through
     assert.equal(offer.priceStatus, 'demo');
     assert.equal(offer.verificationStatus, 'demo');
     assert.equal(offer.availability, 'demo');
-    assert.equal(offer.delivery.available, null);
+    assert.equal(typeof offer.delivery.available, 'boolean');
+    assert.match(offer.delivery.details, /Fictional demo/);
   }
   assert.equal(calls.length, 0);
 });
@@ -240,12 +241,15 @@ test('invalid citation offsets, ambiguous multi-source paragraphs and missing ac
   part.annotations.push({ ...part.annotations[0]!, url: urlB });
   const noSearch = citedSearch();
   noSearch.output.shift();
-  for (const response of [badOffset, ambiguous, noSearch]) {
+  for (const response of [badOffset, ambiguous]) {
     const calls = mockResults(t, [candidate()], response);
     assert.deepEqual((await run()).offers, []);
     assert.equal(calls.length, 1);
     t.mock.restoreAll();
   }
+  const missing=mockResults(t,[candidate()],noSearch);
+  await assert.rejects(()=>run(),errorCode('WEB_SEARCH_NOT_EXECUTED'));
+  assert.equal(missing.length,1);
 });
 
 test('prices use integer EUR cents, reject ambiguous money and never estimate missing amounts', async t => {
@@ -342,8 +346,9 @@ test('new-only, required delivery, price ceilings and unavailable stock are appl
   mockResults(t, offers, citedSearch(entries));
   const constrained = { ...project, preferences: { ...project.preferences, allowUsed: false, deliveryRequired: true } };
   const value = await run(undefined, { ...request, maxPrice: 100 }, constrained);
-  assert.deepEqual(value.offers.map(o => o.title), ['Chair Alpha']);
-  assert.match(value.warnings.join(' '), /4 offer\(s\) failed/);
+  assert.deepEqual(value.offers.map(o => o.title), ['Chair Alpha','Chair Gamma']);
+  assert.equal(value.offers[1]!.eligibilityStatus,'potential');assert.equal(value.offers[1]!.priceMinor,null);assert(value.offers[1]!.missingEvidence!.some(m=>m.field==='price'&&m.required));
+  assert.equal(value.rejections!.length,3);assert.equal(value.summary!.potentialCount,2); // Both old fixtures lack a source-type assertion; neither is promoted to supported.
   assert.match(value.offers[0]!.recommendation, /Item ceiling excludes delivery/);
   assert.match(value.warnings.join(' '), /Chair Beta.*new-only/);
   assert.match(value.warnings.join(' '), /Chair Gamma.*unknown item price/);
@@ -351,13 +356,15 @@ test('new-only, required delivery, price ceilings and unavailable stock are appl
   assert.match(value.warnings.join(' '), /Chair Epsilon.*out of stock/);
 });
 
-test('unknown condition cannot pass new-only and unknown delivery cannot pass delivery required (including demo)', async t => {
+test('unknown live facts remain potential, never supported; documented fictional demo facts respect them', async t => {
   for (const mode of ['live', 'demo'] as const) {
     mockResults(t, [candidate({ identityQuote: 'Chair Alpha.', priceMinor: null, priceQuote: null,
       condition: 'unknown', conditionQuote: null, deliveryAvailable: null, deliveryQuote: null })], citedSearch([{ url: urlA, text: 'Chair Alpha.' }]));
     for (const constraint of [{ allowUsed: false }, { deliveryRequired: true }]) {
       const constrained = { ...project, preferences: { ...project.preferences, ...constraint } };
-      assert.deepEqual((await run(createSearchProvider({ ...liveOptions, mode }), request, constrained)).offers, []);
+      const results=(await run(createSearchProvider({ ...liveOptions, mode }), request, constrained)).offers;
+      if(mode==='live'){assert.equal(results.length,1);assert.equal(results[0]!.eligibilityStatus,'potential');assert.equal(results[0]!.priceMinor,null);assert(results[0]!.missingEvidence!.some(m=>m.required));}
+      else {assert(results.length>0);assert(results.every(o=>o.priceStatus==='demo'));if(constraint.allowUsed===false)assert(results.every(o=>o.condition==='new'));if(constraint.deliveryRequired===true)assert(results.every(o=>o.delivery.available===true));}
       t.mock.restoreAll();
       mockResults(t, [candidate({ identityQuote: 'Chair Alpha.', priceMinor: null, priceQuote: null,
         condition: 'unknown', conditionQuote: null, deliveryAvailable: null, deliveryQuote: null })], citedSearch([{ url: urlA, text: 'Chair Alpha.' }]));
@@ -523,7 +530,7 @@ test('scenario plans use actual vehicle, inventory, household, and moving contex
       preferences: { ...project.preferences, ownsFurniture: true, ownedItems: ['desk', 'chair'], householdSize: 2 } });
     assert.equal(plan.preferences.ownsFurniture, true);
     assert.deepEqual(plan.preferences.ownedItems, ['desk', 'chair']);
-    assert.ok(plan.queries.every(q => q.includes('desk, chair') && q.includes('bed')));
+    assert.ok(plan.queries.every(q=>q.includes('bed')));assert.deepEqual(plan.preferences.ownedItems,['desk','chair']); // Keep owned inventory in structured context, not polluting every discovery query.
     assert.equal(plan.dates.startDate, null);
     assert.equal(plan.dates.endDate, null);
   }
@@ -606,8 +613,7 @@ test('conflicting pickup locality is excluded, national delivery is retained wit
   t.mock.restoreAll();
   mockResults(t, offers, citedSearch(entries));
   const constrained = await run(undefined, { ...request, category: 'bed' }, { ...project, preferences: { ...project.preferences, deliveryRequired: true } });
-  assert.deepEqual(constrained.offers, []);
-  assert.match(constrained.warnings.join(' '), /Bed national retailer.*destination coverage is unknown/);
+  assert.equal(constrained.offers.length,2);assert(constrained.offers.every(o=>o.eligibilityStatus==='potential'));assert(constrained.offers.every(o=>o.missingEvidence!.some(m=>m.field==='delivery'&&m.required)));
 });
 
 test('reported destination delivery can make a retailer in another city relevant', async t => {
@@ -762,8 +768,7 @@ test('conditional free shipping never passes required delivery or supplies a fab
   t.mock.restoreAll();
   mockResults(t, offers, citedSearch([{ url: urlA, text }]));
   const required = await run(undefined, { ...request, category: 'bed' }, { ...project, preferences: { ...project.preferences, deliveryRequired: true } });
-  assert.deepEqual(required.offers, []);
-  assert.match(required.warnings.join(' '), /destination coverage is unknown/);
+  assert.equal(required.offers.length,1);assert.equal(required.offers[0]!.eligibilityStatus,'potential');assert.equal(required.offers[0]!.delivery.available,null);assert(required.offers[0]!.missingEvidence!.some(m=>m.field==='delivery'&&m.required));
 });
 
 test('specific furnishing categories reject unrelated items and accessories', async t => {
@@ -791,4 +796,19 @@ test('mixed thousands separators do not establish an unambiguous quoted amount',
  const text='Chair Alpha costs EUR 1,234.567.';
  mockResults(t,[candidate({identityQuote:text,priceQuote:text,priceMinor:123456700})],citedSearch([{url:urlA,text}]));
  const result=await run();assert.equal(result.offers[0]!.priceMinor,null);
+});
+
+// Image and assembly metadata must belong to the same cited product passage.
+test('reported product imagery is copied only with matching title and verbatim image evidence',async t=>{
+ const image='https://images.shop-a.fi/chair-alpha.jpg';
+ const photo=`Chair Alpha Image: ${image}`;
+ const assembly='Chair Alpha assembly included.';
+ mockResults(t,[candidate({imageUrl:image,imageQuote:photo,assembly:'included',assemblyQuote:assembly})],citedSearch([{url:urlA,text:`${summary} ${photo} ${assembly}`} ]));
+ const value=await run();assert.equal(value.offers[0]!.imageUrl,image);assert.equal(value.offers[0]!.imageSource,'cited_summary');assert.equal(value.offers[0]!.priceOrigin,'source_reported');assert.equal(value.offers[0]!.priceStatus,'estimated');assert.equal(value.offers[0]!.fulfillment!.assembly,'included');
+});
+test('unsafe, invented and other-product photo URLs never become listing images',async t=>{
+ for(const [image,quote] of [['javascript:alert(1)','Chair Alpha Image: javascript:alert(1)'],['https://images.shop-a.fi/missing.jpg',null],['https://images.shop-a.fi/beta.jpg','Chair Beta Image: https://images.shop-a.fi/beta.jpg']] as const){
+  mockResults(t,[candidate({imageUrl:image,imageQuote:quote})],citedSearch([{url:urlA,text:summary+' '+(quote??'')} ]));
+  assert.equal((await run()).offers[0]!.imageUrl,null);t.mock.restoreAll();
+ }
 });

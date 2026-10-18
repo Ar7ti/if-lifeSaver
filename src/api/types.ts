@@ -1,9 +1,9 @@
 import type {
   AddCartItemInput, AssistantRequest, AssistantResponse, CartItemPatch, CartResponse, ConfirmActionInput,
   CreateProjectInput, CreateProjectResponse, HealthResponse, LifeProject, ProjectPatch, ResearchInput,
-  ResearchResult, ScenariosResponse, SellerMessageInput, SellerMessageResponse, WorkspacePatch, WorkspaceResponse,
+  ResearchResult, ResearchFeedbackInput, ScenariosResponse, SellerMessageInput, SellerMessageResponse, WorkspacePatch, WorkspaceResponse,
   HomeInsuranceDraft, HomeInsuranceResponseSchema, IfQuoteRequest, AddIfExpenseRequest,
-  ProtectionUpdate, CarInsuranceDraft, CarQuoteRequest, ProtectionBudgetRequest, ProtectionCapabilities,
+  ProtectionUpdate, CarInsuranceDraft, CarQuoteRequest, ProtectionBudgetRequest, ProtectionCapabilities, ProtectionTimeline, ProtectionMilestoneId, ProtectionMilestonePatch, ReplaceCartRequest, UndoCartReplacement, ApplyScenarioRequest,
 } from '@contracts';
 import type { z } from 'zod';
 import type { DataSource } from '@/stores/settings';
@@ -17,13 +17,19 @@ export interface LifeSimApi {
   patchProject(id: string, patch: ProjectPatch): Promise<LifeProject>;
   assistant(id: string, request: AssistantRequest): Promise<AssistantResponse>;
   research(id: string, request: ResearchInput): Promise<ResearchResult>;
+  researchFeedback(id:string,resultId:string,input:ResearchFeedbackInput):Promise<LifeProject>;
   addCartItem(id: string, request: AddCartItemInput): Promise<CartResponse>;
   patchCartItem(id: string, itemId: string, patch: CartItemPatch): Promise<CartResponse>;
   deleteCartItem(id: string, itemId: string): Promise<CartResponse>;
+  replaceCartItem(id:string,itemId:string,body:ReplaceCartRequest):Promise<LifeProject>;
+  undoCartReplacement(id:string,itemId:string,body:UndoCartReplacement):Promise<LifeProject>;
+  applyScenario(id:string,scenarioId:'economy'|'balanced'|'comfort',body:ApplyScenarioRequest):Promise<LifeProject>;
   recalculateScenarios(id: string): Promise<ScenariosResponse>;
   patchWorkspace(id: string, patch: WorkspacePatch): Promise<WorkspaceResponse>;
   sellerMessage(id: string, request: SellerMessageInput): Promise<SellerMessageResponse>;
   confirmAction(id: string, actionId: string, body: ConfirmActionInput): Promise<LifeProject>;
+  protectionTimeline(id:string):Promise<ProtectionTimeline>;
+  patchProtectionMilestone(id:string,milestoneId:ProtectionMilestoneId,body:ProtectionMilestonePatch):Promise<{project:LifeProject;timeline:ProtectionTimeline}>;
   protectionCapabilities():Promise<ProtectionCapabilities>;
   updateProtection(id:string,body:ProtectionUpdate):Promise<LifeProject>;
   saveCarInsuranceDraft(id:string,draft:Partial<CarInsuranceDraft>):Promise<LifeProject>;
@@ -53,6 +59,19 @@ export class ApiError extends Error {
 export function describeError(error: unknown): { title: string; detail: string } {
   if (error instanceof ApiError) {
     switch (error.code) {
+      case 'AI_QUOTA_EXCEEDED':
+      case 'GLOBAL_AI_BUDGET_EXCEEDED':
+      case 'PUBLIC_AI_DISABLED':
+        return {title:'AI allowance unavailable',detail:error.message};
+      case 'AI_BUSY':
+      case 'DUPLICATE_REQUEST':
+      case 'WORKSPACE_LIMIT':
+        return {title:'Please check your workspace',detail:error.message};
+      case 'SESSION_REQUIRED':
+      case 'SESSION_EXPIRED':
+      case 'SESSION_CHANGED':
+      case 'CSRF_REJECTED':
+        return {title:'Reconnect your private session',detail:'Reload the page to reconnect. Clearing cookies can lose access to previous workspaces.'};
       case 'NETWORK':
         return { title: "Can't reach Life Simulator", detail: 'Check that the service is running, then try again. You can also explore with demo data in Settings.' };
       case 'UPSTREAM_TIMEOUT':

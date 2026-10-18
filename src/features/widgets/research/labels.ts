@@ -2,7 +2,7 @@ import type { Offer } from '@contracts';
 import type { PillTone } from '@/components/ui/Pill';
 
 export const priceStatusLabel: Record<Offer['priceStatus'], { label: string; tone: PillTone; hint: string }> = {
-  verified: { label: 'Verified price', tone: 'ok', hint: 'Price confirmed at a checked source.' },
+  verified: { label: 'Source-confirmed price', tone: 'ok', hint: 'Price confirmed at a checked source.' },
   estimated: { label: 'Estimated price', tone: 'warn', hint: 'Reported by search; confirm at the source before relying on it.' },
   unknown: { label: 'Price unknown', tone: 'neutral', hint: 'No reliable price was found.' },
   demo: { label: 'Demo price', tone: 'warn', hint: 'Fictional demo data.' },

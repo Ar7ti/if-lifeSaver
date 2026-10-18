@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-10-18T00:07:30.265183+00:00",
+  "backendTests": {
+    "passed": 271,
+    "failed": 0,
+    "mockedProviders": true,
+    "paidCalls": 0
+  },
+  "browserTests": {
+    "existingUiPassed": 38,
+    "publicAccessPassed": 5,
+    "researchV2Passed": 3,
+    "uniquePassed": 46,
+    "failed": 0,
+    "fictionalFixturesOnly": true
+  },
+  "checks": {
+    "backendTypecheck": "PASS",
+    "frontendTypecheck": "PASS",
+    "backendBuild": "PASS",
+    "frontendProductionBuild": "PASS",
+    "liveEvaluatorDryRun": "PASS (zero paid calls)",
+    "gitDiffWhitespace": "PASS"
+  },
+  "securityCoverage": [
+    "owner read/update/research/assistant/insurance isolation",
+    "feedback ownership and CSRF",
+    "persisted session and feedback restart",
+    "public quotas and no extraction bypass",
+    "global reservations/concurrency/admin/legacy regressions from existing suite"
+  ],
+  "screenshots": [
+    "desktop.png",
+    "mobile.png"
+  ],
+  "noLintScript": "Neither package.json defines a lint script; typechecking and configured test suites ran instead.",
+  "remoteLiveStaging": {
+    "apiDeployment": "5c23279d-fa8d-4b78-8d40-f7e26735b2a2",
+    "webDeployment": "b881b207-f11f-47ab-8a27-1b9c15a5aae3",
+    "contract": "1.9.0",
+    "actualOpenAi": "PASS",
+    "hostedSearchExecuted": "PASS, three invocations",
+    "usefulSofaMatches": "FAIL, zero supported and zero potential",
+    "ownerReadBudgetResearchPersistence": "PASS",
+    "crossUserReadUpdateAssistantResearchProtection": "PASS, all 404",
+    "otherUserWorkspaceList": "PASS, empty",
+    "killSwitch": "PASS, research 503 PUBLIC_AI_DISABLED",
+    "browserSummaryRendered": "PASS",
+    "browserNoMockLabel": "PASS",
+    "browserMobileNoHorizontalOverflow": "PASS",
+    "liveFeedbackInteraction": "NOT TESTED, no retained result; covered through real local HTTP/browser fixtures",
+    "liveQuotaExhaustion": "NOT REPEATED; existing regression suite and previous live baseline cover it",
+    "productionAndMockDeployments": "UNCHANGED"
+  }
+}

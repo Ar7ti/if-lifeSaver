@@ -98,10 +98,10 @@ test('local assistant proposes moving service research and reviewable allocation
 
 test('cheaper bed research uses the cheapest matching recorded price minus one cent', async () => {
   const source = project();
-  source.cart = [{title: 'Bed frame', category: 'furniture', unitPriceMinor: 15000} as LifeProject['cart'][number]];
+  source.cart = [{title: 'Bed frame', category: 'furniture', currency:'EUR', unitPriceMinor: 15000} as LifeProject['cart'][number]];
   source.researchResults = [{offers: [
-    {title: 'Mattress and bed', category: 'furniture', priceMinor: 13000} as LifeProject['researchResults'][number]['offers'][number],
-    {title: 'Lamp', category: 'furniture', priceMinor: 500} as LifeProject['researchResults'][number]['offers'][number],
+    {title: 'Mattress and bed', category: 'furniture', currency:'EUR', priceMinor: 13000} as LifeProject['researchResults'][number]['offers'][number],
+    {title: 'Lamp', category: 'furniture', currency:'EUR', priceMinor: 500} as LifeProject['researchResults'][number]['offers'][number],
   ]} as LifeProject['researchResults'][number]];
   const result = await createPlanner(options).assistant(source, {message: 'Find a cheaper bed', context: {activeCategory: 'furniture'}});
   const command = result.commands.find(c => c.type === 'research_products');
@@ -124,7 +124,7 @@ test('cheaper product research falls back to allocation, then explains an absent
 
 test('plural bed categories still use selected prices for a cheaper search', async () => {
   const source = project();
-  source.cart = [{title:'Fictional demo beds option',category:'beds',unitPriceMinor:12500} as LifeProject['cart'][number]];
+  source.cart = [{title:'Fictional demo beds option',category:'beds',currency:'EUR',unitPriceMinor:12500} as LifeProject['cart'][number]];
   const result = await createPlanner(options).assistant(source,{message:'Find cheaper beds',context:{activeCategory:'furniture'}});
   const command=result.commands.find(c=>c.type==='research_products');
   assert.equal(command?.arguments.category,'bed');
@@ -309,4 +309,50 @@ test('model enrichment cannot introduce furniture buying into a move with owned 
  const local=await createPlanner(options).createProject(request);
  const planner=createPlannerWithClient({mode:'openai',model:'test',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{...local,tasks:[{title:'Buy furniture for Turku',category:'moving',dueDate:null,notes:''}],recommendations:['Compare furniture for Turku.'],aiMode:'openai'}}));
  const result=await planner.createProject(request);assert.ok(!result.tasks.some(t=>/buy furniture/i.test(t.title)));assert.ok(!result.recommendations.some(r=>/compare furniture/i.test(r)));
+});
+
+test('assistant cannot invent verified prices and visual requests use the existing paid research action',async()=>{
+ const planner=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply:'The verified price of this sofa is EUR 99.',explanations:[],proposals:[]}}));
+ const response=await planner.assistant(project(),{message:'Find a cheaper sofa'});assert.doesNotMatch(response.reply,/verified price|EUR 99/);
+ const p=project();p.scenarioType='home_furnishing';p.originalMessage='I need furniture';
+ const visual=await createPlanner(options).assistant(p,{message:'Show me furniture options with pictures'});assert(visual.commands.some(c=>c.type==='research_products'));
+});
+test('OpenAI omission cannot erase explicit research and follow-up constraints stay in canonical actions',async()=>{
+ const planner=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply:'Consider comparing local shops.',explanations:[],proposals:[]}}));
+ const p=project();p.actions=[];
+ const first=await planner.assistant(p,{message:'Find 3 used sofas in Turku, Finland, under €200.'});
+ const action=first.commands.find(c=>c.type==='research_products');assert(action&&action.type==='research_products');
+ assert.equal(action.arguments.category,'sofa');assert.equal(action.arguments.maxPrice,200);assert.equal(action.arguments.condition,'used');assert.equal(action.arguments.limit,3);assert.equal(action.arguments.location,'Turku, Finland');
+ p.actions=[{id:randomUUID(),command:action,status:'proposed',requiresConfirmation:true,explanation:'Fixture',result:null,createdAt:new Date().toISOString()}];
+ const follow=await planner.assistant(p,{message:'Only used ones, and show the cheapest first.'});
+ const next=follow.commands.find(c=>c.type==='research_products');assert(next&&next.type==='research_products');assert.equal(next.arguments.maxPrice,200);assert.equal(next.arguments.sort,'price_asc');assert.equal(next.arguments.location,'Turku, Finland');
+});
+test('direct research, including an empty result, anchors second-hand sorted follow-ups',async()=>{
+ const p=project();p.actions=[];p.researchResults=[{id:randomUUID(),category:'sofa',status:'limited',mode:'live',offers:[],warnings:['No supported results'],searchedAt:new Date().toISOString(),query:'sofa',request:{category:'sofa',kind:'product',preferences:[],location:'Turku',maxPrice:200,limit:3,localOnly:true}}];
+ const planner=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply:'Review your options.',explanations:[],proposals:[]}}));
+ const r=await planner.assistant(p,{message:'Only show second-hand options, sorted by price.'});
+ const command=r.commands.find(c=>c.type==='research_products');assert(command&&command.type==='research_products');assert.equal(command.arguments.category,'sofa');assert.equal(command.arguments.condition,'used');assert.equal(command.arguments.sort,'price_asc');assert.equal(command.arguments.maxPrice,200);assert.equal(command.arguments.location,'Turku');
+});
+test('an explicit uncertainty disclaimer is retained instead of being mistaken for a verified-price claim',async()=>{
+ const reply='The source-listed sofa is EUR 120. This price is not independently verified; confirm the total and delivery before choosing.';
+ const planner=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply,explanations:[],proposals:[]}}));
+ assert.equal((await planner.assistant(project(),{message:'Which option is best for my budget?'})).reply,reply);
+});
+
+// Reproduces the real staging UI context; an omitted context hid this regression.
+test('broad furniture tab cannot erase the last sofa search on refinements or advice',async()=>{
+ const p=project();p.actions=[];p.researchResults=[{id:randomUUID(),category:'sofa',status:'limited',mode:'live',offers:[],warnings:['Used condition not established'],searchedAt:new Date().toISOString(),query:'sofa',request:{category:'sofa',kind:'product',preferences:[],condition:'used',location:'Turku, Finland',maxPrice:200,limit:3,sort:'price_asc',localOnly:true}}];
+ const planner=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply:'No qualifying offers are available.',explanations:[],proposals:[]}}));
+ for(const message of ['Only show second-hand options, sorted by price.','Show cheaper options.']){
+  const r=await planner.assistant(p,{message,context:{activeCategory:'furniture'}});
+  const c=r.commands.find(c=>c.type==='research_products');assert(c&&c.type==='research_products');
+  assert.equal(c.arguments.category,'sofa');assert.equal(c.arguments.location,'Turku, Finland');assert.equal(c.arguments.maxPrice,200);assert.equal(c.arguments.limit,3);assert.equal(c.arguments.localOnly,true);assert.equal(c.arguments.condition,'used');assert.equal(c.arguments.sort,'price_asc');
+ }
+ const advice=createPlannerWithClient({mode:'openai',model:'fixture',timeoutMs:1000},async()=>({status:'completed',output:[],output_parsed:{reply:'No qualifying offers are available.',explanations:['Review more sources.'],proposals:[{type:'research_products',category:'furniture',maxPrice:200,allocation:null,tasks:[],widgetId:null,visible:null,offerId:null,quantity:null,language:null}]}}));
+ const r=await advice.assistant(p,{message:'Which option would be best for my budget, and why?',context:{activeCategory:'furniture'}});
+ const c=r.commands.find(c=>c.type==='research_products');assert(c&&c.type==='research_products');assert.equal(c.arguments.category,'sofa');assert.equal(c.arguments.location,'Turku, Finland');assert.equal(c.arguments.condition,'used');assert.equal(c.arguments.maxPrice,200);
+ const different=await planner.assistant(p,{message:'Find a bed under EUR 100.',context:{activeCategory:'furniture'}});
+ const bed=different.commands.find(c=>c.type==='research_products');assert(bed&&bed.type==='research_products');assert.equal(bed.arguments.category,'bed');assert.equal(bed.arguments.maxPrice,100);
+ const broad=await planner.assistant(p,{message:'Find only used furniture.',context:{activeCategory:'furniture'}});
+ const furniture=broad.commands.find(c=>c.type==='research_products');assert(furniture&&furniture.type==='research_products');assert.equal(furniture.arguments.category,'furniture');
 });

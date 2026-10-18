@@ -1,0 +1,133 @@
+if-liveSaver — Secure Public Access Implementation Report
+
+STATUS
+
+Implemented in the current repository. Public access remains disabled by default.
+API_TOKEN is retained. No Railway deployment, production-variable changes, or paid
+AI calls were made.
+
+IMPLEMENTATION
+
+1. Authentication
+
+Anonymous server-managed sessions use HttpOnly, Secure, host-only cookies, hashed
+credentials, CSRF protection, expiration, renewal, and revocation.
+
+2. Workspace ownership
+
+Ownership is saved atomically with each project. Every project route checks
+authorization, including research, confirmed actions, cart, and insurance.
+Inaccessible projects return 404.
+
+3. Legacy protection
+
+Existing project files are preserved and remain administrator-only in public
+mode. Visitors cannot claim them. Disabling public mode does not expose
+public-owned files through the legacy token.
+
+4. Persistence
+
+Sessions, quotas, reservations, and administrative audit events use SQLite on
+persistent storage. Project data remains in JSON files. This requires one API
+process and Node >=22.13.
+
+5. AI quotas
+
+Configurable defaults are five actual provider calls per UTC day, one concurrent
+request per session, three global concurrent provider calls, and five workspaces
+per session. Creation and both research stages are counted.
+
+6. Cost protection
+
+Atomic reservations precede provider calls. Returned usage reconciles estimates;
+uncertain failures retain conservative charges. Separate public/admin budgets
+and a persistent public-AI kill switch are implemented.
+
+These are estimated controls, not a guaranteed billing ceiling.
+
+7. Administrator access
+
+An independent private key establishes a separate, expiring administrator cookie.
+Protected APIs support usage inspection, pausing public AI, and reviewing legacy
+projects.
+
+8. Frontend
+
+Automatic session initialization, no token form in public mode, quota messages,
+session renewal, and administrator sign-in/out are implemented. Public project
+summaries stay in memory. Identity changes clear private caches across tabs.
+
+FILES CHANGED
+
+Core additions:
+
+- server/src/public-access.ts — session and authorization routes
+- server/src/security-store.ts — SQLite sessions and accounting
+- src/api/access.ts — frontend session handling
+- deploy/Caddyfile.public — opt-in public API proxy
+
+Existing repository, API, AI/research integrations, shared contracts, and focused
+authentication UI were updated. The complete file map is in:
+
+server/docs/PUBLIC_ACCESS.md
+
+VERIFICATION RESULTS
+
+Backend tests:                         228 passed
+Existing browser regressions:          30 passed
+Public-access browser tests:            5 passed
+Frontend/backend type checking:        Passed
+Frontend/backend builds:               Passed
+Caddy configurations:                  Validated
+Local proxy paths and SPA fallback:    Passed
+Cookie forwarding:                     Passed
+Git whitespace check:                  Passed
+
+Tests cover isolation, persistence after restart, CSRF, quotas, concurrency,
+administrator logout, and cross-tab cache clearing. External AI providers were
+mocked. No lint script is configured.
+
+RAILWAY PREPARATION
+
+The deployment configuration is prepared but inactive.
+
+Required configuration includes:
+
+- API: independent ADMIN_ACCESS_KEY, persistent
+  SECURITY_DB_PATH=/data/security.sqlite, exact allowed web origin, and secure
+  cookies.
+- Paid AI: verified AI_INPUT_USD_PER_MILLION, AI_OUTPUT_USD_PER_MILLION, and
+  AI_WEB_SEARCH_USD_PER_CALL.
+- Web: build with VITE_API_BASE=/api; select CADDY_CONFIG=Caddyfile.public;
+  configure API_UPSTREAM using the actual API service's Railway reference
+  variables.
+- Keep one API process and configure /api/health.
+
+All variable names, defaults, service assignments, and commands are documented in:
+
+.env.example
+server/docs/PUBLIC_ACCESS.md
+
+REMAINING LAUNCH REQUIREMENTS
+
+Actual Railway staging and backup restoration have not been performed.
+Deployment requires explicit approval.
+
+Before public activation:
+
+1. Validate private networking and HTTPS cookies on isolated Railway staging.
+2. Verify two-browser isolation and quotas there.
+3. Confirm model pricing and conservative reservation bounds.
+4. Back up and test restoration of projects plus SQLite/WAL together.
+
+Rollback uses this ownership-aware build with public AI/access disabled,
+retaining ownership and session data. An older pre-ownership image must not be
+attached directly to public-owned data.
+
+Remaining limitations:
+
+- Anonymous access has no account recovery.
+- Clearing cookies can lose access to previous workspaces.
+- Storage supports one API process.
+- Anonymous abuse can exhaust the shared allowance.
+- Cost accounting does not guarantee a hard provider spending ceiling.

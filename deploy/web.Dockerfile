@@ -14,3 +14,6 @@ RUN npm run build
 FROM caddy:2-alpine
 COPY --from=build /app/dist /srv
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY deploy/Caddyfile.public /etc/caddy/Caddyfile.public
+# Existing deployments keep the original config. Public proxy is explicitly opt-in.
+CMD ["sh", "-c", "exec caddy run --config /etc/caddy/${CADDY_CONFIG:-Caddyfile} --adapter caddyfile"]

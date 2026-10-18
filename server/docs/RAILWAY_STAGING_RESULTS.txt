@@ -1,0 +1,176 @@
+IF-LIFESAVER — РЕЗУЛЬТАТЫ RAILWAY STAGING
+Дата: 2026-10-17T19:33:06.790257+00:00
+
+ССЫЛКА
+https://web-public-access-staging.up.railway.app/app
+
+СТАТУС
+Отдельная тестовая версия развернута и доступна без shared API_TOKEN.
+Это MOCK staging: ИИ и исследование используют заглушки, не OpenAI.
+На всех страницах есть соответствующая пометка. Личные данные вводить не нужно.
+Публичный запуск production НЕ выполнен и пока НЕ рекомендуется.
+
+1. ГДЕ НАЙДЕНЫ ИЗМЕНЕНИЯ
+Ветка: regal-hadrosaurus-59639ce3.
+Базовый commit: e23d12916ee5aa98de8eaba220fa526f7bbd9597.
+Изменения публичного доступа находились в незакоммиченной рабочей копии.
+Переключения веток, merge, reset, force push и изменения чужих файлов не было.
+Развернут очищенный снимок рабочей копии, не удаленный commit ветки.
+SHA256 манифеста снимка:
+9f572e9fccea664018c2f8b2e8cba28b9728690f1635ac256c7f2c1c472cce09
+Манифест: staging-evidence-2026-10-17/source-manifest.json.
+
+Основные найденные реализации:
+  server/src/public-access.ts — сессии, CSRF, администратор, guards.
+  server/src/security-store.ts — SQLite, квоты, резервирование и аудит.
+  server/src/access-context.ts — server-side principal и paid-call boundary.
+  server/src/repository.ts — атомарный ownerId вместе с проектом.
+  server/src/app.ts, ai.ts, research.ts — интеграция авторизации и учета.
+  src/api/access.ts, src/features/access/SessionBoundary.tsx — вход без токена.
+  deploy/Caddyfile.public, deploy/web.Dockerfile — same-origin proxy.
+
+2. ЧТО РАЗВЕРНУТО
+Railway project: if-lifesaver.
+Окружение: public-access-staging; создано пустым, без дублирования production.
+API и web используют существующие имена сервисов в отдельном окружении.
+Создан НОВЫЙ staging volume /data. Production volume не подключался.
+JSON-проекты и security.sqlite находятся на staging volume.
+Одна API-реплика. У staging API нет публичного Railway domain.
+Браузер работает через HTTPS web origin и /api -> приватный API.
+Учетные данные администратора и legacy token сгенерированы заново для staging.
+Секреты production не копировались. Реальных ключей OpenAI/If в staging нет.
+
+API deployment: 6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a (SUCCESS).
+Web deployment: 2372766f-0e4c-4a2c-aa4e-bc176130c901 (SUCCESS).
+
+В снимок добавлен отдельный staging-fixture.ts с жесткой проверкой имени
+окружения и STAGING_MOCK_PROVIDERS=true. Он запрещает реальные provider secrets.
+Обычный production entry point не изменен.
+Тестовые провайдеры вызываются через ту же durable allowance boundary,
+что защищает оплачиваемые операции. Данные поиска явно имеют mode=demo.
+Копия staging entry point: staging-evidence-2026-10-17/staging-fixture.ts.txt.
+
+3. ВХОД И ИЗОЛЯЦИЯ — ПРОШЛИ
+Автоматическая анонимная сессия без API_TOKEN.
+Secure, HttpOnly, SameSite=Lax, host-only cookie через реальный Railway HTTPS.
+GET health/session сам по себе не создает постоянную сессию.
+CSRF без nonce и запрос с чужим Origin отклоняются.
+Разные посетители получают разные principals и видят только свои списки.
+Чужие чтение, изменение, cart, workspace, AI, research, confirmation и
+home/car insurance routes возвращают 404 до обращения к провайдерам.
+Legacy shared bearer token не дает обхода публичной авторизации.
+owner/admin роль не принимается из произвольного тела запроса.
+Искусственный legacy-проект доступен только отдельному администратору.
+Вход и выход администратора проверены через API и Settings UI.
+Ключ администратора не сохраняется в localStorage.
+Обновление сессии меняет credential, сохраняет principal/квоту/проекты;
+старый credential сразу перестает работать. Logout отзывает доступ.
+Новая сессия не может присвоить старые проекты.
+
+4. КВОТЫ И ЛИМИТЫ — ПРОШЛИ
+5 provider invocations на посетителя в сутки UTC, включая создание workspace.
+Шестой вызов отклоняется AI_QUOTA_EXCEEDED до dispatch.
+Direct research и подтвержденное research-действие не обходят квоту.
+При исчерпании квоты остаются доступными просмотр, ручная правка и корзина.
+Один одновременный вызов на сессию; повторный возвращает AI_BUSY.
+Четыре независимых одновременных вызова дают 3 успеха и 1 AI_BUSY.
+Повтор Idempotency-Key не запускает второй вызов.
+Ошибку провайдера можно обработать без потери подтвержденных данных.
+Администратор может выключить и восстановить публичный paid boundary.
+Временно установленный global budget=0 блокирует вызов с
+GLOBAL_AI_BUDGET_EXCEEDED без списания пользовательской квоты.
+Затем бюджет возвращен к 3 USD и успешный mock-вызов проверен снова.
+
+Это оценочный application budget, НЕ гарантированный финансовый hard cap.
+В staging rates 0.1/0.1/0.01 — искусственные тестовые значения учета,
+НЕ заявленные цены OpenAI. Реальных платных запросов не выполнялось.
+Перед LIVE нужны проверенные тарифы модели и поиска и provider-side controls.
+
+5. СОХРАННОСТЬ ДАННЫХ — ПРОШЛА ПРОВЕРКА RESTART
+API реально перезапущен через Railway, затем проверены три владельца.
+Сохранились прежние secure sessions, principal IDs и SQLite-квоты.
+Полное содержимое трех проектов совпало с захваченным до рестарта.
+Сохранились бюджет, заголовок, корзина, provenance страховой котировки
+и recurring insurance budget link. Исчерпанная квота не сбросилась.
+Повторное добавление того же страхового расхода дает ALREADY_LINKED;
+дублирующей записи и двойного учета нет.
+
+Провайдерная ошибка/отказ по квоте могут сохранить сообщение пользователя
+и увеличить revision: это намеренное сохранение пользовательских фактов.
+Это не означает успешную работу ИИ; подтвержденные данные плана не теряются.
+
+6. АВТОМАТИЧЕСКИЕ ПРОВЕРКИ
+Backend: npm --prefix server test — 228 passed, 0 failed.
+Backend: npm --prefix server run typecheck — успешно.
+Backend: npm --prefix server run build — успешно.
+Frontend: npm run build — успешно, включая TypeScript и Vite.
+git diff --check — успешно.
+
+Удаленные HTTPS/browser assertions: 131 passed, 0 final failures:
+  http-results: 69/69
+  browser-results: 17/17
+  persistence-after: 19/19
+  global-results: 10/10
+  cost-zero: 3/3
+  cost-restored: 1/1
+  lifecycle-results: 12/12
+
+В браузере проверены создание travel workspace с EUR 900, правильные категории,
+reload, независимый контекст, скрытая token form, квота, доступность Edit details,
+администратор и mobile 390x844. Uncaught JavaScript errors не обнаружены.
+Скриншоты и результаты: staging-evidence-2026-10-17/.
+
+Первые запуски harness выявили неверные ожидания самого теста:
+ALREADY_LINKED=409 вместо 200, фактическое имя кнопки Extend this session,
+необходимость пауз из-за существующего общего HTTP rate limit и допустимое
+сохранение conversation/revision при отказе ИИ. Ожидания исправлены,
+проверки выполнены повторно. Эти ответы не скрывались изменениями приложения.
+
+7. PRODUCTION НЕ ЗАТРОНУТ
+Повторное сравнение Railway metadata до/после:
+  production deployment IDs — без изменений;
+  production configuration — без изменений;
+  production volume IDs/attachments — без изменений.
+Production API health: HTTP 200.
+Содержимое реальных пользовательских проектов не читалось и не копировалось.
+Не выполнялись миграции ownership, удаление API_TOKEN или включение public flags.
+
+8. ЧТО ОСТАЕТСЯ ПЕРЕД ПУБЛИЧНЫМ ЗАПУСКОМ
+A. Backup/restore НЕ проверен.
+Railway отказал в native backup: функция требует Pro workspace.
+Manual volume export/SSH недоступен без SSH key; ключи не добавлялись,
+тариф не менялся. Restart — не замена проверки восстановления backup.
+Нужно настроить согласованную копию JSON + SQLite/WAL при остановленных
+записях и доказать восстановление в изолированной среде.
+
+B. Требуется отдельная проверка реального ИИ после подтверждения расходов.
+В этой задаче использовались только mock providers. Качество и биллинг
+реальных OpenAI/поисковых запросов в Railway не проверялись.
+
+C. Проверить и настроить доверенную цепочку proxy / IP throttling.
+trustProxy=false сохранен. Caddy объединяет посетителей в общий IP-bucket,
+поэтому route limits могут ограничивать суммарный трафик всех посетителей.
+Для staging NEW_SESSIONS_PER_HOUR увеличен до 50 вместо default 10,
+чтобы после тестов посетители могли войти. GLOBAL_NEW_SESSIONS_PER_HOUR=100.
+Per-user AI quota=5 и concurrency=1/3 не ослаблялись.
+В production пока ничего не переключено. Нельзя слепо доверять X-Forwarded-For.
+
+D. Изменения нужно сохранить в проверенном commit перед production rollout.
+Нельзя включать PUBLIC_ACCESS_ENABLED/PUBLIC_AI_ENABLED в production,
+пока обязательные backup и реальная provider safety configuration не проверены.
+После выполнения условий нужен отдельный запрос на production deployment.
+
+9. КАК ПОПРОБОВАТЬ СЕЙЧАС
+1) Открыть ссылку /app в обычном или приватном окне.
+2) Создать: I'm moving to Turku with EUR 2000.
+3) Проверить workspace и бюджет; в другом профиле чужой URL дает 404.
+4) Создание расходует один mock provider call; еще четыре сообщения
+   Find a cheaper bed исчерпают дневную квоту.
+5) Следующий запрос покажет понятный отказ; просмотр и ручные правки доступны.
+6) Reload сохраняет workspace. Очистка cookies может навсегда лишить доступа.
+7) Администратор входит через Settings -> Administrator access с отдельным
+   staging ADMIN_ACCESS_KEY, доступным владельцу сервиса в Railway variables.
+   Значение ключа в этом отчете намеренно не приводится.
+
+Публичный production запуск не выполнен. Staging оставлен работающим
+с mock providers, global budget=3 USD (тестовый учет) и отдельным volume.

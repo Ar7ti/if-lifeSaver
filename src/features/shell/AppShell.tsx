@@ -11,6 +11,7 @@ import { useSettings } from '@/stores/settings';
 import { Logo, LogoMark } from './Logo';
 import { DataSourceBanner } from './DataSourceBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AccessStatus } from '@/features/access/SessionBoundary';
 
 interface NavItem {
   to: string;
@@ -297,6 +298,7 @@ export function AppShell() {
         <Sidebar />
         <div className="min-w-0 flex-1 md:py-2 md:pr-2">
           <MobileTopBar />
+          <AccessStatus />
           {/* The framed app panel (Reference A). */}
           <main id="main" ref={mainRef} tabIndex={-1} className="min-h-[calc(100dvh-1rem)] pb-20 outline-none md:rounded-[24px] md:bg-canvas md:pb-0 md:shadow-[0_0_0_1px_rgb(0_0_0/0.04)]">
             <ErrorBoundary key={pathname}>

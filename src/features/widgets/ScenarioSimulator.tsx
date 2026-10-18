@@ -1,333 +1,71 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react';
-import { AlertTriangle, Check, ChevronDown, Gauge, Info, Leaf, RotateCw, Scale, Sparkles, type LucideIcon } from 'lucide-react';
-import type { Offer, SimulationScenario } from '@contracts';
+import { motion, useReducedMotion } from 'motion/react';
+import { Check, Gauge, Info, Leaf, RotateCw, Scale, Sparkles } from 'lucide-react';
+import type { SimulationScenario } from '@contracts';
 import { useWorkspace } from '@/features/workspace/context';
-import { useUi } from '@/stores/ui';
 import { Button } from '@/components/ui/Button';
-import { Money } from '@/components/ui/Money';
 import { Dialog } from '@/components/ui/Dialog';
-import { EmptyState } from '@/components/ui/States';
-import { formatMoney, formatTime, pluralize } from '@/lib/format';
+import { EmptyState, ErrorState } from '@/components/ui/States';
+import { ProductVisual } from '@/components/ui/ProductVisual';
+import { formatMoney, formatTime } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { cn } from '@/lib/cn';
 
-const META: Record<SimulationScenario['id'], { icon: LucideIcon; goal: string; accent: string }> = {
-  economy: { icon: Leaf, goal: 'Spend as little as possible', accent: 'bg-sky-wash' },
-  balanced: { icon: Scale, goal: 'Price, practicality and convenience', accent: 'bg-blue' },
-  comfort: { icon: Sparkles, goal: 'Ease and convenience first', accent: 'bg-marigold' },
-};
-
-const LEVEL = { low: 1, medium: 2, high: 3 } as const;
-const EASE = [0.22, 1, 0.36, 1] as const;
-
-/** Three-step meter that always shows its value in words, not only as filled bars. */
-function Meter({ label, value, hint }: { label: string; value: keyof typeof LEVEL; hint: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-caption text-graphite">{label}</span>
-        <span className="text-body-sm font-medium capitalize">{value}</span>
-      </div>
-      <div className="mt-1.5 flex gap-1" aria-hidden>
-        {[1, 2, 3].map(i => (
-          <motion.span key={i} className="h-1.5 flex-1 rounded-full" initial={false} animate={{ backgroundColor: i <= LEVEL[value] ? 'rgba(0,0,0,0.72)' : 'rgba(0,0,0,0.08)' }} transition={{ duration: 0.25, delay: i * 0.04 }} />
-        ))}
-      </div>
-      <p className="mt-1 text-caption text-graphite">{hint}</p>
-    </div>
-  );
+const META={economy:{icon:Leaf,goal:'Spend as little as possible'},balanced:{icon:Scale,goal:'Price, practicality and convenience'},comfort:{icon:Sparkles,goal:'Ease and convenience first'}};
+function Meter({label,value}:{label:string;value:SimulationScenario['convenience']}) {
+ const level=value==='high'?3:value==='medium'?2:value==='low'?1:0;
+ return <div><div className="flex flex-wrap justify-between gap-1 text-caption"><span className="text-graphite">{label}</span><span className="font-medium capitalize">{value==='unknown'?'Not enough information':value}</span></div>
+  <div className="mt-2 flex gap-1" aria-hidden>{[1,2,3].map(i=><span key={i} className={cn('h-1 flex-1 rounded-full',i<=level?'bg-ink/70':'bg-ink/10')}/>)}</div>
+ </div>;
 }
-
-/** Budget impact: estimated total against the budget, with the reserve marked. */
-function BudgetImpact({ s, totalBudget }: { s: SimulationScenario; totalBudget: number }) {
-  const base = Math.max(totalBudget, s.estimatedTotalMinor, 1);
-  const spend = (s.estimatedTotalMinor / base) * 100;
-  const reserveStart = totalBudget > 0 ? ((totalBudget - s.emergencyReserveMinor) / base) * 100 : 100;
-  const over = s.remainingMinor < 0;
-  return (
-    <div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-ink/[0.07]" role="img" aria-label={`${formatMoney(s.estimatedTotalMinor)} of a ${formatMoney(totalBudget)} budget`}>
-        <motion.div className={cn('h-full rounded-full', over ? 'bg-coral' : s.withinBudget ? 'bg-blue' : 'bg-saffron')} initial={false} animate={{ width: `${Math.min(100, spend)}%` }} transition={{ duration: 0.45, ease: EASE }} />
-        {totalBudget > 0 && s.emergencyReserveMinor > 0 && <span className="absolute inset-y-0 w-px bg-ink/40" style={{ left: `${reserveStart}%` }} aria-hidden />}
-      </div>
-      <p className={cn('mt-1.5 flex items-center gap-1.5 text-body-sm', s.withinBudget ? 'text-ok-ink' : over ? 'text-danger-ink' : 'text-warn-ink')}>
-        {s.withinBudget ? <Check className="size-3.5" aria-hidden /> : <AlertTriangle className="size-3.5" aria-hidden />}
-        {s.remainingMinor >= 0 ? `${formatMoney(s.remainingMinor)} left of ${formatMoney(totalBudget)}` : `${formatMoney(-s.remainingMinor)} over budget`}
-        {s.withinBudget ? '' : s.remainingMinor >= 0 ? ' · dips into your reserve' : ''}
-      </p>
-    </div>
-  );
-}
-
 export function ScenarioSimulator() {
-  const { project, writer } = useWorkspace();
-  const chosenId = useUi(s => s.chosenScenario[project.id]);
-  const choose = useUi(s => s.chooseScenario);
-  const [confirm, setConfirm] = useState(false);
-  const [viewed, setViewed] = useState<SimulationScenario['id'] | null>(null);
-  const reduce = useReducedMotion();
-
-  const offers = useMemo(() => new Map(project.researchResults.flatMap(r => r.offers).map(o => [o.id, o])), [project.researchResults]);
-  const inCart = useMemo(() => new Set(project.cart.map(i => i.offerId).filter((x): x is string => Boolean(x))), [project.cart]);
-  const chosen = project.scenarios.find(s => s.id === chosenId);
-  const toAdd = chosen ? chosen.selectedOfferIds.filter(id => !inCart.has(id) && offers.has(id)) : [];
-
-  const recalc = useMutation({
-    mutationFn: () => writer.api.recalculateScenarios(project.id),
-    onSuccess: () => {
-      void writer.refresh();
-      toast.success('Scenarios recalculated');
-    },
-    onError: writer.fail,
-  });
-
-  const apply = useMutation({
-    mutationFn: async (ids: string[]) => {
-      let added = 0;
-      for (const offerId of ids) {
-        const res = await writer.api.addCartItem(project.id, { offerId, quantity: 1, status: 'selected' });
-        writer.applyCart(res);
-        added++;
-      }
-      return added;
-    },
-    onSuccess: n => {
-      setConfirm(false);
-      toast.success(`${pluralize(n, 'option')} added to your plan`, 'Nothing has been bought.');
-    },
-    onError: e => {
-      setConfirm(false);
-      writer.fail(e);
-    },
-  });
-
-  if (project.scenarios.length === 0)
-    return (
-      <EmptyState
-        icon={<Gauge />}
-        title="No scenarios yet"
-        action={
-          <Button size="sm" variant="outline" icon={<RotateCw />} loading={recalc.isPending} onClick={() => recalc.mutate()}>
-            Calculate scenarios
-          </Button>
-        }
-      >
-        Scenarios compare three ways to reach your goal once a budget is set.
-      </EmptyState>
-    );
-
-  const calculatedAt = project.scenarios[0]?.calculatedAt;
-  const scenarios = project.scenarios;
-  const current = scenarios.find(s => s.id === (viewed ?? chosenId)) ?? scenarios.find(s => s.id === 'balanced') ?? scenarios[0]!;
-  const cheapest = Math.min(...scenarios.map(s => s.estimatedTotalMinor));
-  // Honest comparison: if the engine produced the same outcome for every approach, say so.
-  const identical = scenarios.every(s => s.estimatedTotalMinor === scenarios[0]!.estimatedTotalMinor && s.convenience === scenarios[0]!.convenience && s.effort === scenarios[0]!.effort && s.selectedOfferIds.join() === scenarios[0]!.selectedOfferIds.join());
-  const picked = current.selectedOfferIds.map(id => offers.get(id)).filter((o): o is Offer => Boolean(o));
-  const notInPlan = picked.filter(o => !inCart.has(o.id));
-  const meta = META[current.id];
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body-sm text-graphite">Three ways to reach your goal. Totals keep the items already in your plan.</p>
-        <Button size="sm" variant="text" icon={<RotateCw />} loading={recalc.isPending} onClick={() => recalc.mutate()} className="-mr-2">
-          Recalculate
-        </Button>
-      </div>
-
-      {/* Selector: shows the real total for each approach; the difference only when there is one. */}
-      <LayoutGroup id={`scenarios-${project.id}`}>
-        <div role="tablist" aria-label="Approaches" className="grid grid-cols-3 gap-1 rounded-[14px] bg-ink/[0.05] p-1"
-          onKeyDown={e => {
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-            e.preventDefault();
-            const i = scenarios.findIndex(s => s.id === current.id);
-            const next = scenarios[(i + (e.key === 'ArrowRight' ? 1 : scenarios.length - 1)) % scenarios.length]!;
-            setViewed(next.id);
-            requestAnimationFrame(() => document.getElementById(`scn-tab-${project.id}-${next.id}`)?.focus());
-          }}>
-          {scenarios.map(s => {
-            const active = s.id === current.id;
-            const Icon = META[s.id].icon;
-            const delta = s.estimatedTotalMinor - cheapest;
-            return (
-              <button
-                key={s.id}
-                id={`scn-tab-${project.id}-${s.id}`}
-                role="tab"
-                aria-selected={active}
-                aria-controls={`scn-panel-${project.id}`}
-                tabIndex={active ? 0 : -1}
-                onClick={() => setViewed(s.id)}
-                className={cn('relative flex min-h-12 flex-col items-center justify-center rounded-[10px] px-2 py-2 text-center transition-colors duration-150', active ? 'text-ink' : 'text-ink/60 hover:text-ink')}
-              >
-                {active && <motion.span layoutId="scn-indicator" className="absolute inset-0 rounded-[10px] bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.04)]" transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }} />}
-                <span className="relative flex items-center gap-1.5 text-body-sm font-medium">
-                  <Icon className="size-3.5 max-sm:hidden" aria-hidden />
-                  {s.name}
-                  {chosenId === s.id && (
-                    <>
-                      <Check className="size-3.5 text-blue-ink" aria-hidden />
-                      <span className="sr-only">(your plan)</span>
-                    </>
-                  )}
-                </span>
-                <span className="relative text-caption text-graphite tabular">
-                  {formatMoney(s.estimatedTotalMinor)}
-                  {!identical && delta > 0 && <span className="max-sm:hidden"> · +{formatMoney(delta)}</span>}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </LayoutGroup>
-
-      {identical && (
-        <p className="-mt-1 flex items-start gap-1.5 px-1 text-caption text-graphite">
-          <Info className="mt-px size-3.5 shrink-0" aria-hidden />
-          <span>Same total for all three right now. They start to differ once research finds priced options; until then, the trade-offs set them apart.</span>
-        </p>
-      )}
-
-      <div id={`scn-panel-${project.id}`} role="tabpanel" aria-labelledby={`scn-tab-${project.id}-${current.id}`} className="overflow-hidden rounded-[16px] bg-canvas">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={current.id} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }} className="p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-caption text-graphite">
-                  <span className={cn('size-2 rounded-full', meta.accent)} aria-hidden />
-                  {meta.goal}
-                </p>
-                <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-[30px] leading-tight font-semibold tracking-[-0.8px]">
-                    <Money minor={current.estimatedTotalMinor} />
-                  </span>
-                  <span className="text-body-sm text-graphite">estimated total</span>
-                </p>
-              </div>
-              {chosenId === current.id ? (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-sky-tint px-3 text-body-sm font-medium text-blue-ink">
-                  <Check className="size-4" aria-hidden /> Your plan
-                </span>
-              ) : (
-                <Button size="sm" variant="primary" onClick={() => choose(project.id, current.id)}>
-                  Plan with {current.name}
-                </Button>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <BudgetImpact s={current} totalBudget={project.budget.totalMinor} />
-            </div>
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Meter label="Convenience" value={current.convenience} hint={current.convenience === 'high' ? 'Less to arrange yourself' : current.convenience === 'low' ? 'More to arrange yourself' : 'Some arranging needed'} />
-              <Meter label="Effort" value={current.effort} hint={current.effort === 'high' ? 'Expect more time and legwork' : current.effort === 'low' ? 'Light on your time' : 'A moderate amount of time'} />
-            </div>
-
-            {current.tradeOffs.length > 0 && (
-              <ul className="mt-4 flex flex-col gap-1.5 border-t border-hairline pt-4">
-                {current.tradeOffs.slice(0, 2).map(t => (
-                  <li key={t} className="flex items-start gap-2 text-body-sm text-ink/85">
-                    <span className="mt-2 size-1 shrink-0 rounded-full bg-ink/40" aria-hidden />
-                    {t}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {notInPlan.length > 0 && <p className="mt-3 text-caption text-blue-ink">{pluralize(notInPlan.length, 'option')} in this approach not yet in your plan</p>}
-
-            <details className="group mt-3 text-caption">
-              <summary className="flex cursor-pointer list-none items-center gap-1 font-medium text-graphite hover:text-ink [&::-webkit-details-marker]:hidden">
-                Details
-                <ChevronDown className="size-3.5 transition-transform duration-200 group-open:rotate-180" aria-hidden />
-              </summary>
-              <div className="mt-3 grid gap-3 text-graphite sm:grid-cols-2">
-                <p className="tabular">
-                  {formatMoney(current.verifiedCostMinor)} verified · {formatMoney(current.estimatedCostMinor)} estimated
-                </p>
-                <div>
-                  <p className="font-medium text-ink/85">Included</p>
-                  <p className="mt-0.5">{picked.length > 0 ? picked.map(o => o.title).join(' · ') : current.lockedCartItemIds.length ? `${pluralize(current.lockedCartItemIds.length, 'item')} already in your plan` : 'Allocation estimates only: no researched options yet'}</p>
-                </div>
-                {current.tradeOffs.length > 2 && (
-                  <div>
-                    <p className="font-medium text-ink/85">More trade-offs</p>
-                    <ul className="mt-0.5 flex list-disc flex-col gap-0.5 pl-4">
-                      {current.tradeOffs.slice(2).map(t => (
-                        <li key={t}>{t}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {current.risks.length > 0 && (
-                  <div>
-                    <p className="font-medium text-ink/85">Risks</p>
-                    <ul className="mt-0.5 flex list-disc flex-col gap-0.5 pl-4">
-                      {current.risks.map(r => (
-                        <li key={r}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {current.missingData.length > 0 && (
-                  <div className="sm:col-span-2">
-                    <p className="font-medium text-ink/85">Based on estimates</p>
-                    <ul className="mt-0.5 flex flex-col gap-1">
-                      {current.missingData.map(m => (
-                        <li key={m} className="break-words">
-                          {m}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </details>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-caption text-graphite">{calculatedAt && `Calculated at ${formatTime(calculatedAt)} from your current plan.`} Prices are estimates unless marked verified.</p>
-        {chosen && toAdd.length > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setConfirm(true)}>
-            Add {chosen.name}&rsquo;s {pluralize(toAdd.length, 'option')} to my plan
-          </Button>
-        )}
-      </div>
-
-      <Dialog
-        open={confirm}
-        onClose={() => setConfirm(false)}
-        title={`Add ${chosen?.name ?? ''} options to your plan?`}
-        description="These go into your planning list. Nothing is bought, reserved or sent."
-        footer={
-          <>
-            <Button variant="text" onClick={() => setConfirm(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" loading={apply.isPending} onClick={() => apply.mutate(toAdd)}>
-              Add {pluralize(toAdd.length, 'option')}
-            </Button>
-          </>
-        }
-      >
-        <ul className="flex flex-col divide-y divide-hairline">
-          {toAdd.map(id => {
-            const o = offers.get(id)!;
-            return (
-              <li key={id} className="flex justify-between gap-3 py-2 text-body-sm">
-                <span className="min-w-0">{o.title}</span>
-                <span className="shrink-0 font-semibold tabular">{formatMoney(o.priceMinor)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      </Dialog>
-    </div>
-  );
+ const {project,writer,ask}=useWorkspace();
+ const [viewed,setViewed]=useState<SimulationScenario['id']>('balanced'),[confirm,setConfirm]=useState(false);
+ const reduce=useReducedMotion();
+ const chosenId=project.scenarioSelection?.id;
+ const scenarios=project.scenarios;
+ const current=scenarios.find(s=>s.id===viewed)??scenarios[0];
+ const offers=new Map(project.researchResults.flatMap(r=>r.offers).map(o=>[o.id,o]));
+ const recalc=useMutation({mutationFn:()=>writer.api.recalculateScenarios(project.id),onSuccess:()=>{void writer.refresh();toast.success('Scenarios recalculated');},onError:writer.fail});
+ const apply=useMutation({mutationFn:()=>writer.api.applyScenario(project.id,current!.id,{approved:true,expectedRevision:project.revision,expectedFingerprint:current!.fingerprint!}),onSuccess:p=>{writer.setProject(p);setConfirm(false);toast.success('Plan saved','Proposed changes are saved. Nothing has been bought.');},onError:writer.reloadOnConflict});
+ if(!current)return <EmptyState icon={<Gauge/>} title="No scenarios yet" action={<Button loading={recalc.isPending} onClick={()=>recalc.mutate()}>Calculate scenarios</Button>}>Set a budget to compare approaches.</EmptyState>;
+ const changes=current.changes??[];
+ const identical=scenarios.every(s=>s.estimatedTotalMinor===scenarios[0]!.estimatedTotalMinor&&s.selectedOfferIds.join()===scenarios[0]!.selectedOfferIds.join());
+ const meta=META[current.id];
+ const applyDisabled=!current.fingerprint||!current.withinBudget||apply.isPending;
+ return <div className="space-y-4">
+  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-body-sm text-graphite">Three ways to reach your goal. Chosen items stay fixed; proposals can differ.</p><Button size="sm" onClick={()=>recalc.mutate()} icon={<RotateCw/>} loading={recalc.isPending}>Recalculate</Button></div>
+  <div role="tablist" aria-label="Approaches" className="grid grid-cols-3 gap-1 rounded-[14px] bg-ink/[0.05] p-1" onKeyDown={e=>{
+   if(!['ArrowRight','ArrowLeft'].includes(e.key))return;e.preventDefault();const i=scenarios.findIndex(s=>s.id===current.id),next=scenarios[(i+(e.key==='ArrowRight'?1:scenarios.length-1))%scenarios.length]!;setViewed(next.id);requestAnimationFrame(()=>document.getElementById(`scn-${project.id}-${next.id}`)?.focus());
+  }}>{scenarios.map(s=>{const Icon=META[s.id].icon;return <button key={s.id} id={`scn-${project.id}-${s.id}`} role="tab" aria-selected={s.id===current.id} aria-controls={`scn-panel-${project.id}`} tabIndex={s.id===current.id?0:-1} onClick={()=>setViewed(s.id)} className={cn('min-w-0 rounded-[10px] px-1 py-2 text-center transition-colors',s.id===current.id?'bg-surface shadow-sm':'text-graphite hover:bg-surface/50')}>
+   <span className="flex items-center justify-center gap-1 text-body-sm font-medium"><Icon className="size-3.5 max-sm:hidden" aria-hidden/>{s.name}{s.id===chosenId&&<><Check className="size-3 text-blue-ink"/><span className="sr-only">your plan</span></>}</span><span className="block text-caption tabular">{formatMoney(s.estimatedTotalMinor)}</span>
+  </button>;})}</div>
+  {identical&&<p className="flex items-start gap-2 text-caption text-graphite"><Info className="mt-px size-3.5 shrink-0" aria-hidden/><span>Same total for all three right now. {current.explanation??'Only the recorded choices and allocation estimates are available.'}</span></p>}
+  <motion.div key={current.id} id={`scn-panel-${project.id}`} role="tabpanel" aria-labelledby={`scn-${project.id}-${current.id}`} initial={reduce?false:{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{duration:reduce?0:0.16}} className="rounded-[16px] bg-canvas p-4 sm:p-5">
+   {(current.sourceMode==='demo'||current.sourceMode==='mixed')&&<p className="mb-3 rounded-full bg-warn-tint px-3 py-1 text-caption text-warn-ink">Fictional demo comparison · not real shopping prices</p>}
+   <div className="flex flex-wrap justify-between gap-3"><div><p className="text-caption text-graphite">{meta.goal}</p><p className="mt-1 text-[30px] font-semibold tracking-tight tabular">{formatMoney(current.estimatedTotalMinor)} <span className="text-body-sm font-normal text-graphite">known + estimated total</span></p></div>
+    {chosenId===current.id&&!project.scenarioSelection?.needsReview?<span className="inline-flex h-8 items-center gap-1 rounded-full bg-sky-tint px-3 text-body-sm text-blue-ink"><Check className="size-4"/>Your plan</span>:<Button variant="primary" size="sm" disabled={applyDisabled} loading={apply.isPending} onClick={()=>changes.length?setConfirm(true):apply.mutate()}>Plan with {current.name}</Button>}
+   </div>
+   <p className={cn('mt-2 text-body-sm',current.remainingMinor<0?'text-danger-ink':'text-graphite')}>{current.remainingMinor<0?`${formatMoney(-current.remainingMinor)} over budget`:`${formatMoney(current.remainingMinor)} left of ${formatMoney(project.budget.totalMinor)}`} · reserve {formatMoney(current.emergencyReserveMinor)}</p>
+   {!current.withinBudget&&<p className="mt-1 text-caption text-warn-ink">{!project.budget.confirmed?'Confirm your budget before applying a scenario.':'This plan cannot fit the budget while preserving the reserve.'}</p>}
+   {project.scenarioSelection?.needsReview&&<p className="mt-2 text-caption text-warn-ink">Your plan changed since the last scenario selection. Review it again before applying.</p>}
+   <div className="mt-4 grid gap-4 sm:grid-cols-2"><Meter label="Convenience" value={current.convenience}/><Meter label="Effort" value={current.effort}/></div>
+   <p className="mt-4 text-body-sm">{current.explanation??current.tradeOffs[0]}</p>
+   <ul className="mt-2 space-y-1 text-caption text-graphite">{current.convenienceEvidence?.map(e=><li key={e}>{e}</li>)}</ul>
+   {changes.length>0&&<div className="mt-4 border-t border-hairline pt-3"><p className="mb-2 text-caption font-semibold">What would change</p><ul className="space-y-2">{changes.map(c=>{const o=offers.get(c.offerId);return <li key={`${c.cartItemId??'new'}-${c.offerId}`} className="flex items-center gap-3 text-body-sm">{o&&<ProductVisual item={o} compact/>}<span className="min-w-0 flex-1"><span className="block font-medium">{c.kind==='replace'?'Replace proposal':'Add proposal'} · {c.title}</span><span className="text-caption text-graphite">{c.quantity} × item · {c.kind==='replace'?`${formatMoney(c.previousMinor)} → `:''}{formatMoney(c.totalMinor)}</span></span></li>;})}</ul></div>}
+   <details className="mt-4 border-t border-hairline pt-3 text-caption"><summary className="cursor-pointer font-medium">Details</summary><div className="mt-3 space-y-3 text-graphite">
+    <p>{formatMoney(current.verifiedCostMinor)} source-confirmed base prices · {formatMoney(current.estimatedCostMinor)} estimated / demo. Unknown fees are excluded.</p>
+    <p>Included: {current.selectedOfferIds.map(id=>offers.get(id)?.title).filter(Boolean).join(' · ')||'Saved plan and provisional category allocations'}. {current.lockedCartItemIds.length} chosen item(s) remain fixed.</p>
+    <ul className="list-disc space-y-1 pl-4">{[...current.tradeOffs,...current.missingData,...current.risks].map((v,i)=><li key={i} className="break-words">{v}</li>)}</ul>
+   </div></details>
+  </motion.div>
+  {apply.isError&&!confirm&&<ErrorState error={apply.error}/>}
+  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-caption text-graphite">Calculated at {formatTime(current.calculatedAt)}. No research runs when switching approaches.</p><Button size="sm" variant="text" onClick={()=>ask('Research more alternatives for this plan so I can compare price and convenience.')}>Research alternatives</Button></div>
+  <Dialog open={confirm} onClose={()=>setConfirm(false)} title={`Apply ${current.name} to your plan?`} description="Only the proposals below will change. Chosen items and insurance expenses are preserved. Nothing is purchased." footer={<><Button onClick={()=>setConfirm(false)}>Cancel</Button><Button variant="primary" loading={apply.isPending} disabled={applyDisabled} onClick={()=>apply.mutate()}>Confirm plan changes</Button></>}>
+   <ul className="divide-y divide-hairline">{changes.map(c=><li key={c.offerId} className="flex justify-between gap-3 py-3 text-body-sm"><span>{c.kind==='replace'?'Replace proposal: ':'Add proposal: '}{c.title}</span><strong className="shrink-0">{formatMoney(c.totalMinor)}</strong></li>)}</ul>
+   <p className="mt-3 text-caption text-graphite">Other allocations remain estimates until supported by a priced offer. Applying a scenario does not create expenses for unresolved estimates.</p>
+   {apply.isError&&<ErrorState error={apply.error}/>}
+  </Dialog>
+ </div>;
 }

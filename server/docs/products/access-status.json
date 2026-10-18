@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-18T00:46:44.782824+00:00",
+  "environment": "live-ai-staging",
+  "service": "api",
+  "credentialPresence": {
+    "EBAY_CLIENT_ID": false,
+    "EBAY_CLIENT_SECRET": false,
+    "EBAY_ACCESS_APPROVED": false,
+    "EBAY_FREE_API_CONFIRMED": false,
+    "EBAY_ENABLED": false
+  },
+  "liveProviderVerification": "BLOCKED \u2014 no staging eBay credentials/approval configured",
+  "actualEbayOAuthRequests": 0,
+  "actualEbayBrowseRequests": 0,
+  "actualOpenAiCallsForThisTask": 0,
+  "applicationPaidTestCostUsd": 0,
+  "railwayVariablesModified": false,
+  "deploymentsTriggered": 0,
+  "productionModified": false,
+  "mockStagingModified": false
+}

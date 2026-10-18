@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-10-17T23:15:04.655601+00:00",
+  "mode": "REMOTE_BROWSER_NO_PAID_CALLS",
+  "url": "https://web-live-ai-staging.up.railway.app/app",
+  "desktop": {
+    "loaded": true,
+    "horizontalOverflow": false,
+    "consoleErrors": 0
+  },
+  "mobile": {
+    "viewportWidth": 390,
+    "loaded": true,
+    "horizontalOverflow": false
+  },
+  "accessTokenPrompt": false,
+  "publicAiPausedBanner": true,
+  "paidWorkspaceSubmissionAttempted": false,
+  "liveResearchPerformed": false
+}

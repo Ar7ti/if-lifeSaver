@@ -2,9 +2,10 @@ import type { z } from 'zod';
 import {
   CartResponseSchema, CreateProjectResponseSchema, ErrorResponseSchema, HealthResponseSchema, ProjectResponseSchema,
   ResearchResultSchema, ScenariosResponseSchema, SellerMessageResponseSchema, WorkspaceResponseSchema, AssistantResponseSchema,
-  HomeInsuranceResponseSchema, ProtectionCapabilitiesSchema,
+  HomeInsuranceResponseSchema, ProtectionCapabilitiesSchema, ProtectionTimelineResponseSchema, ProtectionMilestoneResponseSchema,
 } from '@contracts';
 import { ApiError, type LifeSimApi } from './types';
+import { ensureAccess, refreshAccess, useAccess } from './access';
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? '/api';
 /** Research and AI calls can legitimately take up to ~100 s (handoff doc); the server caps at 125 s. */
@@ -19,27 +20,37 @@ interface RequestOptions {
 
 export function createLiveApi(getToken: () => string): LifeSimApi {
   async function request<S extends z.ZodTypeAny>(path: string, schema: S, opts: RequestOptions = {}): Promise<z.output<S>> {
+    const access=path==='/health'?null:await ensureAccess();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), opts.timeout ?? SHORT_TIMEOUT);
     const headers: Record<string, string> = {};
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
     const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token&&access?.mode==='legacy') headers.Authorization = `Bearer ${token}`;
+    if(access?.mode==='public'&&opts.method&&opts.method!=='GET'){
+      headers['X-CSRF-Token']=access.csrfToken??'';
+      headers['Idempotency-Key']=crypto.randomUUID();
+    }
     let response: Response;
+    let payload:unknown;
     try {
       response = await fetch(`${BASE}${path}`, {
         method: opts.method ?? 'GET',
         headers,
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
         signal: controller.signal,
+        credentials: 'same-origin',
       });
+      payload=await response.json().catch(error=>{if((error as Error).name==='AbortError')throw error;if(response.ok)throw new ApiError('INVALID_RESPONSE','The server response could not be read. Retry the request; your saved workspace is still available.',502);return null;});
     } catch (error) {
+      if(error instanceof ApiError)throw error;
       if ((error as Error).name === 'AbortError') throw new ApiError('TIMEOUT', 'The request timed out', 0);
       throw new ApiError('NETWORK', 'Network request failed', 0);
     } finally {
       clearTimeout(timer);
+      if(opts.method&&opts.method!=='GET')void refreshAccess();
     }
-    const payload: unknown = await response.json().catch(() => null);
+    if(access?.mode==='public'&&access.session?.id!==useAccess.getState().info?.session?.id)throw new ApiError('SESSION_CHANGED','Your session changed. Reload your workspace.',401);
     if (!response.ok) {
       const parsed = ErrorResponseSchema.safeParse(payload);
       if (parsed.success) throw new ApiError(parsed.data.error.code, parsed.data.error.message, response.status, parsed.data.error.details);
@@ -60,6 +71,11 @@ export function createLiveApi(getToken: () => string): LifeSimApi {
 
   return {
     source: 'live',
+    replaceCartItem:async(id,itemId,body)=>(await request(`${p(id)}/cart/items/${encodeURIComponent(itemId)}/replace`,ProjectResponseSchema,{method:'POST',body})).project,
+    undoCartReplacement:async(id,itemId,body)=>(await request(`${p(id)}/cart/items/${encodeURIComponent(itemId)}/undo-replacement`,ProjectResponseSchema,{method:'POST',body})).project,
+    applyScenario:async(id,scenarioId,body)=>(await request(`${p(id)}/scenarios/${scenarioId}/apply`,ProjectResponseSchema,{method:'POST',body})).project,
+    protectionTimeline:id=>request(`${p(id)}/protection-timeline`,ProtectionTimelineResponseSchema),
+    patchProtectionMilestone:(id,milestoneId,body)=>request(`${p(id)}/protection-timeline/${milestoneId}`,ProtectionMilestoneResponseSchema,{method:'PATCH',body}),
     protectionCapabilities:()=>request('/protection/capabilities',ProtectionCapabilitiesSchema),
     updateProtection:async(id,body)=>(await request(`${p(id)}/protection`,ProjectResponseSchema,{method:'PATCH',body})).project,
     saveCarInsuranceDraft:async(id,body)=>(await request(`${p(id)}/protection/car/draft`,ProjectResponseSchema,{method:'PATCH',body})).project,
@@ -76,6 +92,7 @@ export function createLiveApi(getToken: () => string): LifeSimApi {
     getProject: async id => (await request(p(id), ProjectResponseSchema)).project,
     patchProject: async (id, patch) => (await request(p(id), ProjectResponseSchema, { method: 'PATCH', body: patch })).project,
     assistant: (id, body) => request(`${p(id)}/assistant`, AssistantResponseSchema, { method: 'POST', body, timeout: LONG_TIMEOUT }),
+    researchFeedback: async(id,resultId,body)=>(await request(`${p(id)}/research/${encodeURIComponent(resultId)}/feedback`,ProjectResponseSchema,{method:'POST',body})).project,
     research: (id, body) => request(`${p(id)}/research`, ResearchResultSchema, { method: 'POST', body, timeout: LONG_TIMEOUT }),
     addCartItem: (id, body) => request(`${p(id)}/cart/items`, CartResponseSchema, { method: 'POST', body }),
     patchCartItem: (id, itemId, body) => request(`${p(id)}/cart/items/${encodeURIComponent(itemId)}`, CartResponseSchema, { method: 'PATCH', body }),

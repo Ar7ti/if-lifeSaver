@@ -1,0 +1,60 @@
+{
+  "configuredAt": "2026-10-17T23:04:13.215296+00:00",
+  "project": "if-lifesaver",
+  "environment": "live-ai-staging",
+  "environmentId": "c4e62ad8-c5d1-40e8-867d-1c5530b80026",
+  "services": {
+    "api": {
+      "configured": true,
+      "deployed": true,
+      "startCommand": "npx tsx src/live-ai-staging.ts",
+      "publicDomain": null,
+      "replicas": 1,
+      "volumeId": "d7a63d3d-ef9a-454d-bb43-2e4c0caf7945",
+      "volumeMount": "/data",
+      "volumeStatus": "Ready",
+      "deploymentId": "e4601d6e-f8a2-4a25-92fc-26f70e386af8",
+      "deploymentStatus": "SUCCESS"
+    },
+    "web": {
+      "configured": true,
+      "deployed": true,
+      "reservedDomain": "web-live-ai-staging.up.railway.app",
+      "apiBase": "/api",
+      "privateProxyReferenceValidated": true,
+      "deploymentId": "dda0dc06-28ee-408f-b806-715eabfb5caf",
+      "deploymentStatus": "SUCCESS"
+    }
+  },
+  "freshPrivateServerCredentialsConfigured": true,
+  "frontendContainsProviderOrAdminSecrets": false,
+  "openAIKeyPresent": true,
+  "publicAiEnabled": false,
+  "dailyProviderCallsPerVisitor": 5,
+  "globalConcurrentCalls": 3,
+  "dailyPublicEstimatedBudgetUsd": 3,
+  "configurationGuardValidatedWithoutNetwork": true,
+  "paidCallsPerformed": 5,
+  "existingEnvironmentsChanged": false,
+  "nextStep": "Review the limited furniture results and retest the context fix only in an explicitly bounded future allowance. Public AI remains paused after the five-call test.",
+  "checkedAt": "2026-10-17T23:42:33.131105+00:00",
+  "modelAccessCheck": {
+    "type": "nonbillable GET /v1/models/gpt-6.1-sol",
+    "status": 200
+  },
+  "providerAccountControlsVerified": true,
+  "publicAiEnvironmentFlag": true,
+  "durablePublicAiKillSwitch": false,
+  "applicationEstimatedCostUsd": 0.223775,
+  "providerSettledCostUsd": null,
+  "providerDashboardUsageAfterTest": {
+    "checkedAt": "2026-10-17T23:39:59.728942+00:00",
+    "projectName": "life simulator",
+    "reportedSpendUsd": 0.13,
+    "reportedModelRequests": 5,
+    "reportedInputTokens": 40625,
+    "reportedWebSearchRequests": 2,
+    "applicationResponseToolInvocations": 3,
+    "note": "Project-filtered dashboard values; rounded and potentially delayed, not final settled invoice. Tool-invocation and usage-report counts differ; no unverified billing equivalence is asserted."
+  }
+}

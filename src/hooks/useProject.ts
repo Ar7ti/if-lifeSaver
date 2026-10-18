@@ -9,12 +9,15 @@ import type { DataSource } from '@/stores/settings';
 export const projectKey = (source: DataSource, id: string) => ['project', source, id] as const;
 
 export function useProject(id: string) {
+  const qc=useQueryClient();
   const api = useApi();
   const remember = useProjects(s => s.remember);
   return useQuery({
     queryKey: projectKey(api.source, id),
     queryFn: async () => {
-      const project = await api.getProject(id);
+      const fetched = await api.getProject(id);
+      const cached=qc.getQueryData<LifeProject>(projectKey(api.source,id));
+      const project=cached&&cached.revision>fetched.revision?cached:fetched;
       remember(project, api.source);
       return project;
     },
@@ -31,8 +34,9 @@ export function useProjectWriter(id: string) {
 
   const setProject = useCallback(
     (project: LifeProject) => {
-      qc.setQueryData(key, project);
-      remember(project, api.source);
+      void qc.cancelQueries({queryKey:key});
+      const current=qc.setQueryData<LifeProject>(key,old=>old&&old.revision>project.revision?old:project);
+      if(current)remember(current, api.source);
     },
     [qc, api.source, id, remember],
   );
@@ -42,7 +46,7 @@ export function useProjectWriter(id: string) {
   /** Cart responses carry the recalculated budget; scenarios and risks come from a fresh GET. */
   const applyCart = useCallback(
     (response: CartResponse) => {
-      qc.setQueryData<LifeProject>(key, old => (old ? { ...old, cart: response.items, budget: response.budget, revision: response.revision } : old));
+      qc.setQueryData<LifeProject>(key, old => (old&&old.revision>response.revision?old:old ? { ...old, cart: response.items, budget: response.budget, revision: response.revision } : old));
       void refresh();
     },
     [qc, refresh],

@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-10-17T23:42:33.131105+00:00",
+  "project": "if-lifesaver",
+  "environments": [
+    {
+      "name": "live-ai-staging",
+      "id": "c4e62ad8-c5d1-40e8-867d-1c5530b80026",
+      "services": [
+        {
+          "name": "api",
+          "deployment": "e4601d6e-f8a2-4a25-92fc-26f70e386af8",
+          "status": "SUCCESS",
+          "domains": [],
+          "volumeId": "d7a63d3d-ef9a-454d-bb43-2e4c0caf7945",
+          "volumeMount": "/data"
+        },
+        {
+          "name": "web",
+          "deployment": "dda0dc06-28ee-408f-b806-715eabfb5caf",
+          "status": "SUCCESS",
+          "domains": [
+            "web-live-ai-staging.up.railway.app"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "production",
+      "id": "e76efcd7-b506-4c8c-93e5-bad392cfa548",
+      "services": [
+        {
+          "name": "api",
+          "deployment": "e2d53686-7e45-41a1-a8ae-3b44162a7161",
+          "domains": [
+            "api-production-c64b9.up.railway.app"
+          ]
+        },
+        {
+          "name": "web",
+          "deployment": "5073a485-83b1-43eb-9a0d-3b230c05e4e1",
+          "domains": [
+            "web-production-b7650b.up.railway.app"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public-access-staging",
+      "id": "e891a788-a53b-42ce-94a6-5f371d7207ee",
+      "services": [
+        {
+          "name": "api",
+          "deployment": "6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a",
+          "domains": []
+        },
+        {
+          "name": "web",
+          "deployment": "2372766f-0e4c-4a2c-aa4e-bc176130c901",
+          "domains": [
+            "web-public-access-staging.up.railway.app"
+          ]
+        }
+      ]
+    }
+  ],
+  "productionAndMockDeploymentIdsUnchanged": true
+}

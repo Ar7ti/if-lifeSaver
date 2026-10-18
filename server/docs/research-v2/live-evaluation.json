@@ -1,0 +1,290 @@
+{
+  "recordedAt": "2026-10-18T00:04:39.422Z",
+  "mode": "LIVE_HTTP",
+  "engineVersion": 2,
+  "origin": "https://web-live-ai-staging.up.railway.app",
+  "steps": [
+    {
+      "step": "create",
+      "status": 201,
+      "durationMs": 9279,
+      "errorCode": null,
+      "scenario": "moving",
+      "budgetMinor": 200000
+    },
+    {
+      "step": "research",
+      "status": "limited",
+      "durationMs": 19212,
+      "errorCode": null,
+      "mode": "live",
+      "diagnostics": {
+        "requestId": "5700decd-34ae-4e72-8976-6721b1eb1d75",
+        "operation": "research",
+        "providerMode": "live",
+        "model": "gpt-6.1-sol",
+        "stage": "completed",
+        "toolExecuted": true,
+        "searchCalls": 3,
+        "sourceCount": 63,
+        "passageCount": 1,
+        "candidateCount": 1,
+        "acceptedCount": 0,
+        "rejectedCount": 1,
+        "duplicateCount": 0,
+        "rejectionReasons": {
+          "category": 1
+        },
+        "durationMs": 18959,
+        "inputTokens": 33304,
+        "outputTokens": 696,
+        "estimatedCostUsd": 0.173656,
+        "errorCode": null,
+        "sourceStrategy": "used_furniture",
+        "supportedCount": 0,
+        "potentialCount": 0,
+        "missingEvidenceCounts": {}
+      },
+      "request": {
+        "category": "sofa",
+        "location": "Turku, Finland",
+        "maxPrice": 200,
+        "kind": "product",
+        "preferences": [
+          "Find 3 used sofas under €200 in Turku, Finland. Real source links only."
+        ],
+        "condition": "used",
+        "limit": 3,
+        "sort": "price_asc",
+        "localOnly": true
+      },
+      "summary": {
+        "supportedCount": 0,
+        "potentialCount": 0,
+        "rejectedCount": 1,
+        "sourceCount": 63,
+        "explanation": "Sources were discovered, but no useful listing evidence survived validation."
+      },
+      "offers": [],
+      "warnings": [
+        "Source checked means URL citation provenance only. Evidence is an assistant-generated cited search summary, not raw webpage text or an independent source API response. Reported prices are estimated, never verified; product, stock, condition, and delivery reports also require confirmation at the source.",
+        "Omitted \"Harmaa shova, Turku\": category mismatch: title does not identify the requested sofa itself.",
+        "1 candidates were excluded; known violations were not put in potential matches.",
+        "Free-text preferences guided discovery but were not independently verified.",
+        "No offers could be established as supported matches; no useful potential leads remained.",
+        "Requested 3 results; only 0 meaningful candidates were found (0 supported, 0 potential). No alternatives were invented."
+      ],
+      "rejections": [
+        {
+          "sourceUrl": "https://huutokaupat.com/kohde/6243269/harmaa-shova?utm_source=openai",
+          "title": "Harmaa shova, Turku",
+          "reasons": [
+            "category"
+          ]
+        }
+      ],
+      "refinementSuggestions": [
+        {
+          "id": "expand_location",
+          "title": "Consider a wider area",
+          "explanation": "Prepare a broader search for your review. The current location constraint stays unchanged.",
+          "message": "Propose a wider-area search for sofa; ask which nearby area I approve before changing the current location constraint."
+        },
+        {
+          "id": "increase_budget",
+          "title": "Review the price ceiling",
+          "explanation": "Decide whether to change the ceiling before requesting another search.",
+          "message": "Help me decide whether to change the 200 EUR ceiling for sofa. Do not change it or search automatically."
+        },
+        {
+          "id": "condition_any",
+          "title": "Review the condition restriction",
+          "explanation": "Keep the current restriction unless you explicitly approve a change.",
+          "message": "Discuss whether to broaden the used condition restriction for sofa; keep it unchanged until I approve."
+        }
+      ],
+      "httpStatus": 200
+    }
+  ],
+  "providerInvoiceTotal": null,
+  "baseline": {
+    "searchCalls": 3,
+    "sourceCount": 40,
+    "candidateCount": 2,
+    "supportedCount": 0,
+    "potentialCount": 0
+  },
+  "controls": {
+    "project": "life simulator",
+    "projectId": "proj_StswGZiVV3ES5DwRmoPzrOGY",
+    "monthlyAlertUsd": 5,
+    "hardLimit": false,
+    "providerRateLimits": {
+      "rpm": 5000,
+      "tpm": 1000000
+    },
+    "dashboardSpendBeforeUsd": 0.13,
+    "projectHeaderModelCheck": 200
+  },
+  "independentLinkInspection": false,
+  "after": {
+    "day": "2026-10-18",
+    "publicAiEnabled": false,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [
+      {
+        "role": "anonymous",
+        "calls": 3,
+        "chargedMicroUsd": 184417,
+        "pending": 0
+      }
+    ],
+    "costsAreEstimates": true
+  },
+  "pausedAt": "2026-10-18T00:09:40.273Z",
+  "before": {
+    "day": "2026-10-18",
+    "publicAiEnabled": false,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [],
+    "costsAreEstimates": true
+  },
+  "visitorBefore": {
+    "used": 0,
+    "limit": 5,
+    "remaining": 5,
+    "resetsAt": "2026-10-19T00:00:00.000Z",
+    "publicAiEnabled": false
+  },
+  "cookie": {
+    "secure": true,
+    "httpOnly": true,
+    "sameSiteLax": true,
+    "hostOnly": true
+  },
+  "safeConfigVerified": true,
+  "afterEvaluation": {
+    "day": "2026-10-18",
+    "publicAiEnabled": true,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [
+      {
+        "role": "anonymous",
+        "calls": 3,
+        "chargedMicroUsd": 184417,
+        "pending": 0
+      }
+    ],
+    "costsAreEstimates": true
+  },
+  "applicationEstimatedTestCostUsd": 0.184417,
+  "visitorAfter": {
+    "used": 3,
+    "limit": 5,
+    "remaining": 2,
+    "resetsAt": "2026-10-19T00:00:00.000Z",
+    "publicAiEnabled": true
+  },
+  "remoteVerification": {
+    "ownerRead": 200,
+    "budgetPreserved": true,
+    "researchPersisted": true,
+    "crossUserChecks": [
+      {
+        "path": "",
+        "status": 404,
+        "durationMs": 233,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "path": "",
+        "status": 404,
+        "durationMs": 164,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "path": "/research",
+        "status": 404,
+        "durationMs": 183,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "path": "/assistant",
+        "status": 404,
+        "durationMs": 135,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "path": "/protection",
+        "status": 404,
+        "durationMs": 138,
+        "errorCode": "NOT_FOUND"
+      }
+    ],
+    "otherListEmpty": true,
+    "pausedResearch": 503,
+    "pausedError": "PUBLIC_AI_DISABLED",
+    "usageAfterReadOnlyChecks": {
+      "day": "2026-10-18",
+      "publicAiEnabled": false,
+      "dailyBudgetUsd": 3,
+      "adminDailyBudgetUsd": 3,
+      "usage": [
+        {
+          "role": "anonymous",
+          "calls": 3,
+          "chargedMicroUsd": 184417,
+          "pending": 0
+        }
+      ],
+      "costsAreEstimates": true
+    }
+  },
+  "browser": {
+    "mode": "ACTUAL_STAGING_BROWSER",
+    "supportedGroup": false,
+    "potentialGroup": false,
+    "summaryVisible": true,
+    "noDemoLabel": true,
+    "mobileNoOverflow": true,
+    "catalogHasPauseMessage": false,
+    "paidAiPausedVerifiedByApi": true,
+    "captureLimitation": "Initial screenshots preceded research-result hydration and are not retained as visual proof. Desktop/mobile screenshots in verification.json use explicit local synthetic fixtures."
+  },
+  "providerUsageReportingAfter": {
+    "reportedProjectSpendUsd": 0.13,
+    "reportedModelRequests": 5,
+    "reportedInputTokens": 40625,
+    "reportedWebSearchRequests": 2,
+    "scope": "life simulator project, month to date",
+    "note": "Still shows the previous baseline. The new test cost has not been separately reflected in this view; no zero-cost or settled-cost claim is made."
+  },
+  "qualityMetrics": {
+    "hostedToolInvocations": 3,
+    "sourceUrls": 63,
+    "citedPassages": 1,
+    "extractedCandidates": 1,
+    "supportedMatches": 0,
+    "potentialMatches": 0,
+    "rejectedCandidates": 1,
+    "rejectionReasons": {
+      "category": 1
+    },
+    "acceptedResultsWithPriceEvidence": 0,
+    "acceptedResultsWithConditionEvidence": 0,
+    "acceptedResultsWithLocationEvidence": 0,
+    "acceptedDirectLinks": 0,
+    "acceptedImages": 0,
+    "duplicateRate": 0,
+    "constraintMatchPercent": null,
+    "retainedCandidateFieldEvidence": "Not applicable: no retained candidates",
+    "independentListingAccess": "A single attempt through the research browsing tool could not retrieve the rejected reference; no CAPTCHA/access bypass or direct source parser was used."
+  },
+  "interpretation": "V2 plumbing/classification/feedback passed synthetic tests, but this one real sofa evaluation did not improve useful opportunities. More discovered URLs did not become usable cited listing evidence. The only title, Harmaa shova, Turku, did not establish sofa identity under the lexical validator; whether it is an actual suitable sofa could not be independently determined. No constraint broadening or paid rerun occurred.",
+  "productionAndMockUnchanged": true,
+  "publicAiPaused": true,
+  "administratorLoggedOut": true
+}

@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-10-17T23:38:48.564857+00:00",
+  "backendTests": {
+    "passed": 261,
+    "failed": 0,
+    "providers": "mocked"
+  },
+  "applicationBrowserTests": {
+    "passed": 38,
+    "failed": 0,
+    "providers": "local/demo/controlled responses"
+  },
+  "publicAccessBrowserTests": {
+    "passed": 5,
+    "failed": 0,
+    "providers": "local/demo"
+  },
+  "backendTypecheck": "PASS",
+  "backendBuild": "PASS",
+  "frontendTypecheck": "PASS",
+  "frontendBuild": "PASS",
+  "gitDiffCheck": "PASS",
+  "remoteHttpsPreflight": "PASS; no paid operations",
+  "remoteBrowserPreflight": "PASS; paused dashboard only",
+  "nonbillableOpenAIModelLookup": 200,
+  "paidPlanningTest": "PASS: real OpenAI, saved EUR 2000 budget",
+  "paidWebSearchTest": "TOOL_EXECUTION_PASS; quality LIMITED: 0 qualifying offers",
+  "paidFollowupTest": "FAIL on initial deployment; focused fix passes mocked regressions and is deployed, not paid-retested",
+  "paidRecommendationTest": "PASS for honest missing-data answer; associated proposal exposed the same context bug",
+  "actualPaidCalls": 5,
+  "actualApplicationApiCostUsd": null,
+  "productionDeploymentIdsUnchanged": true,
+  "mockStagingDeploymentIdsUnchanged": true,
+  "focusedBrowserRerun": {
+    "passed": 5,
+    "failed": 0,
+    "providers": "local/demo/controlled responses"
+  },
+  "applicationEstimatedCostUsd": 0.223775,
+  "remoteQuotaExhaustion": "PASS: sixth call rejected before provider dispatch",
+  "remoteInsuranceOwnership": "PASS: actual existing read/quote/update/timeline routes denied",
+  "remotePersistenceAfterRestart": "PASS: visitor session, project, EUR 2000 budget, limited search result and exhausted quota survived fix deployment",
+  "providerDashboardUsageAfterTest": {
+    "checkedAt": "2026-10-17T23:39:59.728942+00:00",
+    "projectName": "life simulator",
+    "reportedSpendUsd": 0.13,
+    "reportedModelRequests": 5,
+    "reportedInputTokens": 40625,
+    "reportedWebSearchRequests": 2,
+    "applicationResponseToolInvocations": 3,
+    "note": "Project-filtered dashboard values; rounded and potentially delayed, not final settled invoice. Tool-invocation and usage-report counts differ; no unverified billing equivalence is asserted."
+  }
+}

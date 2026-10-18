@@ -1,9 +1,14 @@
+import { explicitResearchConstraints, normalizeResearchRequest } from './research-constraints.js';
+import { offerChoice, rememberChoice } from './shopping.js';
+import type { ReplaceCartRequest, UndoCartReplacement, ApplyScenarioRequest } from '../../shared/contracts/index.js';
+import { movingProtectionTimeline, updateProtectionMilestone } from './protection-timeline.js';
+import type { ProtectionMilestoneId, ProtectionMilestonePatch } from '../../shared/contracts/index.js';
 import { randomUUID } from 'node:crypto';
-import { AgentCommandSchema, LifeProjectSchema, type LifeProject, type ProjectPatch, type WorkspacePatch, type AddCartItemRequest, type CartItemPatch, type AssistantRequest, type AssistantResponse, type ResearchRequest, type SellerMessageRequest, type SellerMessageResponse, type AgentAction, type AgentCommand, type Offer, type CreateProjectRequest } from '../../shared/contracts/index.js';
+import { AgentCommandSchema, LifeProjectSchema, researchSourceKey, researchDismissed, type ResearchFeedbackInput, itemVisual, type LifeProject, type ProjectPatch, type WorkspacePatch, type AddCartItemRequest, type CartItemPatch, type AssistantRequest, type AssistantResponse, type ResearchRequest, type SellerMessageRequest, type SellerMessageResponse, type AgentAction, type AgentCommand, type Offer, type CreateProjectRequest } from '../../shared/contracts/index.js';
 import type { ProjectRepository } from './repository.js';
 import type { Planner } from './ai.js';
 import type { SearchProvider } from './research.js';
-import { allocateBudgetForPlan, recalculateBudget, simulateScenarios, analyzeRisks } from './finance.js';
+import { allocateBudgetForPlan, recalculateBudget, simulateScenarios, scenarioFingerprint, planningGroup, analyzeRisks } from './finance.js';
 import { createWorkspace, patchWorkspace } from './workspace.js';
 import { AppError, notFound } from './errors.js';
 import { reconcileProtection, relevantInsurance, updateProtection, carFingerprint, homeFingerprint, linkCarExpense, insuranceSummary, vehicleFacts } from './protection.js';
@@ -20,7 +25,8 @@ export class ProjectService {
   private derive(project: LifeProject, revision = project.revision + 1) {
     reconcileProtection(project);
     project.budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense, project.protection?.car.budgetLink);
-    project.scenarios = simulateScenarios({...project,revision});
+    project.scenarios = simulateScenarios({...project,revision},{includeDemo:this.search.mode==='demo'});
+    if(project.scenarioSelection)project.scenarioSelection.needsReview=project.scenarioSelection.fingerprint!==scenarioFingerprint(project,{includeDemo:this.search.mode==='demo'});
     project.risks = analyzeRisks(project);
   }
   private reconcile(project:LifeProject) {
@@ -109,7 +115,9 @@ export class ProjectService {
     this.derive(project,0);
     return this.repository.create(LifeProjectSchema.parse(project));
   }
-  async get(id: string) { const project=await this.repository.get(id);reconcileProtection(project);return project; }
+  async get(id: string) { const project=await this.repository.get(id);reconcileProtection(project);if(!project.scenarios.length||project.scenarios.some(s=>s.fingerprint!==scenarioFingerprint(project,{includeDemo:this.search.mode==='demo'})))this.derive(project,project.revision);return project; }
+  async protectionTimeline(id:string){return movingProtectionTimeline(await this.get(id));}
+  protectionMilestone(id:string,milestoneId:ProtectionMilestoneId,input:ProtectionMilestonePatch){return this.repository.update(id,p=>updateProtectionMilestone(p,milestoneId,input),input.expectedRevision);}
   protectionUpdate(id:string,input:ProtectionUpdate){return this.repository.update(id,p=>{updateProtection(p,input);this.derive(p);});}
   carDraft(id:string,draft:Partial<CarInsuranceDraft>){return this.repository.update(id,p=>{if(p.scenarioType!=='car_purchase')throw new AppError('PROTECTION_NOT_RELEVANT','Car pricing requires a car workspace',422);reconcileProtection(p);p.protection!.car.draft={...p.protection!.car.draft,...draft};this.derive(p);});}
   async carQuote(id:string,input:CarQuoteRequest,provider:CarInsuranceProvider){
@@ -212,7 +220,8 @@ export class ProjectService {
     const snapshot = await this.get(id);
     const scope=classifyScope([request.category.replaceAll('_',' '),...request.preferences].join(' '),snapshot);
     if(scope.classification==='OUT_OF_SCOPE') throw new AppError('OUT_OF_SCOPE',scope.reply??'Research must relate to a practical life decision.',422);
-    const query = {...request,location:request.location??snapshot.location??undefined};
+    request=normalizeResearchRequest(request);
+    const query = {...request,location:request.location??request.country??snapshot.location??undefined};
     if (!query.location) throw new AppError('VALIDATION_ERROR','Provide a research location or set a project destination');
     const result = await this.search.search(query,snapshot);
     const stored = await this.repository.update(id,p=>{
@@ -221,6 +230,22 @@ export class ProjectService {
       this.derive(p);
     });
     return stored.researchResults.at(-1)!;
+  }
+  researchFeedback(id:string,resultId:string,input:ResearchFeedbackInput){
+    return this.repository.update(id,p=>{
+      const result=p.researchResults.find(r=>r.id===resultId),offer=result?.offers.find(o=>o.id===input.offerId);
+      const previous=(p.researchFeedback??[]).find(f=>f.resultId===resultId&&f.offerId===input.offerId);
+      if((!result||!offer)&&!(input.type===null&&previous))throw notFound('Research result');
+      const sourceKey=offer?researchSourceKey(offer.sourceUrl,offer.id):previous!.sourceKey;
+      p.researchFeedback=(p.researchFeedback??[]).filter(f=>f.sourceKey!==sourceKey);
+      if(input.type)p.researchFeedback=[...p.researchFeedback,{resultId,offerId:offer!.id,sourceKey,type:input.type,updatedAt:new Date().toISOString()}].slice(-200);
+      this.derive(p);
+    },input.expectedRevision);
+  }
+  private requirePlannable(project:LifeProject,offer:Offer){
+    if(offer.currency!==project.budget.currency)throw new AppError('CURRENCY_CONVERSION_REQUIRED','This listing uses a different or unknown currency. A sourced FX conversion is required before adding it to this EUR plan.',422);
+    if(offer.eligibilityStatus==='potential')throw new AppError('OFFER_NEEDS_REVIEW','This is a potential lead. Check its missing evidence before adding it to the financial plan.',422);
+    if(researchDismissed(project,offer))throw new AppError('OFFER_DISMISSED','This source was dismissed in your workspace. Clear its feedback before selecting it.',409);
   }
   private findOffer(project: LifeProject, offerId: string) {
     for (const result of [...project.researchResults].reverse()) {
@@ -236,29 +261,70 @@ export class ProjectService {
     if (project.cart.length>=100) throw new AppError('LIMIT_EXCEEDED','Cart supports at most 100 lines');
     const now=new Date().toISOString();
     if ('offerId' in input) {
-      const o=this.findOffer(project,input.offerId);
+      const o=this.findOffer(project,input.offerId);this.requirePlannable(project,o);
+      if(o.product&&input.quantity>1)throw new AppError('PRODUCT_QUANTITY_REVIEW','API shipping estimates describe one item. Review quantity and shipping explicitly before planning multiple units.',422);
       if(o.priceMinor===null) throw new AppError('PRICE_UNKNOWN','Verify this offer price before adding it to the plan');
       if(o.availability==='out_of_stock') throw new AppError('OFFER_UNAVAILABLE','This offer is listed as out of stock');
       if(project.preferences.allowUsed===false&&o.condition==='used') throw new AppError('PREFERENCE_CONFLICT','Used offers are excluded by your preferences');
       if(project.preferences.deliveryRequired===true&&o.delivery.available===false) throw new AppError('PREFERENCE_CONFLICT','This offer does not provide required delivery');
-      if(project.cart.some(i=>i.offerId===o.id)) throw new AppError('CONFLICT','Offer already in cart; update its quantity',409);
-      project.cart.push({id:randomUUID(),offerId:o.id,title:o.title,category:o.category,quantity:input.quantity,unitPriceMinor:o.priceMinor,deliveryCostMinor:o.delivery.costMinor,currency:'EUR',status:input.status,sourceUrl:o.sourceUrl,priceStatus:o.priceStatus==='verified'?'verified':o.priceStatus==='demo'?'demo':'estimated',addedAt:now});
-    } else project.cart.push({...input,id:randomUUID(),offerId:null,currency:'EUR',priceStatus:'estimated',addedAt:now});
+      if(project.cart.some(i=>i.offerId===o.id||o.product&&i.product?.provider===o.product.provider&&i.product.sourceProductId===o.product.sourceProductId)) throw new AppError('CONFLICT','Offer already in cart; update its quantity',409);
+      project.cart.push({...offerChoice(o),id:randomUUID(),quantity:input.quantity,status:input.status,addedAt:now});
+    } else project.cart.push({...input,id:randomUUID(),offerId:null,currency:'EUR',priceStatus:'estimated',priceOrigin:'user',addedAt:now});
   }
   addCart(id: string,input: AddCartItemRequest) { return this.repository.update(id,p=>{this.insertCart(p,input);this.derive(p);}); }
   patchCart(id: string,itemId: string,patch: CartItemPatch) {
     return this.repository.update(id,p=>{
       const item=p.cart.find(i=>i.id===itemId);if(!item) throw notFound('Cart item');
+      if(item.product&&patch.quantity!==undefined&&patch.quantity!==1)throw new AppError('PRODUCT_QUANTITY_REVIEW','API shipping estimates describe one item. Review multi-unit shipping separately.',422);
       Object.assign(item,patch);
-      if(patch.unitPriceMinor!==undefined||patch.deliveryCostMinor!==undefined) item.priceStatus='estimated';
+      if(patch.unitPriceMinor!==undefined||patch.deliveryCostMinor!==undefined){ item.priceStatus='estimated';item.priceOrigin='user';}
       this.derive(p);
     });
   }
   deleteCart(id: string,itemId: string) { return this.repository.update(id,p=>{const index=p.cart.findIndex(i=>i.id===itemId);if(index<0)throw notFound('Cart item');p.cart.splice(index,1);this.derive(p);}); }
   scenarios(id: string) { return this.repository.update(id,p=>this.derive(p)); }
+  private replaceChoice(project:LifeProject,itemId:string,offerId:string,allowSelected:boolean) {
+    const item=project.cart.find(i=>i.id===itemId);if(!item)throw notFound('Cart item');
+    if(item.status==='selected'&&!allowSelected)throw new AppError('ITEM_LOCKED','This item is chosen. Explicitly approve replacing it first.',409);
+    const offer=this.findOffer(project,offerId);this.requirePlannable(project,offer);
+    if(offer.product&&item.quantity!==1)throw new AppError('PRODUCT_QUANTITY_REVIEW','API shipping estimates cover one item. Review multi-unit shipping before replacement.',422);
+    const previousVisual=itemVisual(item.category,item.title,item.kind).category,nextVisual=itemVisual(offer.category,offer.title,offer.kind).category;
+    const visualMatch=previousVisual!=='unknown'&&previousVisual===nextVisual;
+    const visualConflict=previousVisual!=='unknown'&&nextVisual!=='unknown'&&previousVisual!==nextVisual;
+    if(visualConflict||(!visualMatch&&planningGroup(item.category,project.budget)!==planningGroup(offer.category,project.budget)))throw new AppError('CATEGORY_MISMATCH','Choose an alternative for the same purchase category.',400);
+    if(project.cart.some(i=>i.id!==item.id&&(i.offerId===offer.id||offer.product&&i.product?.provider===offer.product.provider&&i.product.sourceProductId===offer.product.sourceProductId)))throw new AppError('CONFLICT','This offer is already in the plan.',409);
+    if(offer.priceMinor===null||offer.priceStatus==='unknown')throw new AppError('PRICE_UNKNOWN','This alternative has no recorded price.',400);
+    if(offer.availability==='out_of_stock')throw new AppError('OFFER_UNAVAILABLE','This alternative is listed as unavailable.',400);
+    if(project.preferences.deliveryRequired===true&&offer.kind==='product'&&offer.delivery.available!==true)throw new AppError('PREFERENCE_CONFLICT','Required delivery is not established.',400);
+    if(project.preferences.allowUsed===false&&offer.kind==='product'&&!['new','not_applicable'].includes(offer.condition))throw new AppError('PREFERENCE_CONFLICT','This condition does not meet the new-only preference.',400);
+    if(item.offerId===offer.id&&item.unitPriceMinor===offer.priceMinor&&item.deliveryCostMinor===offer.delivery.costMinor)return;
+    const history=rememberChoice(item);Object.assign(item,offerChoice(offer),{replacementHistory:history});
+  }
+  replaceCart(id:string,itemId:string,input:ReplaceCartRequest){return this.repository.update(id,p=>{this.replaceChoice(p,itemId,input.offerId,input.allowSelected??false);this.derive(p);},input.expectedRevision);}
+  undoCartReplacement(id:string,itemId:string,input:UndoCartReplacement){return this.repository.update(id,p=>{
+    const item=p.cart.find(i=>i.id===itemId);if(!item)throw notFound('Cart item');
+    if(item.status==='selected'&&!input.allowSelected)throw new AppError('ITEM_LOCKED','Explicit approval is required to restore a chosen item.',409);
+    const previous=item.replacementHistory?.pop();if(!previous)throw new AppError('NOTHING_TO_UNDO','No previous choice is stored.',409);
+    if(previous.offerId&&p.cart.some(i=>i.id!==itemId&&i.offerId===previous.offerId))throw new AppError('CONFLICT','The previous choice is already in this plan.',409);
+    Object.assign(item,{imageUrl:null,imageSource:undefined,imageType:undefined,merchantName:null,condition:undefined,kind:undefined,lastCheckedAt:undefined,priceOrigin:undefined},previous);this.derive(p);
+  },input.expectedRevision);}
+  applyScenario(id:string,scenarioId:'economy'|'balanced'|'comfort',input:ApplyScenarioRequest){return this.repository.update(id,p=>{
+    this.derive(p,p.revision);
+    const scenario=p.scenarios.find(s=>s.id===scenarioId)!;
+    if(scenario.fingerprint!==input.expectedFingerprint)throw new AppError('CONFLICT','Your plan, research or provider mode changed. Review the comparison again.',409);
+    if(!scenario.withinBudget)throw new AppError('SCENARIO_UNAFFORDABLE','This scenario cannot fit the confirmed budget and reserve.',409);
+    for(const change of scenario.changes??[]){
+      if(change.kind==='replace')this.replaceChoice(p,change.cartItemId!,change.offerId,false);
+      else this.insertCart(p,{offerId:change.offerId,quantity:change.quantity,status:'proposed'});
+    }
+    this.derive(p);
+    p.scenarioSelection={id:scenarioId,appliedAt:new Date().toISOString(),fingerprint:scenarioFingerprint(p,{includeDemo:this.search.mode==='demo'}),needsReview:false};
+  },input.expectedRevision);}
+
   async assistant(id: string,request: AssistantRequest):Promise<AssistantResponse> {
     const initial=await this.get(id);
     let scope=classifyScope(request.message,initial);
+    if(scope.classification==='AMBIGUOUS'&&initial.actions.some(a=>a.command.type==='research_products'||a.command.type==='research_services')&&Object.keys(explicitResearchConstraints(request.message)).length)scope={classification:'CONTEXTUAL_FOLLOW_UP',reason:'Refinement of saved research constraints'};
     if(scope.classification==='OUT_OF_SCOPE')return {reply:scope.reply!,proposedActions:[],workspacePatch:null};
     const requestedGoal=buildScenarioProfile({message:request.message});
     if(requestedGoal.scenarioType!=='other'&&requestedGoal.scenarioType!==initial.scenarioType&&/\b(?:i want to|i am|i'm|new project|start (?:a|another))\b/i.test(request.message)&&initial.scenarioType!=='other')return {reply:`That sounds like a separate ${requestedGoal.scenarioType.replace('_',' ')} project. Start a new project for it so your ${initial.scenarioType.replace('_',' ')} details stay together.`,proposedActions:[],workspacePatch:null};
@@ -304,7 +370,7 @@ export class ProjectService {
       const workspace=commands.find(c=>c.type==='update_workspace');
       return {reply,proposedActions:actions,workspacePatch:workspace?.type==='update_workspace'?workspace.arguments:null};
     };
-    if(/\b(?:insurance|protect(?:ion|ed)?|insured|cover(?:age|ed)?|vakuutus)\b/i.test(request.message)){
+    if(!/\b(?:official information|what.*covers?|general coverage|policy information)\b/i.test(request.message)&&/\b(?:insurance|protect(?:ion|ed)?|insured|cover(?:age|ed)?|vakuutus)\b/i.test(request.message)){
       const product=relevantInsurance(project);
       if(product){const operation=/overview|all (?:my )?(?:insurance|protection)/i.test(request.message)?'overview':/afford|budget|impact|cost.*plan/i.test(request.message)?'budget_impact':/saved|current quote/i.test(request.message)?'saved_quote':/how much|price|cost|quote|options|reopen|open/i.test(request.message)?'open_quote':'review';
         return finish(insuranceSummary(project),[{type:'protection_action',arguments:{operation,product}}],['Open the shared protection workflow. No identity details are sent and no quote is requested by this action.']);}
@@ -325,7 +391,7 @@ export class ProjectService {
     }
     const defaults=project.scenarioType==='travel'?'Find accommodation and flights for my current trip':project.scenarioType==='car_purchase'?'Find vehicles for my current car purchase':project.scenarioType==='moving'?'Research moving services for my current move':'Continue planning the next steps for my current project';
     let effective=resumed??(affirmative(request.message)?project.conversation?.activeRequest??defaults:request.message);
-    if(classifyScope(effective,project).classification==='AMBIGUOUS')effective=defaults;
+    if(classifyScope(effective,project).classification==='AMBIGUOUS'&&!(scope.classification==='CONTEXTUAL_FOLLOW_UP'&&effective===request.message))effective=defaults;
     const output=await this.planner.assistant(project,{...request,message:normalizePlanningMessage(effective)});
     const seen=new Set<string>();const commands:AgentCommand[]=[];const explanations:string[]=[];
     for(const [i,raw] of output.commands.slice(0,5).entries()){const command=AgentCommandSchema.parse(raw);const key=JSON.stringify(command);if(!seen.has(key)){seen.add(key);commands.push(command);explanations.push(output.explanations[i]??'Review this proposed action.');}}
@@ -360,7 +426,7 @@ export class ProjectService {
         if(!query.location)throw new AppError('VALIDATION_ERROR','A research location is required');
         const result=await this.search.search(query,project);
         project.researchResults=[...project.researchResults,result].slice(-30);
-        return `${result.status}: ${result.offers.length} offers. ${result.warnings.join(' ')}`.slice(0,4000);
+        return `${result.status}: ${result.summary?.explanation??`${result.offers.length} offers`}. ${result.warnings.join(' ')}`.slice(0,4000);
       }
     }
   }

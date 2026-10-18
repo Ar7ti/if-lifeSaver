@@ -1,6 +1,7 @@
+import {researchStrategy} from './research-strategy.js';
 import type { LifeProject, Offer, ResearchRequest } from '../../shared/contracts/index.js';
 
-type Focus = 'bed' | 'car' | 'accommodation' | 'travel_transport' | 'moving' | 'furniture' | 'generic';
+type Focus = 'rental' | 'insurance' | 'bed' | 'car' | 'accommodation' | 'travel_transport' | 'moving' | 'furniture' | 'generic';
 export type ResearchPlan = ReturnType<typeof planResearch>;
 export type LocationFit = { status: 'match' | 'national' | 'unknown' | 'conflict'; location: string | null; reason: string };
 export const normalized = (text: string) => text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -20,10 +21,12 @@ export function samePlace(a: string, b: string): boolean {
 
 function focusFor(request: ResearchRequest, project: LifeProject): Focus {
   const category = normalized(request.category);
+  if(/\b(?:insurance|protection|vakuutus)\b/.test(category))return 'insurance';
+  if(/\b(?:rental|rent|apartments?|housing)\b/.test(category)&&project.scenarioType!=='travel')return 'rental';
   if (/\b(beds?|mattress(?:es)?|sanky|patja)\b/.test(category)) return 'bed';
   if (project.scenarioType === 'travel' && /\b(accommodations?|lodging|hotels?|hostels?|housing|stay)\b/.test(category)) return 'accommodation';
   if (project.scenarioType === 'travel' && /\b(transport|transportation|flights?|trains?|tickets?|travel)\b/.test(category)) return 'travel_transport';
-  if (project.scenarioType === 'car_purchase' && /\b(car|cars|vehicle|vehicles|purchase|transport)\b/.test(category) &&
+  if ((/\b(car|cars|vehicle|vehicles)\b/.test(category)||(project.scenarioType==='car_purchase'&&/\b(purchase|transport)\b/.test(category))) &&
     !/\b(insurance|repairs?|maintenance|fuel|tax|registration|financing)\b/.test(category)) return 'car';
   if (request.kind === 'service' && /\b(moving|movers?|removals?|transport|muutto\w*|kuljetus\w*)\b/.test(category)) return 'moving';
   if (/\b(furniture|furnishing|furnishings)\b/.test(category)) return 'furniture';
@@ -32,6 +35,7 @@ function focusFor(request: ResearchRequest, project: LifeProject): Focus {
 }
 
 const focusTerms: Record<Focus, string> = {
+  rental:'rental apartment vuokra asunto monthly rent', insurance:'official If Finland home insurance general coverage terms not personalized quote',
   bed: 'bed mattress bed frame', car: 'car for sale purchase', accommodation: 'accommodation hotel apartment hostel',
   travel_transport: 'passenger transport flights train bus ferry tickets', moving: 'moving removals muutto muuttopalvelu kuljetus service',
   furniture: 'home furniture', generic: '',
@@ -57,34 +61,17 @@ export function planResearch(request: ResearchRequest, project: LifeProject) {
   const attributes = [...new Set([...request.preferences, ...p.priorities,
     ...(p.vehicleType && focus === 'car' ? [p.vehicleType] : []), ...(p.useCase ? [p.useCase] : [])])].filter(Boolean);
   const dates = { startDate: p.startDate ?? null, endDate: p.endDate ?? null, durationDays: p.durationDays ?? null, moveDate: p.moveDate };
-  const route = ['travel_transport', 'moving'].includes(focus) ? `${p.origin ? `from ${p.origin}` : 'origin unknown'} ${location ? `to ${location}` : 'destination unknown'}` : location ?? 'location unknown';
-  const dateQuery = project.scenarioType === 'travel'
-    ? [dates.startDate && `start ${dates.startDate}`, dates.endDate && `end ${dates.endDate}`, dates.durationDays && `${dates.durationDays} days`, p.travelers && `${p.travelers} travelers`].filter(Boolean).join(' ')
-    : focus === 'moving' && p.moveDate ? `move date ${p.moveDate}` : '';
   const category = allocation?.id === request.category ? allocation.title : request.category.replace(/[_-]/g, ' ');
-  const base = [category, focusTerms[focus], route, dateQuery,
-    planningLimitMinor === null ? '' : `budget EUR ${(planningLimitMinor / 100).toFixed(2)}${maxItemMinor === null ? ' planning envelope' : ' item ceiling'}`,
-    attributes.slice(0, 8).join(' '), p.allowUsed === false && request.kind === 'product' ? 'new only' : '',
-    p.deliveryRequired === true && request.kind === 'product' ? 'delivery required' : '',
-    p.householdSize && ['moving', 'home_furnishing', 'student_life'].includes(project.scenarioType) ? `${p.householdSize} person household` : '',
-    ['moving', 'home_furnishing', 'student_life'].includes(project.scenarioType) && p.ownsFurniture === true ? `existing furniture owned: ${(p.ownedItems ?? []).join(', ') || 'inventory unspecified'}; seek requested category only` : '',
-    ['moving', 'home_furnishing', 'student_life'].includes(project.scenarioType) && p.ownsFurniture === false ? 'no existing furniture' : '',
-  ].filter(Boolean).join(' ');
-  const strategies = focus === 'accommodation' ? ['direct booking total stay price dates occupancy', 'compare hotels hostels apartments total fees cancellation', 'local accommodation availability for requested dates'] :
-    focus === 'travel_transport' ? ['official operators route total fare dates travelers', 'alternative operators compare train bus flight ferry', 'direct ticket booking route dates baggage fees'] :
-    focus === 'car' ? ['dealer vehicles for sale purchase price specifications -toy -rental -lease', 'private used car listings sale mileage condition -toy -rental', 'national dealers delivery purchase price vehicle specifications'] :
-    focus === 'moving' ? ['local movers actual route date itemized total quote', 'alternative removal providers route inventory service scope', 'regional moving companies route availability total fees'] :
-    ['local retailers actual product price specifications', p.allowUsed === false ? 'alternative new retailers compare specifications delivery' : 'second hand and refurbished alternatives condition pickup price', 'national retailers delivery coverage total delivery cost'];
-  // Put the different strategies first so bounded queries remain diverse even with large inventories/preferences.
-  // The full untruncated context is separately supplied as declarative plan data.
-  const queries = strategies.map((strategy, i) => `${strategy} ${base.slice(0, 1200)}${i === 0 ? ` user goal: ${project.originalMessage.slice(0, 400)}` : ''}`.slice(0, 1800));
+  const strategy=researchStrategy({category:request.category,focus,condition:request.condition??(p.allowUsed===false?'new':'any'),purpose:request.purpose??'offers',location,origin:p.origin,ceilingMinor:maxItemMinor??planningLimitMinor,period:request.pricePeriod??'one_time',dates,travelers:p.travelers,attributes});
+  const queries=strategy.queries;
   return { scenarioType: project.scenarioType, goal: { title: project.title, originalMessage: project.originalMessage },
     category: { id: request.category, title: category, focus }, location, origin: p.origin, dates,
     travelers: p.travelers ?? null, householdSize: p.householdSize,
     budget: { maxItemMinor, categoryRemainingMinor, projectAvailableMinor: project.budget.availableMinor, planningLimitMinor },
+    constraints:{condition:request.condition??(p.allowUsed===false?'new':'any'),localOnly:request.localOnly===true,limit:request.limit??15,sort:request.sort??'recommended',pricePeriod:request.pricePeriod??'one_time',purpose:focus==='insurance'?'information':request.purpose??'offers'},
     preferences: { allowUsed: p.allowUsed, deliveryRequired: p.deliveryRequired, priorities: p.priorities,
       requested: request.preferences, notes: p.notes, ownsFurniture: p.ownsFurniture ?? null, ownedItems: p.ownedItems ?? [],
-      vehicleType: p.vehicleType ?? null, useCase: p.useCase ?? null }, attributes, queries,
+      vehicleType: p.vehicleType ?? null, useCase: p.useCase ?? null }, attributes, queries, strategy, excludedSources:(project.researchFeedback??[]).filter(f=>f.type!=='useful').slice(-20).map(f=>f.sourceKey),
   };
 }
 
@@ -95,6 +82,8 @@ export function assessRelevance(title: string, plan: ResearchPlan, sameOfferCont
   const reject = (reason: string) => ({ points: 0, reason, excluded: true });
   const accept = (reason: string) => ({ points: 25, reason, excluded: false });
   switch (plan.category.focus) {
+    case 'rental':return /\b(?:apartment|rental|rent|studio|flat|vuokra|asunto|yksio|kaksio)\b/.test(t)?accept('title identifies rental housing'):reject('title does not identify rental housing');
+    case 'insurance':return /\b(?:insurance|home|coverage|kotivakuutus|vakuutus|moving)\b/.test(t)?accept('official insurance information'):reject('title does not identify insurance information');
     case 'bed':
       if (/\b(bed ?linen|bedding|bed ?sheets?|duvet|pillow|protector|bedside|nightstand|headboard only|dog|pet|doll|toy)\b/.test(t)) return reject('bed search excludes linen, accessories, and pet/toy beds');
       return /\b(beds?|mattress(?:es)?|sanky|patja)\b/.test(t) ? accept('title names a bed, frame, or mattress') : reject('title does not identify a bed or mattress');

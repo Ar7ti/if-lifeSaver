@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-17T23:42:16.396Z",
+  "apiDeployment": "e4601d6e-f8a2-4a25-92fc-26f70e386af8",
+  "healthStatus": 200,
+  "browserAnonymousSessionPreserved": true,
+  "effectivePublicAiEnabled": false,
+  "modelMode": "openai",
+  "projectBudgetMinor": 200000,
+  "researchResults": 1,
+  "conversationTurns": 5,
+  "recordedProviderCalls": 5,
+  "chargedMicroUsd": 223775,
+  "pending": 0,
+  "dailyPublicBudgetUsd": 3,
+  "adminLoggedOut": true
+}

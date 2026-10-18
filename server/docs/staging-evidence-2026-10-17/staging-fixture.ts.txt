@@ -1,0 +1,32 @@
+// Isolated Railway staging entry point. Never used by the normal production entry point.
+import {buildApp} from './app.js';
+import {loadConfig} from './config.js';
+import {createPlanner, type Planner} from './ai.js';
+import {createSearchProvider} from './research.js';
+import {MemoryProjectRepository} from './repository.js';
+import {ProjectService} from './service.js';
+import {AppError} from './errors.js';
+import {writeFile,mkdir} from 'node:fs/promises';
+import path from 'node:path';
+if(process.env.RAILWAY_ENVIRONMENT_NAME!=='public-access-staging'||process.env.STAGING_MOCK_PROVIDERS!=='true')throw new Error('Staging fixture is restricted to the isolated test environment');
+if(['OPENAI_API_KEY','IF_CLIENT_SECRET','IF_SUBSCRIPTION_KEY'].some(k=>process.env[k]))throw new Error('Provider secrets are forbidden in this mock environment');
+const config=loadConfig({...process.env,AI_MODE:'local',RESEARCH_MODE:'demo'});
+const local=createPlanner({mode:'local',model:'staging-mock-no-network',timeoutMs:1000});
+const demo=createSearchProvider({mode:'demo',model:'staging-mock-no-network',timeoutMs:1000});
+const pause=()=>new Promise<void>(resolve=>setTimeout(resolve,600));
+const planner:Planner={
+ async createProject(input){await pause();return local.createProject(input);},
+ async assistant(project,input){await pause();if(input.message.includes('[staging provider error]'))throw new AppError('AI_UNAVAILABLE','Simulated provider failure. No external request was made.',503);return local.assistant(project,input);},
+};
+// A synthetic legacy record lets us verify legacy protection without production data.
+const seedRepo=new MemoryProjectRepository();await seedRepo.ready();
+const seed=await new ProjectService(seedRepo,local,demo).create({message:'I am moving to Turku with EUR 2000',locale:'en'});
+seed.id='20000000-0000-4000-8000-000000000001';seed.title='SYNTHETIC STAGING LEGACY — no real user data';
+await mkdir(config.dataDir,{recursive:true});
+try{await writeFile(path.join(config.dataDir,seed.id+'.json'),JSON.stringify(seed),{flag:'wx',mode:0o600});}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;}
+// AppDependencies wraps these injected mocks in the same durable paid-provider allowance boundary.
+config.aiMode='openai';config.model='staging-mock-no-network';
+const app=await buildApp({config,planner,search:{mode:'live',async search(input,project){await pause();return demo.search(input,project);}}});
+app.addHook('onSend',async(_request,reply,payload)=>{reply.header('X-Staging-Providers','mock-no-external-calls');return payload;});
+process.once('SIGTERM',()=>{void app.close();});process.once('SIGINT',()=>{void app.close();});
+await app.listen({host:config.host,port:config.port});

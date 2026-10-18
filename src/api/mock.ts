@@ -1,3 +1,4 @@
+import {researchSourceKey} from '@contracts';
 /**
  * OFFLINE DEMO ADAPTER — fictional data only.
  *
@@ -172,6 +173,8 @@ function get(id: string) {
 const cartResponse = (p: LifeProject) => clone({ items: p.cart, budget: p.budget, revision: p.revision });
 
 export const mockApi: LifeSimApi = {
+  async protectionTimeline(){throw new ApiError('BACKEND_REQUIRED','Protection Timeline uses server-backed progress. Connect to the local backend; no AI or insurer credentials are needed.',503);},
+  async patchProtectionMilestone(){throw new ApiError('BACKEND_REQUIRED','Connect to the backend to save protection planning progress.',503);},
   async protectionCapabilities(){return {carLiveAvailable:false,carSourceMode:'unavailable',demoAvailable:true,carDocumentation:'https://developer.if-insurance.com/apis/mobility/car-insurance-apis-finland/documentation',travelQuotingAvailable:false};},
   async updateProtection(){throw new ApiError('BACKEND_REQUIRED','Use the local backend for the Smart Protection demo.',503);},
   async saveCarInsuranceDraft(){throw new ApiError('BACKEND_REQUIRED','Use the local backend for the Smart Protection demo.',503);},
@@ -184,6 +187,9 @@ export const mockApi: LifeSimApi = {
   async addInsuranceExpense(){throw new ApiError('IF_QUOTE_MISSING','A live If quote is required.',409);},
   async removeInsuranceExpense(id){const p=get(id);if(p.homeInsurance)p.homeInsurance.expense=null;derive(p);return clone(p);},
   source: 'mock',
+  async replaceCartItem(){throw new ApiError('BACKEND_REQUIRED','Connect to the backend to replace saved choices.',503);},
+  async undoCartReplacement(){throw new ApiError('BACKEND_REQUIRED','Connect to the backend to restore saved choices.',503);},
+  async applyScenario(){throw new ApiError('BACKEND_REQUIRED','Connect to the backend to apply a comparison to your plan.',503);},
   async health() {
     return { status: 'ok', ready: true, contractVersion: '1.0.0', configuration: { ai: 'local', research: 'demo', storage: 'memory', authentication: false } };
   },
@@ -240,6 +246,13 @@ export const mockApi: LifeSimApi = {
     p.actions.push(...actions);
     save();
     return clone({ reply, proposedActions: actions, workspacePatch: null });
+  },
+  async researchFeedback(id,resultId,input){
+    const p=get(id),r=p.researchResults.find(r=>r.id===resultId),o=r?.offers.find(o=>o.id===input.offerId);
+    if(!r||!o)throw new ApiError('NOT_FOUND','Research result not found',404);
+    const sourceKey=researchSourceKey(o.sourceUrl,o.id);p.researchFeedback=(p.researchFeedback??[]).filter(f=>f.sourceKey!==sourceKey);
+    if(input.type)p.researchFeedback=[...p.researchFeedback,{resultId,offerId:o.id,sourceKey,type:input.type,updatedAt:now()}].slice(-200);
+    derive(p);return clone(p);
   },
   async research(id, request) {
     await wait(2500);

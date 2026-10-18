@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/Toaster';
 import { Landing } from '@/features/landing/Landing';
 import { NotFound } from '@/features/pages/NotFound';
+import { SessionBoundary } from '@/features/access/SessionBoundary';
 
 // The landing page ships first; the app (API client, contracts, widgets) loads on demand.
 const AppShell = lazy(() => import('@/features/shell/AppShell').then(m => ({ default: m.AppShell })));
@@ -26,6 +27,7 @@ function Loading() {
 export function App() {
   return (
     <BrowserRouter>
+      <SessionBoundary>
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -43,6 +45,7 @@ export function App() {
         </Routes>
       </Suspense>
       <Toaster />
+      </SessionBoundary>
     </BrowserRouter>
   );
 }

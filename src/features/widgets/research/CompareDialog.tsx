@@ -6,20 +6,21 @@ import { OfferImage } from './OfferImage';
 import { conditionLabel, priceStatusLabel, sellerTypeLabel, verificationLabel } from './labels';
 
 const ROWS: { label: string; render: (o: Offer) => React.ReactNode }[] = [
-  { label: 'Price', render: o => <span className="font-semibold tabular">{formatMoney(o.priceMinor)}</span> },
+  { label: 'Price', render: o => <span className="font-semibold tabular">{formatMoney(o.priceMinor,{currency:o.currency})}</span> },
   { label: 'Price source', render: o => <Pill tone={priceStatusLabel[o.priceStatus].tone}>{priceStatusLabel[o.priceStatus].label}</Pill> },
-  { label: 'Delivery', render: o => (o.delivery.costMinor !== null ? formatMoney(o.delivery.costMinor) : o.delivery.available === false ? 'Pickup only' : 'Unknown') },
+  { label: 'Delivery', render: o => (o.delivery.costMinor !== null ? formatMoney(o.delivery.costMinor,{currency:o.currency}) : o.delivery.available === false ? 'Pickup only' : 'Unknown') },
   { label: 'Condition', render: o => conditionLabel[o.condition] ?? '—' },
   { label: 'Seller', render: o => `${o.seller.name ?? hostOf(o.sourceUrl) ?? o.sourceName} · ${sellerTypeLabel[o.seller.type]}` },
   { label: 'Location', render: o => o.location ?? 'Not stated' },
-  { label: 'Match score', render: o => <span className="tabular">{Math.round(o.score)}/100</span> },
+  { label: 'Match score', render: o => o.product?'Review provider fields':<span className="tabular">{Math.round(o.score)}/100</span> },
   { label: 'Provenance', render: o => verificationLabel[o.verificationStatus].label },
 ];
 
 export function CompareDialog({ offers, open, onClose }: { offers: Offer[]; open: boolean; onClose: () => void }) {
-  const cheapest = Math.min(...offers.map(o => o.priceMinor ?? Infinity));
+  const sameCurrency=new Set(offers.map(o=>o.currency)).size===1&&offers[0]?.currency!==null;
+  const cheapest = sameCurrency?Math.min(...offers.map(o => o.priceMinor ?? Infinity)):Infinity;
   return (
-    <Dialog open={open} onClose={onClose} title={`Compare ${offers.length} options`} description="Unknown values are shown as unknown, never as zero." wide>
+    <Dialog open={open} onClose={onClose} title={`Compare ${offers.length} options`} description="Unknown values stay unknown. Different currencies are not ranked or converted." wide>
       <div className="-mx-6 overflow-x-auto px-6">
         <table className="w-full min-w-[520px] border-separate border-spacing-0 text-left text-body-sm">
           <caption className="sr-only">Side-by-side comparison of selected options</caption>

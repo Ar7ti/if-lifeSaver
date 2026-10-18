@@ -1,9 +1,11 @@
-/** All money on the wire is integer euro cents (see shared/contracts). */
+/** Project money is EUR cents; product offers retain their currency and exponent. */
 const whole = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const cents = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function formatMoney(minor: number | null | undefined, opts: { exact?: boolean } = {}) {
+export function formatMoney(minor: number | null | undefined, opts: { exact?: boolean; currency?: string|null } = {}) {
   if (minor === null || minor === undefined) return 'Unknown';
+  if(opts.currency===null)return `${minor} minor units · currency unknown`;
+  if(opts.currency&&opts.currency!=='EUR'){const exponent=opts.currency==='JPY'?0:2;return new Intl.NumberFormat('en-IE',{style:'currency',currency:opts.currency,maximumFractionDigits:exponent}).format(minor/10**exponent);}
   const value = minor / 100;
   return opts.exact || minor % 100 !== 0 ? cents.format(value) : whole.format(value);
 }

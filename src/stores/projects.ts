@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 import { safeStorage } from '@/lib/storage';
 import type { LifeProject } from '@contracts';
 import type { DataSource } from './settings';
+let publicSessionMode=false;
+/** Public project metadata is restored from the owner-filtered API, never persisted across identities. */
+export function setPublicProjectMode(enabled:boolean){publicSessionMode=enabled;}
 
 /** The API has no "list projects" route, so this browser remembers the projects it created. */
 export interface ProjectSummary {
@@ -52,6 +55,6 @@ export const useProjects = create<ProjectsState>()(
       restore: summary =>
         set(state => ({ projects: [...state.projects.filter(p => p.id !== summary.id), summary].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) })),
     }),
-    { name: 'lifesim.projects', storage: safeStorage },
+    { name: 'lifesim.projects', storage: safeStorage, partialize:state=>({projects:state.projects.filter(p=>!publicSessionMode||p.source!=='live')}) },
   ),
 );

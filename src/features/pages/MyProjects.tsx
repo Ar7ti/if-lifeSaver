@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/States';
 import { buttonClass } from '@/components/ui/Button';
 import { PageContainer, PageHeader } from './PageHeader';
 import { ProjectCard } from './ProjectCard';
+import { useAccess } from '@/api/access';
 
 export function MyProjects() {
   const source = useSettings(s => s.dataSource);
@@ -14,12 +15,13 @@ export function MyProjects() {
   const restore = useProjects(s => s.restore);
   const forget = useProjects(s => s.forget);
   const projects = all.filter(p => p.source === source);
+  const publicMode=useAccess(s=>s.info?.mode==='public');
 
   return (
     <PageContainer>
       <PageHeader
         title="My projects"
-        description={source === 'mock' ? 'Demo projects saved in this browser.' : 'Projects created in this browser. They are stored by the Life Simulator service.'}
+        description={source === 'mock' ? 'Demo projects saved in this browser.' : publicMode?'Workspaces private to your current session.':'Projects created in this browser. They are stored by the Life Simulator service.'}
         actions={
           <Link to="/app/new" className={buttonClass('primary')}>
             <Plus className="size-4" aria-hidden /> New life project

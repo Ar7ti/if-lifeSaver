@@ -1,0 +1,588 @@
+{
+  "recordedAtUtc": "2026-10-17T19:33:06.790257+00:00",
+  "url": "https://web-public-access-staging.up.railway.app",
+  "environment": "public-access-staging",
+  "branch": "regal-hadrosaurus-59639ce3",
+  "baseCommit": "e23d12916ee5aa98de8eaba220fa526f7bbd9597",
+  "sourceManifestSha256": "9f572e9fccea664018c2f8b2e8cba28b9728690f1635ac256c7f2c1c472cce09",
+  "providers": "mock; no external paid model or web-search calls",
+  "remoteAssertionsPassed": 131,
+  "backendTestsPassed": 228,
+  "deployments": {
+    "api": {
+      "id": "6bbf2c8b-00a9-4bf1-bb55-7df5fa92e82a",
+      "status": "SUCCESS"
+    },
+    "web": {
+      "id": "2372766f-0e4c-4a2c-aa4e-bc176130c901",
+      "status": "SUCCESS"
+    }
+  },
+  "productionUnchanged": {
+    "deploymentsUnchanged": true,
+    "volumesUnchanged": true,
+    "configUnchanged": true
+  },
+  "configuration": {
+    "api": {
+      "noPaidProviderCredentials": true,
+      "publicAccessEnabled": true,
+      "secureCookiesEnabled": true,
+      "mockGuardEnabled": true,
+      "dailyCalls": "5",
+      "dailyEstimatedBudget": "3",
+      "newSessionsPerProxyHour": "50"
+    },
+    "web": {
+      "sameOriginApi": true,
+      "proxyEnabled": true,
+      "noAdminOrApiSecrets": true
+    },
+    "stagingHealth": 200,
+    "productionHealth": 200
+  },
+  "suites": {
+    "http-results": [
+      {
+        "name": "HTTPS same-origin API proxy and mock-provider guard",
+        "passed": true
+      },
+      {
+        "name": "health and GET session do not create persistent visitors",
+        "passed": true
+      },
+      {
+        "name": "unauthenticated private listing is rejected",
+        "passed": true
+      },
+      {
+        "name": "A session initializes without API_TOKEN",
+        "passed": true
+      },
+      {
+        "name": "B session initializes without API_TOKEN",
+        "passed": true
+      },
+      {
+        "name": "Secure HttpOnly SameSite host-only session cookie over Railway HTTPS",
+        "passed": true
+      },
+      {
+        "name": "visitors have independent server identities",
+        "passed": true
+      },
+      {
+        "name": "A creates private workspace",
+        "passed": true
+      },
+      {
+        "name": "B creates private workspace",
+        "passed": true
+      },
+      {
+        "name": "canonical budgets preserved for both scenarios",
+        "passed": true
+      },
+      {
+        "name": "mutation missing CSRF rejected",
+        "passed": true
+      },
+      {
+        "name": "foreign Origin rejected",
+        "passed": true
+      },
+      {
+        "name": "cross-user GET project returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user PATCH project returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user GET /workspace returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user PATCH /workspace returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user GET /cart returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /cart/items returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user GET /risks returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user GET /scenarios returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /assistant returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /research returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /actions/8c960846-db71-4c83-a48d-230c0a2f77df/confirm returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user GET /home-insurance returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user PATCH /home-insurance/details returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /home-insurance/quote returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user PATCH /protection returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user PATCH /protection/car/draft returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /protection/car/quote returns 404",
+        "passed": true
+      },
+      {
+        "name": "cross-user POST /protection/car/expense returns 404",
+        "passed": true
+      },
+      {
+        "name": "owner listing contains no other visitor metadata",
+        "passed": true
+      },
+      {
+        "name": "cross-user rejected AI/research/insurance does not consume allowance",
+        "passed": true
+      },
+      {
+        "name": "synthetic legacy project hidden from visitors",
+        "passed": true
+      },
+      {
+        "name": "paid-boundary mock call 2 allowed",
+        "passed": true
+      },
+      {
+        "name": "paid-boundary mock call 3 allowed",
+        "passed": true
+      },
+      {
+        "name": "paid-boundary mock call 4 allowed",
+        "passed": true
+      },
+      {
+        "name": "paid-boundary mock call 5 allowed",
+        "passed": true
+      },
+      {
+        "name": "daily allowance includes project planning, remaining zero after five calls",
+        "passed": true
+      },
+      {
+        "name": "sixth provider invocation rejected before dispatch",
+        "passed": true
+      },
+      {
+        "name": "direct research cannot bypass exhausted quota",
+        "passed": true
+      },
+      {
+        "name": "manual project editing still works after AI quota exhaustion",
+        "passed": true
+      },
+      {
+        "name": "manual proposed cart expense works after quota exhaustion",
+        "passed": true
+      },
+      {
+        "name": "cart arithmetic uses integer minor units without double counting",
+        "passed": true
+      },
+      {
+        "name": "own home insurance workflow remains available",
+        "passed": true
+      },
+      {
+        "name": "own demo car insurance quote flow works",
+        "passed": true
+      },
+      {
+        "name": "insurance quote retains fictional demo provenance",
+        "passed": true
+      },
+      {
+        "name": "demo recurring insurance can be proposed in ownership budget",
+        "passed": true
+      },
+      {
+        "name": "repeat insurance expense is safely rejected as already linked",
+        "passed": true
+      },
+      {
+        "name": "insurance expense does not duplicate on repeat",
+        "passed": true
+      },
+      {
+        "name": "anonymous visitor cannot access admin status",
+        "passed": true
+      },
+      {
+        "name": "incorrect independent admin key rejected",
+        "passed": true
+      },
+      {
+        "name": "independent administrator login succeeds",
+        "passed": true
+      },
+      {
+        "name": "administrator role checked server-side",
+        "passed": true
+      },
+      {
+        "name": "only administrator can review synthetic legacy record",
+        "passed": true
+      },
+      {
+        "name": "administrator kill switch disables public paid boundary",
+        "passed": true
+      },
+      {
+        "name": "kill switch enforced on actual assistant route",
+        "passed": true
+      },
+      {
+        "name": "administrator can restore mock public AI",
+        "passed": true
+      },
+      {
+        "name": "C session initializes without API_TOKEN",
+        "passed": true
+      },
+      {
+        "name": "C creates private workspace",
+        "passed": true
+      },
+      {
+        "name": "provider failure produces recoverable structured error",
+        "passed": true
+      },
+      {
+        "name": "provider failure preserves saved project",
+        "passed": true
+      },
+      {
+        "name": "per-session concurrent paid operations cannot exceed one reservation",
+        "passed": true
+      },
+      {
+        "name": "concurrency rejection is explicit and recoverable",
+        "passed": true
+      },
+      {
+        "name": "unique idempotency key accepted",
+        "passed": true
+      },
+      {
+        "name": "duplicate request prevented before a second dispatch",
+        "passed": true
+      },
+      {
+        "name": "direct mocked research exercises allowance boundary",
+        "passed": true
+      },
+      {
+        "name": "mock search result never claims live verification",
+        "passed": true
+      },
+      {
+        "name": "durable global estimates reconciled and no active reservations leak",
+        "passed": true
+      },
+      {
+        "name": "admin logout revokes independent session",
+        "passed": true
+      }
+    ],
+    "browser-results": [
+      {
+        "name": "browser creates workspace without a shared token prompt",
+        "passed": true
+      },
+      {
+        "name": "UI creation preserves budget and travel scenario in canonical state",
+        "passed": true
+      },
+      {
+        "name": "travel workspace has no moving/furniture budget categories",
+        "passed": true
+      },
+      {
+        "name": "browser reload restores saved owned workspace",
+        "passed": true
+      },
+      {
+        "name": "second browser context cannot read the first context workspace",
+        "passed": true
+      },
+      {
+        "name": "other browser owner listing excludes foreign workspace",
+        "passed": true
+      },
+      {
+        "name": "public settings hide shared Access Token form",
+        "passed": true
+      },
+      {
+        "name": "HttpOnly credential is unavailable to browser JavaScript",
+        "passed": true
+      },
+      {
+        "name": "private live workspace metadata is absent from localStorage",
+        "passed": true
+      },
+      {
+        "name": "quota status displays exhausted persistent allowance",
+        "passed": true
+      },
+      {
+        "name": "real server quota error is friendly and clears chat loading state",
+        "passed": true
+      },
+      {
+        "name": "manual Edit details remains available at zero AI allowance",
+        "passed": true
+      },
+      {
+        "name": "administrator can sign in through existing Settings UI",
+        "passed": true
+      },
+      {
+        "name": "administrator secret never persists in localStorage",
+        "passed": true
+      },
+      {
+        "name": "admin logout restores original anonymous browser identity",
+        "passed": true
+      },
+      {
+        "name": "mobile public access layout has no horizontal overflow",
+        "passed": true
+      },
+      {
+        "name": "browser workflows have no uncaught JavaScript errors",
+        "passed": true
+      }
+    ],
+    "persistence-after": [
+      {
+        "name": "A existing secure cookie still identifies its owner",
+        "passed": true
+      },
+      {
+        "name": "A owned project survives restart",
+        "passed": true
+      },
+      {
+        "name": "A full project content unchanged",
+        "passed": true
+      },
+      {
+        "name": "A SQLite quota unchanged",
+        "passed": true
+      },
+      {
+        "name": "A session identity unchanged",
+        "passed": true
+      },
+      {
+        "name": "title, proposed cart and budget persist",
+        "passed": true
+      },
+      {
+        "name": "exhausted allowance remains exhausted",
+        "passed": true
+      },
+      {
+        "name": "restart does not reset paid-call quota",
+        "passed": true
+      },
+      {
+        "name": "B existing secure cookie still identifies its owner",
+        "passed": true
+      },
+      {
+        "name": "B owned project survives restart",
+        "passed": true
+      },
+      {
+        "name": "B full project content unchanged",
+        "passed": true
+      },
+      {
+        "name": "B SQLite quota unchanged",
+        "passed": true
+      },
+      {
+        "name": "B session identity unchanged",
+        "passed": true
+      },
+      {
+        "name": "recurring insurance provenance and budget link persist",
+        "passed": true
+      },
+      {
+        "name": "C existing secure cookie still identifies its owner",
+        "passed": true
+      },
+      {
+        "name": "C owned project survives restart",
+        "passed": true
+      },
+      {
+        "name": "C full project content unchanged",
+        "passed": true
+      },
+      {
+        "name": "C SQLite quota unchanged",
+        "passed": true
+      },
+      {
+        "name": "C session identity unchanged",
+        "passed": true
+      }
+    ],
+    "global-results": [
+      {
+        "name": "D isolated concurrency test session created",
+        "passed": true
+      },
+      {
+        "name": "D test workspace created",
+        "passed": true
+      },
+      {
+        "name": "E isolated concurrency test session created",
+        "passed": true
+      },
+      {
+        "name": "E test workspace created",
+        "passed": true
+      },
+      {
+        "name": "four independent visitors cannot exceed three global concurrent provider reservations",
+        "passed": true
+      },
+      {
+        "name": "global concurrency rejection returns AI_BUSY",
+        "passed": true
+      },
+      {
+        "name": "remaining B allowance can be used only up to the daily limit",
+        "passed": true
+      },
+      {
+        "name": "research proposal remains explicit pending user approval",
+        "passed": true
+      },
+      {
+        "name": "confirmed research cannot bypass provider quota",
+        "passed": true
+      },
+      {
+        "name": "failed paid action preserves original project and pending user decision",
+        "passed": true
+      }
+    ],
+    "cost-zero": [
+      {
+        "name": "zero global budget rejects before mocked provider dispatch",
+        "passed": true
+      },
+      {
+        "name": "global budget rejection does not consume per-user quota",
+        "passed": true
+      },
+      {
+        "name": "global budget rejection preserves saved project",
+        "passed": true
+      }
+    ],
+    "cost-restored": [
+      {
+        "name": "restored staging budget permits mocked provider invocation again",
+        "passed": true
+      }
+    ],
+    "lifecycle-results": [
+      {
+        "name": "legacy shared bearer token cannot bypass public ownership",
+        "passed": true
+      },
+      {
+        "name": "client cannot grant itself an administrator role",
+        "passed": true
+      },
+      {
+        "name": "invalid session credential is rejected",
+        "passed": true
+      },
+      {
+        "name": "secure anonymous session renewal works through HTTPS proxy",
+        "passed": true
+      },
+      {
+        "name": "renewal rotates credential without changing workspace owner",
+        "passed": true
+      },
+      {
+        "name": "rotated old credential is immediately invalid",
+        "passed": true
+      },
+      {
+        "name": "renewal preserves workspace access and quota",
+        "passed": true
+      },
+      {
+        "name": "anonymous logout revokes session instead of reassigning its project",
+        "passed": true
+      },
+      {
+        "name": "fresh visitor can still enter after test traffic",
+        "passed": true
+      },
+      {
+        "name": "new visitor starts with five provider calls",
+        "passed": true
+      },
+      {
+        "name": "new session cannot claim a logged-out visitor workspace",
+        "passed": true
+      },
+      {
+        "name": "new public visitor sees an empty private workspace list",
+        "passed": true
+      }
+    ]
+  },
+  "backupRestore": {
+    "passed": false,
+    "reason": "Railway native backups require Pro; manual file export requires an SSH key, which was unavailable. No upgrade or SSH key registration performed."
+  }
+}

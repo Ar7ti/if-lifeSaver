@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Check, Copy, LayoutGrid, ListPlus, Loader2, MessageSquareText, RotateCw, Search, ShieldCheck, ShoppingBag, Wallet, X, type LucideIcon } from 'lucide-react';
 import type { AgentAction, AgentCommand, LifeProject } from '@contracts';
+import { scrollToSection } from '@/features/workspace/scroll';
 import { useWorkspace } from '@/features/workspace/context';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
@@ -80,7 +81,7 @@ export function ActionCard({ action }: { action: AgentAction }) {
     onSuccess: (p, approved) => {
       writer.setProject(p);
       const updated = p.actions.find(a => a.id === live.id);
-      if (approved && updated?.status === 'applied') {toast.success('Done', updated.result ?? d.title);if(live.command.type==='protection_action')navigate(live.command.arguments.operation==='overview'?'/app/protection':`/app/p/${project.id}#protection`);}
+      if (approved && updated?.status === 'applied') {toast.success('Done', updated.result ?? d.title);if(live.command.type==='protection_action')navigate(live.command.arguments.operation==='overview'?'/app/protection':`/app/p/${project.id}#protection`);else if(['compare_scenarios','research_products','research_services'].includes(live.command.type))requestAnimationFrame(()=>requestAnimationFrame(()=>scrollToSection(live.command.type==='compare_scenarios'?'w-scenario_comparison':live.command.type==='research_services'?'w-service_finder':'w-product_catalog')));}
     },
     onError: writer.reloadOnConflict,
   });

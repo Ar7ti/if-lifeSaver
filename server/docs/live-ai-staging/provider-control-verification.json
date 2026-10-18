@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-10-17T23:32:28.622982+00:00",
+  "projectName": "life simulator",
+  "projectId": "proj_StswGZiVV3ES5DwRmoPzrOGY",
+  "identityEvidence": [
+    "Signed-in project settings name and ID",
+    "Single active project key masked metadata matches Railway backend credential",
+    "Project-scoped credential; nonbillable model lookup succeeds with confirmed project header",
+    "Nonbillable mismatched-project negative control rejected with HTTP 401"
+  ],
+  "maskedKeyComparison": "MATCH; no key fragments retained",
+  "monthlyBudgetUsd": 5,
+  "spendAlertPercent": 100,
+  "budgetEnforcement": "NOT_ENFORCED",
+  "dashboardSpendBeforeUsd": 0,
+  "model": "gpt-6.1-sol",
+  "requestsPerMinute": 5000,
+  "tokensPerMinute": 1000000,
+  "rateLimitSource": "Project limits table; inherited organization defaults",
+  "providerSettingsModified": false,
+  "application": {
+    "dailyPublicEstimatedBudgetUsd": 3,
+    "dailyAdminEstimatedBudgetUsd": 3,
+    "providerCallsPerVisitorPerUtcDay": 5,
+    "sessionConcurrency": 1,
+    "globalConcurrency": 3,
+    "killSwitchVerifiedBeforeActivation": true,
+    "durableSQLite": "/data/security.sqlite",
+    "automaticSdkRetries": 0,
+    "maximumResearchHostedToolCalls": 3
+  },
+  "judgment": "Sufficient for one sequential bounded visitor workflow with no retries and durable pre-dispatch reservations. Provider model rate limits are high and do not independently protect spending. No hard monetary cap is claimed.",
+  "exclusivityLimit": "Association to this project is corroborated; no claim that unrelated consumers outside this staging deployment cannot use the same project.",
+  "providerDashboardUsageAfterTest": {
+    "checkedAt": "2026-10-17T23:39:59.728942+00:00",
+    "projectName": "life simulator",
+    "reportedSpendUsd": 0.13,
+    "reportedModelRequests": 5,
+    "reportedInputTokens": 40625,
+    "reportedWebSearchRequests": 2,
+    "applicationResponseToolInvocations": 3,
+    "note": "Project-filtered dashboard values; rounded and potentially delayed, not final settled invoice. Tool-invocation and usage-report counts differ; no unverified billing equivalence is asserted."
+  }
+}

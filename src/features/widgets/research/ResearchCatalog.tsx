@@ -3,20 +3,21 @@ import { useMutation } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Check, ChevronDown, Info, Loader2, PenLine, RotateCw, Search, SearchX, SlidersHorizontal, Sparkles } from 'lucide-react';
-import type { Offer, ResearchResult, WorkspaceWidget } from '@contracts';
+import { researchDismissed, researchFeedbackFor, itemVisual, type ResearchFeedback, type ResearchInput, type CartItem, type Offer, type ResearchResult, type WorkspaceWidget } from '@contracts';
 import { useWorkspace } from '@/features/workspace/context';
 import { useUi, type FurnitureClass } from '@/stores/ui';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States';
-import { formatMoney, humanizeCategory, pluralize, relativeTime } from '@/lib/format';
+import { hostOf, formatMoney, humanizeCategory, pluralize, relativeTime } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { cn } from '@/lib/cn';
 import { OfferCard, offerReasons } from './OfferCard';
 import { CompareDialog } from './CompareDialog';
 import { SellerMessageDialog } from './SellerMessageDialog';
 import { ManualItemDialog } from './ManualItemDialog';
+import { ReplaceItemDialog } from './ReplaceItemDialog';
 import { STALE_PREFIX } from './labels';
 import { CLASS_OPTIONS, CLASS_PREFERENCE, TIER_LABEL, tierMap } from './tiers';
 
@@ -32,7 +33,7 @@ const SERVICE_HINT = /mov|van|transport|truck|clean|storage|service|insur|electr
 
 function resultKind(r: ResearchResult, known: Record<string, Kind>): Kind {
   if (r.offers.length) return r.offers.some(o => o.kind === 'service') && !r.offers.some(o => o.kind === 'product') ? 'service' : 'product';
-  return known[r.id] ?? (SERVICE_HINT.test(r.category) ? 'service' : 'product');
+  return r.request?.kind ?? known[r.id] ?? (SERVICE_HINT.test(r.category) ? 'service' : 'product');
 }
 
 function toSlug(text: string) {
@@ -47,6 +48,7 @@ function toSlug(text: string) {
  */
 const ENVELOPE_GROUPS: [RegExp, RegExp][] = [
   [/car|vehicle/, /vehicle|purchase/],
+  [/laptop|macbook|smartphone|iphone|phone/, /electronics|equipment|essentials|purchases/],
   [/hotel|hostel|accommodation|stay/, /accommodation|housing|lodging/],
   [/flight|train|rail|bus|airport/, /transport/],
   [/course|education|tuition/, /education/],
@@ -108,11 +110,16 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
     return [...map.values()].reverse();
   }, [results]);
 
+  const [showHidden,setShowHidden]=useState(false);
+  const feedback=useMutation({mutationFn:({resultId,offerId,type}:{resultId:string;offerId:string;type:ResearchFeedback['type']|null})=>writer.api.researchFeedback(project.id,resultId,{offerId,type,expectedRevision:project.revision}),onSuccess:writer.setProject,onError:writer.fail});
   const [active, setActive] = useState<string | null>(null);
   const current = latest.find(r => r.category === active) ?? latest[0] ?? null;
 
   // ---- new search ----
   const [query, setQuery] = useState('');
+  const [productSource,setProductSource]=useState<'auto'|'web'|'ebay'>('auto');
+  const [country,setCountry]=useState('');
+  const [productCurrency,setProductCurrency]=useState<'EUR'|'GBP'|'USD'|'CAD'|'AUD'>('EUR');
   const [maxPrice, setMaxPrice] = useState('');
   const [prefs, setPrefs] = useState<string[]>([]);
   const [prefsOpen, setPrefsOpen] = useState(false);
@@ -120,20 +127,22 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
   const [lastRequest, setLastRequest] = useState<string | null>(null);
 
   const research = useMutation({
-    mutationFn: async (input: { text: string; max: number | undefined; prefs: string[] }) =>
-      writer.api.research(project.id, {
+    mutationFn: async (input: { text: string; max: number | undefined; prefs: string[];projectId:string;exact?:ResearchInput }) =>
+      writer.api.research(input.projectId, input.exact??{
         category: toSlug(input.text),
         kind,
+        ...(isProduct?{productSource:productSource==='auto'?undefined:productSource,country:country||undefined,currency:productCurrency,searchTerms:input.text.slice(0,100)}:{}),
         maxPrice: input.max,
         preferences: [`Looking for: ${input.text}`.slice(0, 200), ...input.prefs],
       }),
-    onSuccess: result => {
+    onSuccess: async(result,input) => {
+      if(input.projectId!==project.id)return;
       mark(result.id, kind);
       setActive(result.category);
       setFormOpen(false);
-      void writer.refresh();
+      await writer.refresh();
       if (result.status === 'unavailable') toast.info('Search returned no options', result.warnings[0]);
-      else toast.success(`${pluralize(result.offers.length, 'option')} found`, result.mode === 'demo' ? 'Fictional demo offers.' : 'Check each source before deciding.');
+      else toast.success(result.summary?`${result.summary.supportedCount} supported · ${result.summary.potentialCount} potential`:`${pluralize(result.offers.length, 'option')} found`, result.mode === 'demo' ? 'Fictional demo offers.' : 'Check each source before deciding.');
     },
     onError: writer.reloadOnConflict,
   });
@@ -141,6 +150,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
 
   function startSearch(text: string, opts: { cls?: FurnitureClass; e?: FormEvent } = {}) {
     opts.e?.preventDefault();
+    if(research.isPending)return;
     const t = text.trim();
     if (!toSlug(t)) {
       document.getElementById(`q-${widget.id}`)?.focus();
@@ -150,36 +160,41 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
     const cls = opts.cls ?? furnitureClass;
     const classPref = isProduct && cls !== 'all' ? [CLASS_PREFERENCE[cls]] : [];
     setLastRequest(t);
-    research.mutate({ text: t, max: max !== undefined && Number.isFinite(max) && max >= 0 ? Math.round(max * 100) / 100 : undefined, prefs: [...classPref, ...prefs] });
+    research.mutate({projectId:project.id, text: t, max: max !== undefined && Number.isFinite(max) && max >= 0 ? Math.round(max * 100) / 100 : undefined, prefs: [...classPref, ...prefs] });
   }
 
   // ---- filters ----
   const [moreFilters, setMoreFilters] = useState(false);
   const [text, setText] = useState('');
   const [sort, setSort] = useState<Sort>('recommended');
+  useEffect(()=>setSort(current?.request?.sort??'recommended'),[current?.id]);
   const [condition, setCondition] = useState<'any' | 'new' | 'used'>('any');
   const [seller, setSeller] = useState<'any' | 'company' | 'private'>('any');
   const [fitBudget, setFitBudget] = useState(false);
 
   const envelope = project.budget.categories.find(c => c.id === current?.category || c.id === envelopeFor(current?.category ?? '', project.budget.categories));
   const envelopeLeft = envelope ? envelope.allocatedMinor - envelope.committedMinor - envelope.proposedMinor : null;
-  const tiers = useMemo(() => (current ? tierMap(current.offers) : new Map()), [current]);
+  const tiers = useMemo(() => (current&&!current.providerOrder ? tierMap(current.offers) : new Map()), [current]);
 
   const offers = useMemo(() => {
     if (!current) return [];
-    let list = current.offers.filter(o => o.kind === kind || current.offers.every(x => x.kind !== kind));
-    if (isProduct && furnitureClass !== 'all') list = list.filter(o => tiers.get(o.id) === furnitureClass);
+    let list = current.offers.filter(o=>showHidden||!researchDismissed(project,o)).filter(o => o.kind === kind || current.offers.every(x => x.kind !== kind));
+    if (isProduct && !current.providerOrder && furnitureClass !== 'all') list = list.filter(o => tiers.get(o.id) === furnitureClass);
     if (text.trim()) list = list.filter(o => `${o.title} ${o.description} ${o.seller.name ?? ''} ${o.location ?? ''}`.toLowerCase().includes(text.trim().toLowerCase()));
     if (condition !== 'any') list = list.filter(o => (condition === 'used' ? o.condition === 'used' || o.condition === 'refurbished' : o.condition === 'new'));
     if (seller !== 'any') list = list.filter(o => o.seller.type === seller);
-    if (fitBudget && envelopeLeft !== null) list = list.filter(o => o.priceMinor !== null && o.priceMinor + (o.delivery.costMinor ?? 0) <= envelopeLeft);
-    const price = (o: Offer) => o.priceMinor ?? Number.MAX_SAFE_INTEGER;
-    return [...list].sort((a, b) => (sort === 'recommended' ? b.score - a.score : sort === 'price_asc' ? price(a) - price(b) : price(b) - price(a)));
-  }, [current, kind, isProduct, furnitureClass, tiers, text, condition, seller, fitBudget, envelopeLeft, sort]);
+    if (fitBudget && envelopeLeft !== null) list = list.filter(o =>o.currency==='EUR'&& o.priceMinor !== null && o.priceMinor + (o.delivery.costMinor ?? 0) <= envelopeLeft);
+    const price = (o:Offer) => current.request?.pricePeriod==='month'?(o.reportedRate?.period==='month'?o.reportedRate.amountMinor:Infinity):o.priceMinor??Infinity;
+    if(current.providerOrder)return list;
+    if(new Set(list.filter(o=>o.priceMinor!==null).map(o=>o.currency)).size>1)return list;
+    return [...list].sort((a,b)=>Number(a.eligibilityStatus==='potential')-Number(b.eligibilityStatus==='potential')||(sort==='recommended'?b.score-a.score:!Number.isFinite(price(a))?Number.isFinite(price(b))?1:0:!Number.isFinite(price(b))?-1:sort==='price_asc'?price(a)-price(b):price(b)-price(a)));
+  }, [current, kind, isProduct, furnitureClass, tiers, text, condition, seller, fitBudget, envelopeLeft, sort, showHidden, project.researchFeedback]);
 
   const stale = Boolean(current?.warnings.some(w => w.startsWith(STALE_PREFIX)));
   const activeFilters = [text.trim() !== '', condition !== 'any', seller !== 'any', fitBudget].filter(Boolean).length;
 
+  const [replacement,setReplacement]=useState<{item:CartItem;offerId:string}|null>(null);
+  const replaceTarget=(o:Offer)=>project.cart.find(i=>i.category===o.category||itemVisual(i.category,i.title,i.kind).category!=='unknown'&&itemVisual(i.category,i.title,i.kind).category===itemVisual(o.category,o.title,o.kind).category);
   // ---- cart ----
   const cartByOffer = new Map(project.cart.filter(i => i.offerId).map(i => [i.offerId!, i]));
   const [pendingOffer, setPendingOffer] = useState<string | null>(null);
@@ -225,6 +240,10 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
 
   return (
     <div className="@container flex flex-col gap-5">
+      {isProduct&&Boolean(project.preferences.requiredItems?.length)&&<div aria-label="Planned shopping needs" className="flex flex-wrap gap-2">{project.preferences.requiredItems!.filter(id=>!(project.preferences.ownedItems??[]).includes(id)).map(id=>{
+        const visual=itemVisual(id);const planned=project.cart.some(i=>itemVisual(i.category,i.title,i.kind).category===visual.category);
+        return <button key={id} type="button" disabled={research.isPending} onClick={()=>startSearch(id)} className="flex items-center gap-2 rounded-[12px] border border-hairline bg-canvas px-3 py-2 text-left hover:border-hairline-strong"><span className="emoji text-[22px]" aria-hidden>{visual.emoji}</span><span><span className="block text-body-sm font-medium">{visual.label}</span><span className="block text-[11px] text-graphite">{planned?'In your plan':'Explore alternatives'}</span></span></button>;
+      })}</div>}
       {/* Class selector: always visible for furniture, it shapes both results and new searches. */}
       {isProduct && (
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -250,8 +269,8 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             </div>
             <div className="flex items-center gap-1.5">
               <label className="flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] px-3 text-body-sm text-graphite transition-colors duration-150 hover:bg-ink/[0.03] @lg:flex-none @lg:border-l @lg:border-hairline-strong @lg:rounded-none @lg:hover:bg-transparent" htmlFor={`max-${widget.id}`}>
-                <span className="shrink-0">Max €</span>
-                <span className="sr-only">Maximum price in euros</span>
+                <span className="shrink-0">Max {isProduct?productCurrency:'EUR'}</span>
+                <span className="sr-only">Maximum price in {isProduct?productCurrency:'EUR'}</span>
                 <input id={`max-${widget.id}`} inputMode="decimal" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Any" className="w-full min-w-0 bg-transparent text-body sm:text-body-sm text-ink tabular placeholder:text-stone focus:outline-none @lg:w-16" />
               </label>
               <Button type="submit" variant="primary" size="sm" className="h-9 shrink-0 rounded-[10px] px-3.5" icon={<Sparkles />} loading={research.isPending}>
@@ -259,6 +278,11 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
               </Button>
             </div>
           </div>
+          {isProduct&&<div className="flex flex-wrap gap-2 text-caption text-graphite">
+            <label>Source <select aria-label="Product source" value={productSource} onChange={e=>setProductSource(e.target.value as typeof productSource)} className="h-8 rounded-button border border-hairline bg-surface px-2"><option value="auto">Automatic</option><option value="ebay">eBay structured API</option><option value="web">Web research</option></select></label>
+            <label>Country <select aria-label="Product country" value={country} onChange={e=>{const v=e.target.value;setCountry(v);setProductCurrency(v==='GB'?'GBP':v==='US'?'USD':v==='CA'?'CAD':v==='AU'?'AUD':'EUR');}} className="h-8 rounded-button border border-hairline bg-surface px-2"><option value="">Use project country</option><option value="FI">Finland</option><option value="DE">Germany</option><option value="GB">United Kingdom</option><option value="US">United States</option><option value="FR">France</option><option value="IT">Italy</option><option value="ES">Spain</option><option value="CA">Canada</option><option value="AU">Australia</option></select></label>
+            <label>Currency <select aria-label="Product currency" value={productCurrency} onChange={e=>setProductCurrency(e.target.value as typeof productCurrency)} className="h-8 rounded-button border border-hairline bg-surface px-2">{['EUR','GBP','USD','CAD','AUD'].map(v=><option key={v}>{v}</option>)}</select></label>
+          </div>}
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-caption text-graphite">
             {!current && (
               <>
@@ -364,7 +388,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
 
       {research.isError && (
         <div className="flex flex-col gap-2">
-          <ErrorState error={research.error} onRetry={() => lastRequest && startSearch(lastRequest)} />
+          <ErrorState error={research.error} onRetry={() => research.variables&&research.mutate(research.variables)} />
           <Button size="sm" variant="text" icon={<PenLine />} className="self-start" onClick={() => setManualOpen(true)}>
             Add your own estimate instead
           </Button>
@@ -377,7 +401,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-caption text-graphite">
             <span className={cn('inline-flex items-center gap-1.5 font-medium', current.mode === 'live' ? 'text-ok-ink' : current.mode === 'demo' ? 'text-warn-ink' : 'text-graphite')}>
               <span className={cn('size-1.5 rounded-full', current.mode === 'live' ? 'bg-ok-fill' : current.mode === 'demo' ? 'bg-saffron' : 'bg-ink/30')} aria-hidden />
-              {current.mode === 'live' ? 'Live research' : current.mode === 'demo' ? 'Demo data' : 'Search unavailable'}
+              {current.mode === 'live' ? current.productDiagnostics?'eBay API · no OpenAI extraction':`Live research${current.diagnostics?.toolExecuted?` · ${current.diagnostics.searchCalls} search tool call(s)`:''}` : current.mode === 'demo' ? 'Demo data' : 'Search unavailable'}
             </span>
             <span>
               {humanizeCategory(current.category)} · {pluralize(current.offers.length, 'option')} · {relativeTime(current.searchedAt)}
@@ -391,7 +415,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             <div className="ml-auto flex items-center gap-1">
             {current.offers.length > 0 && (
               <>
-                <Select aria-label="Sort options" value={sort} onChange={e => setSort(e.target.value as Sort)} className="h-8 w-auto border-transparent bg-transparent text-caption hover:bg-hover">
+                <Select aria-label="Sort options" disabled={current.providerOrder} value={current.providerOrder?'recommended':sort} onChange={e => setSort(e.target.value as Sort)} className="h-8 w-auto border-transparent bg-transparent text-caption hover:bg-hover">
                   <option value="recommended">Best match</option>
                   <option value="price_asc">Lowest price</option>
                   <option value="price_desc">Highest price</option>
@@ -409,6 +433,10 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             </div>
           </div>
 
+          {current.productRoutes?.map(route=><p key={route.provider} className="text-caption text-graphite">{route.provider}: {route.state.replaceAll('_',' ')} · {route.reason}</p>)}
+          {current.request?.productSource&&current.request.productSource!=='web'&&current.status==='unavailable'&&<Button size="sm" variant="outline" onClick={()=>research.mutate({projectId:project.id,text:current.query,max:undefined,prefs:[],exact:{...current.request!,productSource:'web'}})}>Try Web research instead</Button>}
+          {current.summary&&<p className="text-body-sm text-graphite" role="status">{current.summary.explanation}</p>}
+          {current.offers.some(o=>researchDismissed(project,o))&&<label className="flex items-center gap-2 text-caption text-graphite"><input type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/> Show results hidden by your feedback</label>}
           {moreFilters && current.offers.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-canvas p-2.5">
               <div className="relative min-w-40 flex-1">
@@ -436,7 +464,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             <div className="flex flex-wrap items-center gap-3 rounded-[10px] bg-warn-tint px-4 py-3 text-body-sm text-warn-ink" role="status">
               <AlertTriangle className="size-4 shrink-0" aria-hidden />
               <p className="min-w-0 flex-1">Your details changed after this search, so these options can&rsquo;t be added. Search again for matching ones.</p>
-              <Button size="sm" variant="outline" icon={<RotateCw />} onClick={() => startSearch(humanizeCategory(current.category))}>
+              <Button size="sm" variant="outline" icon={<RotateCw />} onClick={() => current.request?research.mutate({projectId:project.id,text:humanizeCategory(current.category),max:current.request.maxPrice,prefs:current.request.preferences,exact:current.request}):startSearch(humanizeCategory(current.category))}>
                 Search again
               </Button>
             </div>
@@ -445,7 +473,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           {current.offers.length === 0 ? (
             <EmptyState
               icon={<SearchX />}
-              title={current.status === 'unavailable' ? 'Research is unavailable right now' : 'No matching options found'}
+              title={current.status === 'unavailable' ? 'Research is unavailable right now' : current.engineVersion===2?current.summary?.sourceCount?'No supported matches or useful leads':'No usable candidate sources':'No matching options found'}
               action={
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button size="sm" variant="outline" icon={<Search />} onClick={() => setFormOpen(true)}>
@@ -457,7 +485,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
                 </div>
               }
             >
-              {current.warnings[0] ?? 'Try a broader description or a higher maximum price.'}
+              {current.summary?.explanation??current.warnings[0]??'Try a different description. Constraints change only after your approval.'}
             </EmptyState>
           ) : offers.length === 0 ? (
             <EmptyState
@@ -477,8 +505,14 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
               }
             />
           ) : (
-            <ul key={current.id} className="grid grid-cols-1 gap-3 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
-              {offers.map((o, oi) => (
+            <div className="flex flex-col gap-5">{[
+              {id:'supported',title:'Matches your criteria',items:offers.filter(o=>o.eligibilityStatus==='supported')},
+              {id:'potential',title:'Potential matches — check details',items:offers.filter(o=>o.eligibilityStatus==='potential')},
+              {id:'legacy',title:current.mode==='demo'?'Fictional demo options':'Earlier results — review details',items:offers.filter(o=>!o.eligibilityStatus)},
+            ].filter(g=>g.items.length).map(group=><section key={group.id} aria-label={group.title} className="flex flex-col gap-3">
+              <h3 className="text-body-sm font-medium">{group.title} <span className="ml-1 tabular text-graphite">{group.items.length}</span></h3>
+              <ul className="grid grid-cols-1 gap-3 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
+              {group.items.map((o, oi) => (
                 <motion.li key={o.id} className="flex" initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: Math.min(oi, 8) * 0.04 }}>
                   <OfferCard
                     offer={o}
@@ -490,6 +524,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
                     adding={add.isPending && pendingOffer === o.id}
                     removing={remove.isPending && pendingOffer === o.id}
                     onAdd={() => add.mutate(o)}
+                    onReplace={replaceTarget(o)?()=>setReplacement({item:replaceTarget(o)!,offerId:o.id}):undefined}
                     onRemove={() => {
                       const item = cartByOffer.get(o.id);
                       if (item) remove.mutate(item.id);
@@ -501,11 +536,14 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
                       }
                       setCompare(c => (on ? [...c, o.id] : c.filter(x => x !== o.id)));
                     }}
+                    feedback={researchFeedbackFor(project,o)}
+                    onFeedback={type=>feedback.mutate({resultId:current.id,offerId:o.id,type})}
+                    feedbackPending={feedback.isPending}
                     onContact={() => setContact(o)}
                   />
                 </motion.li>
               ))}
-            </ul>
+            </ul></section>)}</div>
           )}
 
           {current.warnings.filter(w => !w.startsWith(STALE_PREFIX)).length > 0 && (
@@ -523,6 +561,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
             </details>
           )}
 
+          {!!current.refinementSuggestions?.length&&<section aria-label="Improve this search" className="rounded-card bg-canvas p-3"><h3 className="text-body-sm font-medium">Improve this search</h3><p className="mt-1 text-caption text-graphite">Prepare a refinement for review. Nothing changes and no new search runs when you open the assistant.</p><div className="mt-2 flex flex-wrap gap-2">{current.refinementSuggestions.map(s=><Button key={s.id} size="sm" variant="outline" title={s.explanation} onClick={()=>ask(s.message)}>{s.title}</Button>)}</div></section>}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <Button size="sm" variant="text" icon={<Sparkles />} onClick={() => ask(`Find cheaper ${humanizeCategory(current.category).toLowerCase()} options`)} className="-ml-2 text-blue-ink">
               Ask for alternatives
@@ -533,6 +572,8 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
           </div>
         </div>
       )}
+
+      {!!project.researchFeedback?.length&&<details className="text-caption text-graphite"><summary className="cursor-pointer font-medium">Your research feedback</summary><ul className="mt-2 space-y-2">{project.researchFeedback.slice(-20).reverse().map(f=><li key={f.sourceKey} className="flex flex-wrap items-center justify-between gap-2"><span>{hostOf(f.sourceKey)??'Saved result'} · {f.type.replaceAll('_',' ')}</span><Button size="sm" variant="text" loading={feedback.isPending} onClick={()=>feedback.mutate({resultId:f.resultId,offerId:f.offerId,type:null})}>Clear feedback</Button></li>)}</ul><p className="mt-2">Saved in this workspace. Feedback adjusts suggestions; it does not retrain the AI or start research.</p></details>}
 
       {compare.length > 0 && (
         <div className="sticky bottom-20 z-10 flex items-center gap-3 rounded-card bg-midnight px-4 py-2.5 text-body-sm text-white shadow-float md:bottom-4" role="region" aria-label="Comparison">
@@ -548,6 +589,7 @@ export function ResearchCatalog({ kind, widget }: { kind: Kind; widget: Workspac
 
       <CompareDialog offers={compareOffers} open={compareOpen && compareOffers.length >= 2} onClose={() => setCompareOpen(false)} />
       <SellerMessageDialog offer={contact} onClose={() => setContact(null)} />
+      {replacement&&<ReplaceItemDialog key={replacement.item.id} item={replacement.item} initialOfferId={replacement.offerId} onClose={()=>setReplacement(null)}/>}
       <ManualItemDialog open={manualOpen} onClose={() => setManualOpen(false)} defaultCategory={envelope?.id} />
     </div>
   );

@@ -1,4 +1,5 @@
-import { BudgetCategorySchema, BudgetSchema, CartItemSchema, MinorSchema, HomeInsuranceExpenseSchema, type HomeInsuranceExpense, type InsuranceBudgetLink, type Budget, type CartItem, type LifeProject, type Offer, type Risk, type SimulationScenario } from '../../shared/contracts/index.js';
+import { createHash } from 'node:crypto';
+import { researchDismissed, BudgetCategorySchema, BudgetSchema, CartItemSchema, MinorSchema, HomeInsuranceExpenseSchema, type HomeInsuranceExpense, type InsuranceBudgetLink, type Budget, type CartItem, type LifeProject, type Offer, type Risk, type SimulationScenario } from '../../shared/contracts/index.js';
 import { AppError } from './errors.js';
 
 const MAX_MINOR = MinorSchema.maxValue!;
@@ -12,6 +13,7 @@ const furnitureGroups: Record<string, string> = {
   desk: 'desk', desks: 'desk', wardrobe: 'wardrobe', wardrobes: 'wardrobe',
 };
 const otherGroups: Record<string, string> = {
+  laptop:'laptop',laptops:'laptop',macbook:'laptop',phone:'smartphone',phones:'smartphone',iphone:'smartphone',smartphone:'smartphone',smartphones:'smartphone',
   hotel: 'hotel', hotels: 'hotel', hostel: 'hostel', hostels: 'hostel',
   flight: 'flight', flights: 'flight', airfare: 'flight',
   train: 'train', trains: 'train', rail: 'train', bus: 'bus', buses: 'bus',
@@ -44,7 +46,7 @@ function envelope(category: string, budget: Budget): string {
   const alias = budget.categories.find(item => purchaseGroup(item.id) === purchaseGroup(category));
   if (alias) return alias.id;
   if (isFurniture(category) && budget.categories.some(item => item.id === 'furniture')) return 'furniture';
-  const parentCategories: Record<string, string[]> = { hotel: ['accommodation', 'lodging'], hostel: ['accommodation', 'lodging'], flight: ['transport'], train: ['transport'], bus: ['transport'], vehicle: ['purchase'] };
+  const parentCategories: Record<string, string[]> = { laptop:['electronics','equipment','essentials','purchases'],smartphone:['electronics','equipment','essentials','purchases'],hotel: ['accommodation', 'lodging'], hostel: ['accommodation', 'lodging'], flight: ['transport'], train: ['transport'], bus: ['transport'], vehicle: ['purchase'] };
   const parent = Object.hasOwn(parentCategories, purchaseGroup(category)) ? parentCategories[purchaseGroup(category)]!.find(id => budget.categories.some(item => item.id === id)) : undefined;
   if (parent) return parent;
   return category;
@@ -66,7 +68,7 @@ function cartOffer(item: CartItem, project: LifeProject): Offer | undefined {
 
 function cartIsService(item: CartItem, project: LifeProject): boolean {
   const linked = cartOffer(item, project);
-  return linked ? linked.kind === 'service' : serviceCategory(item.category, project.budget);
+  return item.kind ? item.kind === 'service' : linked ? linked.kind === 'service' : serviceCategory(item.category, project.budget);
 }
 
 const serviceFeeNote = 'The recorded service price does not separately establish whether taxes and additional fees are included; totals exclude any unpriced extras.';
@@ -236,19 +238,38 @@ function currentResearch(project: LifeProject) {
   return [...latest.values()].sort((a, b) => compare(a.category, b.category));
 }
 
-function offerCost(offer: Offer): number {
-  return sum([offer.priceMinor!, offer.delivery.available === false ? 0 : offer.delivery.costMinor ?? 0], 'Offer total');
+function offerCost(offer: Offer, quantity = 1): number {
+  return sum([offer.priceMinor! * quantity, offer.delivery.available === false ? 0 : offer.delivery.costMinor ?? 0], 'Offer total');
 }
 
-function eligible(offer: Offer, project: LifeProject): boolean {
-  return offer.priceMinor !== null && offer.priceStatus !== 'unknown' && offer.priceStatus !== 'demo' &&
-    offer.verificationStatus !== 'demo' && offer.availability !== 'out_of_stock' && offer.availability !== 'demo' &&
+function eligible(offer: Offer, project: LifeProject, includeDemo=false): boolean {
+  const demo=offer.priceStatus==='demo'||offer.verificationStatus==='demo'||offer.availability==='demo';
+  return !(offer.product&&project.cart.some(item=>item.quantity>1&&planningGroup(item.category,project.budget)===planningGroup(offer.category,project.budget)))&&offer.currency===project.budget.currency&&offer.eligibilityStatus!=='potential'&&!researchDismissed(project,offer)&&offer.priceMinor !== null && offer.priceStatus !== 'unknown' && (!demo||includeDemo) && offer.availability !== 'out_of_stock' &&
     !(offer.kind === 'product' && project.preferences.deliveryRequired === true && offer.delivery.available !== true) &&
     !(project.preferences.allowUsed === false && offer.kind === 'product' && offer.condition !== 'new' && offer.condition !== 'not_applicable');
 }
-
+export function planningGroup(category:string,budget:Budget):string {
+  return isFurniture(category)?purchaseGroup(category):purchaseGroup(envelope(category,budget));
+}
+export function scenarioFingerprint(project:LifeProject,options:{includeDemo?:boolean}={}):string {
+  return createHash('sha256').update(JSON.stringify({includeDemo:options.includeDemo===true,scenario:project.scenarioType,location:project.location,
+    constraints:{delivery:project.preferences.deliveryRequired,used:project.preferences.allowUsed,owned:project.preferences.ownedItems,requiredItems:project.preferences.requiredItems,ownsFurniture:project.preferences.ownsFurniture},
+    budget:{total:project.budget.totalMinor,reserve:project.budget.emergencyReserveMinor,categories:project.budget.categories.map(c=>[c.id,c.allocatedMinor])},
+    cart:project.cart.map(({replacementHistory,...item})=>item),research:project.researchResults,researchFeedback:project.researchFeedback,
+    home:project.homeInsurance?.expense,car:project.protection?.car.budgetLink},(_key,value:unknown)=>value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))):value)).digest('hex');
+}
+function logistics(offer:Offer):number|undefined {
+  if(offer.kind!=='product'||offer.delivery.available===null)return undefined;
+  if(offer.delivery.available===false)return 0;
+  if(offer.delivery.costMinor===null)return undefined;
+  const assembly=offer.fulfillment?.evidence.length?offer.fulfillment.assembly:'unknown';
+  // Missing assembly terms earn no advantage over known self-assembly.
+  return assembly==='included'?3:1;
+}
 /** Scenarios buy one researched option per uncovered category, never one per search result. */
-export function simulateScenarios(project: LifeProject): SimulationScenario[] {
+export function simulateScenarios(project: LifeProject, options:{includeDemo?:boolean}={}): SimulationScenario[] {
+  const original=project;
+  const fingerprint=scenarioFingerprint(project,options);
   const calculatedAt = new Date().toISOString();
   const budget = recalculateBudget(project.budget, project.cart, project.homeInsurance?.expense, project.protection?.car.budgetLink);
   const snapshots = currentResearch(project);
@@ -260,21 +281,29 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
   const offers = new Map<string, Offer[]>();
   for (const result of snapshots) {
     // Demo catalog entries are not real purchase candidates. Allocation estimates remain useful offline.
-    if (isStale(result) || result.mode !== 'live' || result.status === 'unavailable') continue;
+    if (isStale(result) || result.status === 'unavailable' || (result.mode !== 'live' && !(options.includeDemo && result.mode === 'demo'))) continue;
     for (const offer of result.offers) {
-      if (!automaticCategory(offer.category) || !eligible(offer, project)) continue;
+      if (!automaticCategory(offer.category) || !eligible(offer, project, options.includeDemo && result.mode==='demo')) continue;
       const category = scenarioGroup(offer.category);
       const group = offers.get(category) ?? [];
       if (!group.some(existing => existing.id === offer.id)) group.push(offer);
       offers.set(category, group);
     }
   }
+  // Only a single unconfirmed line in a purchase group may be substituted automatically.
+  // Chosen lines, manual multi-line bundles and independent fixed expenses remain intact.
+  const replaceable=new Map<string,CartItem>();
+  for(const item of original.cart){
+    const group=scenarioGroup(item.category);
+    if(item.status==='proposed'&&original.cart.filter(i=>scenarioGroup(i.category)===group).length===1&&offers.get(group)?.length)replaceable.set(group,item);
+  }
+  project={...original,cart:original.cart.filter(item=>![...replaceable.values()].some(v=>v.id===item.id))};
   const covered = new Set(project.cart.map(item => scenarioGroup(item.category)));
   if(project.homeInsurance?.expense)covered.add(scenarioGroup('home_insurance'));
   if(project.protection?.car.budgetLink)covered.add(scenarioGroup('car_insurance'));
   // A broad furniture search can contain both beds and sofas. Group its actual offers,
   // rather than collapsing every offer into the search request's envelope.
-  const researchedGroups = unique(snapshots.flatMap(result => result.offers.length ? result.offers.map(offer => scenarioGroup(offer.category)) : [scenarioGroup(result.category)]));
+  const researchedGroups = unique([...snapshots.flatMap(result => result.offers.length ? result.offers.map(offer => scenarioGroup(offer.category)) : [scenarioGroup(result.category)]),...(project.preferences.requiredItems??[]).map(scenarioGroup)]);
   const categoryPlans = new Map<string, number>();
   for (const envelopeId of unique([...budget.categories.map(category => category.id), ...researchedGroups.map(group => envelope(group, budget))])) {
     if (!automaticCategory(envelopeId)) continue;
@@ -289,21 +318,26 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
     const remainingAllocation = Math.max(0, allocation - cartInEnvelope.reduce((total, item) => total + cartTotal(item), 0));
     groups.forEach((group, index) => categoryPlans.set(group, Math.floor(remainingAllocation / groups.length) + (index < remainingAllocation % groups.length ? 1 : 0)));
   }
+  for(const [group,item] of replaceable)categoryPlans.set(group,cartTotal(item));
   const categories = [...categoryPlans.keys()];
+  const quantity=(id:string)=>replaceable.get(id)?.quantity??1;
   const allocation = (id: string) => categoryPlans.get(id) ?? 0;
-  const minimum = (id: string) => offers.get(id)?.length ? Math.min(...offers.get(id)!.map(offerCost)) : allocation(id);
+  const minimum = (id: string) => offers.get(id)?.length ? Math.min(...offers.get(id)!.map(o=>offerCost(o,quantity(id)))) : allocation(id);
   const baseCost = sum([...project.cart.map(cartTotal),project.homeInsurance?.expense?.plannedMinor??0,project.protection?.car.budgetLink?.plannedMinor??0], 'Scenario cart total');
   const spendingLimit = budget.totalMinor - budget.emergencyReserveMinor;
-  return (['economy', 'balanced', 'comfort'] as const).map(id => {
+  const scenarios:SimulationScenario[] = (['economy', 'balanced', 'comfort'] as const).map(id => {
     let verifiedCostMinor = 0;
     let estimatedCostMinor = 0;
     let runningCost = baseCost;
     let unfunded = false;
     const selectedOfferIds: string[] = [];
+    const changes:NonNullable<SimulationScenario['changes']>=[];
+    const chosenOffers:Offer[]=[];
+    const convenienceEvidence:string[]=[];
     const missingData: string[] = [];
     const risks: string[] = [];
     if (!budget.confirmed) missingData.push('The total budget has not been confirmed; affordability cannot be established.');
-    const tradeOffs = [id === 'economy' ? 'Selects the lowest known price including recorded line charges in each uncovered category.' : id === 'balanced' ? 'Prefers the highest research score among affordable offers; ties favor lower known cost.' : 'Prefers documented availability, then research score, among affordable offers.'];
+    const tradeOffs = [id === 'economy' ? 'Selects the lowest known price including recorded line charges in each uncovered category.' : id === 'balanced' ? 'Balances validated research ranking, relative known cost and documented logistics among affordable offers.' : 'Prefers documented convenience, then lower known cost, among affordable offers.'];
     if(project.homeInsurance?.expense){verifiedCostMinor=project.homeInsurance.expense.plannedMinor;tradeOffs.push(`Home insurance is a proposed recurring expense over ${project.homeInsurance.expense.planningMonths} month(s), not a purchased policy. Later renewals are excluded.`);}
     if(project.protection?.car.budgetLink){const link=project.protection.car.budgetLink;if(link.sourceMode==='live'&&!link.needsReview)verifiedCostMinor+=link.plannedMinor;else estimatedCostMinor+=link.plannedMinor;tradeOffs.push(`${link.sourceMode==='demo'?'Fictional demo':'Quoted'} car insurance over ${link.planningMonths} months is a proposal, not a purchased policy.`);if(link.needsReview)missingData.push('Car insurance quote is stale; the retained proposal needs revalidation.');}
     if (project.preferences.ownsFurniture === true || project.preferences.ownedItems?.length) tradeOffs.push(`Automatic purchases exclude recorded owned items (${project.preferences.ownedItems?.join(', ') || 'furniture'}); explicit cart choices are retained.`);
@@ -311,7 +345,7 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
     if (excluded.length) tradeOffs.push(`Research groups excluded from automatic purchases because they are owned, outside this context, or absent from the current budget: ${excluded.join(', ')}.`);
     for (const result of snapshots) {
       if (isStale(result)) missingData.push(`${result.category}: research excluded because project constraints changed; research again.`);
-      else if (result.mode === 'demo') missingData.push(`${result.category}: demo offers excluded because their prices and availability are not real; allocation-based planning estimates are used where needed.`);
+      else if (result.mode === 'demo' && !options.includeDemo) missingData.push(`${result.category}: demo offers excluded because their prices and availability are not real; allocation-based planning estimates are used where needed.`);
       else if (project.preferences.deliveryRequired === true) {
         for (const offer of result.offers) {
           if (offer.kind === 'product' && offer.delivery.available === null) missingData.push(`Offer ${offer.id}: delivery availability unknown; excluded because delivery is required.`);
@@ -337,22 +371,33 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
         if (item.deliveryCostMinor === null || item.priceStatus !== 'verified' || !item.sourceUrl) missingData.push(`Cart item ${item.id}: service total fees need confirmation. ${serviceFeeNote}`);
       } else if (item.deliveryCostMinor === null) missingData.push(`Cart item ${item.id}: delivery cost unknown; total excludes unknown delivery.`);
       if (item.priceStatus !== 'verified' || !item.sourceUrl) risks.push(`Cart item ${item.id}: price is not source-verified.`);
-      deliveryStates.push('unknown'); // A cart line has a delivery price, but no delivery-availability field.
+      const linked=cartOffer(item,original);
+      if(linked)chosenOffers.push(linked);
+      deliveryStates.push(linked?.kind==='product'&&linked.delivery.available===false?'no':linked?.kind==='product'&&linked.delivery.available===true&&linked.delivery.costMinor!==null?'yes':'unknown');
     }
     for (const [index, category] of categories.entries()) {
       const candidates = [...(offers.get(category) ?? [])];
       const laterMinimum = categories.slice(index + 1).reduce((total, next) => total + minimum(next), 0);
-      const affordable = candidates.filter(offer => offerCost(offer) <= spendingLimit - runningCost - laterMinimum);
-      affordable.sort((a, b) => {
-        if (id === 'comfort') {
-          const delivery = Number(b.kind === 'service' ? b.availability === 'in_stock' : b.delivery.available === true && b.delivery.costMinor !== null) - Number(a.kind === 'service' ? a.availability === 'in_stock' : a.delivery.available === true && a.delivery.costMinor !== null);
-          if (delivery) return delivery;
+      const affordable = candidates.filter(offer => offerCost(offer,quantity(category)) <= spendingLimit - runningCost - laterMinimum);
+      const cheapest=candidates.length?Math.min(...candidates.map(o=>offerCost(o,quantity(category)))):0;
+      const balancedScore=(o:Offer)=>o.score*0.7+(offerCost(o,quantity(category))?cheapest/offerCost(o,quantity(category))*20:20)+((logistics(o)??0)/3)*10;
+      affordable.sort((a,b)=>{
+        if(id==='comfort'){
+          const difference=(logistics(b)??-1)-(logistics(a)??-1);
+          if(difference)return difference;
         }
-        if (id !== 'economy' && a.score !== b.score) return b.score - a.score;
-        return offerCost(a) - offerCost(b) || compare(a.id, b.id);
+        if(id==='balanced'){const difference=balancedScore(b)-balancedScore(a);if(difference)return difference;}
+        return offerCost(a,quantity(category))-offerCost(b,quantity(category))||compare(a.id,b.id);
       });
       const offer = affordable[0];
       if (!offer) {
+        const proposal=replaceable.get(category);
+        if(proposal){
+          const cost=cartTotal(proposal);add(proposal.unitPriceMinor*proposal.quantity,proposal.priceStatus==='verified'&&!!proposal.sourceUrl);add(proposal.deliveryCostMinor??0,false);runningCost=sum([runningCost,cost],'Scenario total');
+          if(proposal.offerId)selectedOfferIds.push(proposal.offerId);
+          missingData.push(`${category}: existing proposal retained; no replacement fits the current constraints and budget.`);
+          deliveryStates.push('unknown');continue;
+        }
         const estimate = allocation(category);
         add(estimate, false);
         runningCost = sum([runningCost, estimate], 'Scenario total');
@@ -361,15 +406,19 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
         deliveryStates.push('unknown');
         continue;
       }
-      const cost = offerCost(offer);
+      const cost = offerCost(offer,quantity(category));
+      chosenOffers.push(offer);
+      const previous=replaceable.get(category);
+      if(!previous||previous.offerId!==offer.id||previous.unitPriceMinor!==offer.priceMinor||previous.deliveryCostMinor!==offer.delivery.costMinor)
+        changes.push({kind:previous?'replace':'add',cartItemId:previous?.id??null,offerId:offer.id,category:offer.category,title:offer.title,quantity:quantity(category),previousMinor:previous?cartTotal(previous):0,totalMinor:cost});
       runningCost = sum([runningCost, cost], 'Scenario total');
-      add(offer.priceMinor!, offer.priceStatus === 'verified' && offer.verificationStatus === 'source_checked' && offer.sourceUrl !== null);
+      add(offer.priceMinor! * quantity(category), offer.priceStatus === 'verified' && offer.verificationStatus === 'source_checked' && offer.sourceUrl !== null);
       add(offer.delivery.available === false ? 0 : offer.delivery.costMinor ?? 0, false);
       selectedOfferIds.push(offer.id);
       hasService ||= offer.kind === 'service';
       hasPhysicalProduct ||= offer.kind === 'product';
       const deliveryKnown = offer.delivery.available === true && offer.delivery.costMinor !== null;
-      deliveryStates.push(offer.kind === 'service' ? (offer.availability === 'in_stock' ? 'yes' : 'unknown') : deliveryKnown ? 'yes' : offer.delivery.available === false ? 'no' : 'unknown');
+      deliveryStates.push(offer.kind === 'service' ? 'unknown' : deliveryKnown ? 'yes' : offer.delivery.available === false ? 'no' : 'unknown');
       if (offer.kind === 'service') {
         if (offer.delivery.costMinor === null || offer.priceStatus !== 'verified' || offer.verificationStatus !== 'source_checked' || !offer.sourceUrl) missingData.push(`Offer ${offer.id}: service total fees need confirmation. ${serviceFeeNote}`);
       } else {
@@ -386,16 +435,30 @@ export function simulateScenarios(project: LifeProject): SimulationScenario[] {
     const withinBudget = budget.confirmed && !unfunded && estimatedTotalMinor <= spendingLimit;
     if (estimatedTotalMinor > spendingLimit) risks.push('Known costs and planning estimates exceed funds available after the emergency reserve.');
     if (missingData.length) risks.push('Totals are provisional; missing prices, availability or additional charges require confirmation.');
-    const convenience = deliveryStates.length && deliveryStates.every(state => state === 'yes') ? 'high' : deliveryStates.includes('no') ? 'low' : 'medium';
+    const convenience = deliveryStates.includes('no')?'low':deliveryStates.length&&deliveryStates.every(state=>state==='yes')?'high':'unknown';
+    const assembly=chosenOffers.filter(o=>o.kind==='product').map(o=>o.fulfillment?.evidence.length?o.fulfillment.assembly:'unknown');
+    const effort=deliveryStates.includes('no')?'high':convenience==='high'&&assembly.length&&assembly.every(a=>a==='included')?'low':convenience==='high'&&assembly.length&&assembly.every(a=>a!=='unknown')?'medium':'unknown';
+    if(deliveryStates.includes('no'))convenienceEvidence.push('At least one selected product requires pickup; transport must be arranged.');
+    if(deliveryStates.length&&deliveryStates.every(s=>s==='yes'))convenienceEvidence.push('All physical delivery indicators used here report delivery with a listed charge.');
+    if(convenience==='unknown'||effort==='unknown')convenienceEvidence.push('Not enough information about delivery, service arrangements or assembly to evaluate all effort.');
+    if(assembly.includes('included'))convenienceEvidence.push('Assembly is explicitly reported as included for at least one option.');
+    const demo=chosenOffers.some(o=>o.verificationStatus==='demo')||original.cart.some(i=>i.priceStatus==='demo');
+    const real=chosenOffers.some(o=>o.verificationStatus!=='demo');
+    const sourceMode=demo?(real?'mixed':'demo'):chosenOffers.length?'live':'planning';
+    if(demo)missingData.unshift('DEMO: fictional examples, not real products, prices, delivery promises or insurance quotes.');
     return {
       id, name: id === 'economy' ? 'Economy' : id === 'balanced' ? 'Balanced' : 'Comfort',
       estimatedTotalMinor, verifiedCostMinor, estimatedCostMinor, remainingMinor: budget.totalMinor - estimatedTotalMinor,
       emergencyReserveMinor: budget.emergencyReserveMinor, withinBudget, convenience,
-      effort: convenience === 'high' ? 'low' : convenience === 'low' ? 'high' : 'medium',
+      effort, changes, fingerprint, sourceMode, convenienceEvidence, feasibility:!budget.confirmed?'incomplete':!withinBudget?'over_budget':missingData.length?'incomplete':'within_budget',
+      explanation:id==='economy'?'Lowest known total cost among eligible affordable candidates.':id==='balanced'?'Balances the validated research ranking (70%), relative known cost (20%) and documented logistics (10%).':'Prioritizes documented delivery and assembly, then lower known cost; missing logistics are not a promise of convenience.',
       selectedOfferIds: unique(selectedOfferIds), lockedCartItemIds: project.cart.filter(item => item.status === 'selected').map(item => item.id),
       risks: unique(risks), tradeOffs, missingData, calculatedAt, basedOnRevision: project.revision,
     };
   });
+  if(scenarios.every(s=>s.estimatedTotalMinor===scenarios[0]!.estimatedTotalMinor&&s.selectedOfferIds.join()===scenarios[0]!.selectedOfferIds.join()))
+    for(const s of scenarios)s.explanation='The same suitable choices fit all strategies. Confirmed items stay fixed; research more alternatives or explicitly replace a chosen item to explore differences.';
+  return scenarios;
 }
 
 /** Risk identity follows the issue; status follows the exact supporting evidence. */
@@ -470,7 +533,7 @@ export function analyzeRisks(project: LifeProject): Risk[] {
     const serviceResearch = result.offers.length ? result.offers.every(offer => offer.kind === 'service') : serviceCategory(result.category, project.budget);
     if (isStale(result) || result.status !== 'completed' || result.mode !== 'live') add(`research:coverage:${result.category}`, 'planning', 'medium', `Research needs follow-up: ${result.category}`, 'Research for this category is stale, limited, unavailable or demonstration data.', [`Research ${result.id}; status ${result.status}; mode ${result.mode}; searched ${result.searchedAt}.`, ...result.warnings], serviceResearch ? 'Obtain current real service quotes and verify total fees, availability and terms.' : 'Obtain current real offers and verify prices, stock and delivery.');
     for (const offer of [...result.offers].sort((a, b) => compare(a.id, b.id))) {
-      const evidence = `Offer ${offer.id}; price ${offer.priceMinor ?? 'unknown'} cents (${offer.priceStatus}); verification ${offer.verificationStatus}; checked ${offer.lastCheckedAt}.`;
+      const evidence = `Offer ${offer.id}; price ${offer.priceMinor ?? 'unknown'} ${offer.currency??'unknown-currency'} minor units (${offer.priceStatus}); verification ${offer.verificationStatus}; checked ${offer.lastCheckedAt}.`;
       if (offer.kind === 'service' && result.mode === 'live' && offer.verificationStatus !== 'demo') add(`offer:terms:${offer.id}`, 'contract', 'medium', `Verify service terms: ${label(offer.title)}`, 'This service offer needs scope, payment and cancellation terms checked before booking; the project does not record confirmed contractual terms.', [evidence, `Service description: ${offer.description || 'not provided'}`], 'Obtain written scope, inclusions, payment and cancellation terms from the provider.', offer.sourceUrl);
       if (offer.kind === 'service' && result.mode === 'live' && offer.verificationStatus !== 'demo' && offer.delivery.costMinor === null) add(`offer:service-fees:${offer.id}`, 'budget', 'medium', `Confirm service total fees: ${label(offer.title)}`, serviceFeeNote, [evidence, 'No additional service charge amount or confirmation that taxes and extra fees are included is recorded.'], 'Request a full service quote including taxes and any additional fees; confirm which charges are included.', offer.sourceUrl);
       if (offer.priceStatus !== 'verified' || offer.verificationStatus !== 'source_checked' || !offer.sourceUrl) add(`offer:price:${offer.id}`, 'budget', 'medium', `Research price unverified: ${label(offer.title)}`, 'The researched price is not a checked current quote.', [evidence], 'Check the original source and obtain a confirmed price.', offer.sourceUrl);

@@ -24,7 +24,8 @@ export const CLASS_PREFERENCE: Record<Tier, string> = {
  * found, not a judgement of the product: they make "show me the cheaper ones" one click.
  */
 export function tierMap(offers: Offer[]): Map<string, Tier> {
-  const priced = offers.filter(o => o.priceMinor !== null).sort((a, b) => a.priceMinor! - b.priceMinor!);
+  if(new Set(offers.filter(o=>o.priceMinor!==null).map(o=>o.currency)).size>1)return new Map();
+  const priced = offers.filter(o => o.priceMinor !== null&&o.currency!==null).sort((a, b) => a.priceMinor! - b.priceMinor!);
   const map = new Map<string, Tier>();
   const n = priced.length;
   priced.forEach((o, i) => {

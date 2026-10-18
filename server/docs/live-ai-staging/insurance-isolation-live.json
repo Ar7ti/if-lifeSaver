@@ -1,0 +1,38 @@
+{
+  "mode": "REMOTE_HTTPS_NO_ADDITIONAL_PAID_CALLS",
+  "checks": [
+    {
+      "path": "/home-insurance",
+      "method": "GET",
+      "status": 404,
+      "errorCode": "NOT_FOUND"
+    },
+    {
+      "path": "/home-insurance/quote",
+      "method": "POST",
+      "status": 404,
+      "errorCode": "NOT_FOUND"
+    },
+    {
+      "path": "/protection",
+      "method": "PATCH",
+      "status": 404,
+      "errorCode": "NOT_FOUND"
+    },
+    {
+      "path": "/protection-timeline",
+      "method": "GET",
+      "status": 404,
+      "errorCode": "NOT_FOUND"
+    }
+  ],
+  "allDenied": true,
+  "providerUsageUnchanged": true,
+  "canonicalProject": {
+    "aiMode": "openai",
+    "scenarioType": "moving",
+    "budgetMinor": 200000,
+    "reportedResearchResults": 1
+  },
+  "publicAiPaused": true
+}

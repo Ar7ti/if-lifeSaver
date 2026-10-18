@@ -23,7 +23,7 @@ const deadline = { timeout: 15_000 };
 class FailingRepository extends MemoryProjectRepository {
   failNextWrite = false;
   failures = 0;
-  protected override async write(project: LifeProject) {
+  protected override async write(project: {format:1;ownerId:string;project:LifeProject}) {
     if (this.failNextWrite) {
       this.failNextWrite = false;
       this.failures++;

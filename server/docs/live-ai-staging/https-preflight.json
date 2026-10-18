@@ -1,0 +1,54 @@
+{
+  "mode": "REMOTE_HTTPS_NO_PAID_CALLS",
+  "url": "https://web-live-ai-staging.up.railway.app",
+  "health": {
+    "status": "ok",
+    "ready": true,
+    "contractVersion": "1.8.0",
+    "configuration": {
+      "ai": "openai",
+      "research": "live",
+      "storage": "local",
+      "authentication": true,
+      "providers": {
+        "ai": "openai_sdk",
+        "research": "openai_sdk"
+      }
+    }
+  },
+  "anonymousPrincipalsDiffer": true,
+  "secureCookie": true,
+  "hostOnlyCookie": true,
+  "missingCsrfStatus": 403,
+  "publicAiPausedStatus": 503,
+  "publicAiPausedError": "PUBLIC_AI_DISABLED",
+  "publicWorkspaceListStatus": 200,
+  "unknownWorkspaceStatus": 404,
+  "adminStatus": {
+    "day": "2026-10-17",
+    "publicAiEnabled": false,
+    "dailyBudgetUsd": 3,
+    "adminDailyBudgetUsd": 3,
+    "usage": [],
+    "costsAreEstimates": true
+  },
+  "preflightApiDeployment": "24c65387-ef7e-41d7-96c2-2556db42da64",
+  "note": "HTTPS authentication checks ran before the backend-only follow-up fix deployment. The subsequent browser check loaded the final API deployment successfully.",
+  "finalApiDeployment": "e4c1c90d-0149-49e9-9546-98e1a50ffe17",
+  "finalHealthRecheckedAt": "2026-10-17T23:16:08.023687+00:00",
+  "finalHealth": {
+    "status": "ok",
+    "ready": true,
+    "contractVersion": "1.8.0",
+    "configuration": {
+      "ai": "openai",
+      "research": "live",
+      "storage": "local",
+      "authentication": true,
+      "providers": {
+        "ai": "openai_sdk",
+        "research": "openai_sdk"
+      }
+    }
+  }
+}

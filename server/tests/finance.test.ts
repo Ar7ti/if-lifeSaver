@@ -147,7 +147,8 @@ test('unknown delivery and estimated prices are flagged rather than fabricated',
     assert.match(scenario.missingData.join(' '), /delivery availability or cost unknown/);
     assert.match(scenario.missingData.join(' '), /availability is unknown/);
     assert.match(scenario.risks.join(' '), /not a source-verified quote/);
-    assert.equal(scenario.convenience, 'medium');
+    assert.equal(scenario.convenience, 'unknown');
+    assert.equal(scenario.effort, 'unknown');
   }
   const withCart = simulateScenarios(project({ cart: [cart({ deliveryCostMinor: null })] }))[0]!;
   assert.equal(withCart.estimatedTotalMinor, 1_000);

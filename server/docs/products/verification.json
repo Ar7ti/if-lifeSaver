@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-10-18T00:46:45.148483+00:00",
+  "backendTests": {
+    "passed": 302,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "newProductCases": 31,
+    "externalProviderCalls": 0
+  },
+  "browserTests": {
+    "existingUi": 38,
+    "publicAccess": 5,
+    "researchV2": 3,
+    "products": 3,
+    "uniquePassed": 49,
+    "failed": 0,
+    "allExternalListingResponses": "synthetic fixtures; not live evidence"
+  },
+  "checks": {
+    "backendTypecheck": "PASS",
+    "frontendTypecheck": "PASS",
+    "backendBuild": "PASS",
+    "frontendBuild": "PASS",
+    "gitDiffCheck": "PASS",
+    "lint": "No lint script configured"
+  },
+  "integrationAssertions": [
+    "OAuth official scope/endpoint and token reuse/expiry",
+    "production approval and free-API gates fail closed",
+    "condition/price/country/availability/format eligibility",
+    "API original currency vs display conversion",
+    "unknown price retained as potential",
+    "same-currency cart/replace/undo/reload",
+    "no duplicate source identity after re-research",
+    "new provider prices do not silently change cart",
+    "multi-unit shipping guard",
+    "country-wide vs city locality",
+    "assistant electronics routing and original-currency follow-ups",
+    "ownership, CSRF, private reload and public/global quota regressions",
+    "free provider calls do not consume OpenAI quota",
+    "durable product request limits and network failures",
+    "kill switch blocks even a cached token",
+    "browser original currencies/disabled FX selection",
+    "image URL/broken-image fallback and responsive layout"
+  ],
+  "browserInfrastructureNotes": "Initial concurrent default Playwright artifact directories collided and source-watch restarts interrupted early regression attempts. New configs use isolated temp output. Final stable 38+5+3+3 suites passed; no assertions were weakened. Two existing AI unit fixtures were given their required EUR currency; expected prices remain unchanged.",
+  "liveVerification": "BLOCKED: see access-status.json",
+  "actualLiveListings": [],
+  "retrievalImprovementClaim": false,
+  "screenshots": {
+    "desktop.png": "Actual UI, synthetic local API fixture; not a real listing",
+    "mobile.png": "Actual UI, synthetic local API fixture; not a real listing"
+  }
+}
