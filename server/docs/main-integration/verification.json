@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-18",
+  "integratedFeatureHead": "8b22f92dde04b417f823fc2290d94c2292385ca3",
+  "branches": [
+    {
+      "branch": "backup/main-before-integration-20261018-030715",
+      "tip": "e23d12916ee5aa98de8eaba220fa526f7bbd9597",
+      "included": true
+    },
+    {
+      "branch": "backup/regal-before-integration-20261018-030715",
+      "tip": "75ba4bfdce3d8879c1098f7ff2bb2be5421ce3ef",
+      "included": true
+    },
+    {
+      "branch": "codex-wip-backup-20261017-205756",
+      "tip": "edc7ae3024c9abc1770e43753b312bea7e0da2e9",
+      "included": true
+    },
+    {
+      "branch": "codex/protection-timeline-release-20261018",
+      "tip": "30d1cd01a04c185a7796a32b8a0cc5945f32028d",
+      "included": true
+    },
+    {
+      "branch": "main",
+      "tip": "e23d12916ee5aa98de8eaba220fa526f7bbd9597",
+      "included": true
+    },
+    {
+      "branch": "regal-hadrosaurus-59639ce3",
+      "tip": "8b22f92dde04b417f823fc2290d94c2292385ca3",
+      "included": true
+    }
+  ],
+  "tests": {
+    "backend": {
+      "passed": 347,
+      "failed": 0
+    },
+    "browser": {
+      "passed": 56,
+      "failed": 0,
+      "suites": {
+        "fullUi": 38,
+        "publicAccess": 5,
+        "structuredProducts": 3,
+        "researchFurniture": 7,
+        "serpApi": 2,
+        "publicCartCsrf": 1
+      }
+    },
+    "frontendTypecheck": "passed",
+    "backendTypecheck": "passed",
+    "frontendBuild": "passed",
+    "backendBuild": "passed"
+  },
+  "paidCallsDuringIntegration": 0,
+  "deploymentsPerformed": 0,
+  "railwayGitSourcesConfigured": false,
+  "legacyBackup": "Full original patch archived; current quote gateway, identity protection and structured providers retained. Travel specification and UUID regression test incorporated.",
+  "preservedUnstagedMetadata": "server/.DS_Store"
+}

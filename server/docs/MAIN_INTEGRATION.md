@@ -1,3 +1,39 @@
+# Updated main integration — 18 October 2026
+
+This verification supersedes the older counts below. All local branch tips are now ancestors of the integrated feature head, including the moving Protection Timeline branch and the historical Codex backup. No branch was deleted or force-reset.
+
+## Current integrated changes
+
+- Live AI recovery and contextual conversation/research refinements.
+- Source-grounded furniture fallback and SerpApi shopping with durable provider quotas.
+- Real product images, potential/supported distinctions, stable duplicate identity and conflicting-price safeguards.
+- Public cart/insurance DELETE and scenario POST requests send JSON while retaining the existing CSRF boundary.
+- Existing public ownership, admin isolation, insurance, Protection Timeline, budget and scenario behavior preserved.
+- The older backup's duplicate quote UIs/endpoints and automatic page scraper were reconciled against the newer architecture, not reactivated. Its entire original patch and hashes are preserved in `legacy-branch/`; the official travel specification and additional identity/UUID regression test were retained. See `legacy-branch/README.md` for per-feature decisions.
+
+## Tests executed on the merged source
+
+- Backend: **347 passed**, zero failures.
+- Browser: **56 passed**, zero failures: 38 full UI, 5 public access, 3 structured product, 7 research/furniture, 2 SerpApi and 1 anonymous cart/CSRF/scenario test.
+- Frontend/backend typechecks and production builds: passed.
+- Whitespace/conflict checks: passed.
+- Secret review: no real credentials, environment files or session databases added. The archived patch contains historical code and synthetic fixtures, not executable integrations.
+- Tests used local/mock providers: **zero paid provider calls** during this merge verification. Previous live-provider evidence remains separately documented in `SERPAPI_SHOPPING.md`.
+
+The public browser suite was copied to a temporary fixture and its ports/origin remapped from 3016/5186 to 3096/5196; all original assertions remained unchanged. This preserved the existing preview on 5186. Research groups ran with fresh fixture servers to respect the unchanged shared 8/minute limit. Other configured tests ran directly using the existing configurations.
+
+## Publication boundary
+
+Read-only inspection confirmed no GitHub source connected to any API/web service in production, mock staging or Live AI Staging. No GitHub Actions workflow exists in this repository. Updating GitHub main is therefore separate from deployment. **No Railway deployment, variable change or production data operation was performed for this merge.**
+
+Local pre-integration branch checkpoints and a private copy of the uncommitted work were created before committing/merging. The main folder was clean before the update. OS metadata changes (`server/.DS_Store`) are preserved locally and excluded from commits. The original backup branch remains available; no resets or force pushes are required.
+
+Machine-readable results: `main-integration/verification.json`.
+
+---
+
+## Earlier integration record
+
 # Main branch integration verification
 
 Date: 18 October 2026.
